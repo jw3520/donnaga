@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f1e8" />
+    <meta name="description" content="둘이 함께 쓰는 PWA 가계부" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.svg" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <title>DonnaGa</title>
+  </head>
+  <body>
+    <div class="app-shell">
+      <main class="phone">
+        <section class="screen screen--active" data-screen="calendar">
+          <header class="topbar">
+            <div class="topbar__icons">
+              <button class="top-icon top-icon--plain" type="button" data-screen-target="stats" aria-label="통계">
+                <i data-lucide="chart-column"></i>
+              </button>
+              <button class="top-icon top-icon--plain" type="button" data-screen-target="list" aria-label="내역">
+                <i data-lucide="file-text"></i>
+              </button>
+            </div>
+            <button class="month-pill" id="month-title" type="button">
+              <span id="month-title-label">4월</span>
+              <i data-lucide="chevron-down"></i>
+            </button>
+            <div class="topbar__icons">
+              <button class="top-icon top-icon--plain" id="export-button" type="button" aria-label="검색">
+                <i data-lucide="search"></i>
+              </button>
+              <button class="top-icon top-icon--plain" id="seed-data-button" type="button" aria-label="설정">
+                <i data-lucide="settings-2"></i>
+              </button>
+            </div>
+          </header>
+
+          <section class="hero-summary">
+            <div class="hero-summary__topline">
+              <article class="metric-block">
+                <span>수입</span>
+                <strong id="income-total">₩0</strong>
+              </article>
+              <article class="metric-block metric-block--right">
+                <span>지출</span>
+                <strong id="expense-total">₩0</strong>
+              </article>
+            </div>
+            <div class="hero-summary__bottomline">
+              <div class="balance-block">
+                <p>현금 잔액</p>
+                <strong id="balance-total">₩0</strong>
+              </div>
+              <div class="breakdown-block">
+                <p><span>현금</span><strong id="cash-expense-total">₩0</strong></p>
+                <p><span>카드</span><strong id="card-expense-total">₩0</strong></p>
+              </div>
+            </div>
+          </section>
+
+          <section class="calendar-card">
+            <div class="month-switcher">
+              <button class="icon-button" id="prev-month-button" type="button" aria-label="이전 달">‹</button>
+              <div class="weekday-row">
+                <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+              </div>
+              <button class="icon-button" id="next-month-button" type="button" aria-label="다음 달">›</button>
+            </div>
+            <div id="calendar-grid" class="calendar-grid"></div>
+          </section>
+
+          <section class="list-panel list-panel--daily">
+            <div class="list-panel__header">
+              <div class="selected-date-box">
+                <strong id="selected-date-title">4월 18일</strong>
+                <p id="records-caption" class="muted"></p>
+              </div>
+              <div class="segmented-control" id="view-tabs">
+                <button class="tab-button is-active" type="button" data-view="daily">일</button>
+                <button class="tab-button" type="button" data-view="weekly">주</button>
+                <button class="tab-button" type="button" data-view="monthly">월</button>
+              </div>
+            </div>
+            <div id="records-list" class="records-list"></div>
+          </section>
+        </section>
+
+        <section class="screen" data-screen="list">
+          <header class="screen-header">
+            <h2>가계부</h2>
+            <p>월간 전체 내역을 시간순으로 확인합니다.</p>
+          </header>
+          <section class="panel">
+            <div class="list-panel__header">
+              <div class="selected-date-box">
+                <strong>전체 내역</strong>
+                <p id="list-records-caption" class="muted"></p>
+              </div>
+            </div>
+            <div id="list-records-list" class="records-list"></div>
+          </section>
+        </section>
+
+        <section class="screen" data-screen="stats">
+          <header class="screen-header">
+            <h2>통계</h2>
+            <p>이번 달 소비 흐름을 카테고리별로 확인합니다.</p>
+          </header>
+          <section class="panel">
+            <div id="category-stats" class="stats-list"></div>
+          </section>
+        </section>
+
+        <section class="screen" data-screen="budget">
+          <header class="screen-header">
+            <h2>예산</h2>
+            <p>카테고리별 예산 사용량을 확인합니다.</p>
+          </header>
+          <section class="panel">
+            <div id="budget-list" class="budget-list"></div>
+          </section>
+        </section>
+
+        <section class="screen" data-screen="assets">
+          <header class="screen-header">
+            <h2>자산</h2>
+            <p>결제수단별 이번 달 흐름을 카드처럼 확인합니다.</p>
+          </header>
+          <section class="panel panel--asset">
+            <div id="asset-list" class="asset-list"></div>
+          </section>
+        </section>
+
+        <section class="screen" data-screen="settings">
+          <header class="screen-header">
+            <h2>설정</h2>
+            <p>공유 사용을 위한 현재 상태와 데이터 관리 기능입니다.</p>
+          </header>
+          <section class="panel">
+            <div class="settings-list">
+              <article class="settings-row">
+                <div class="stack">
+                  <strong>데이터 저장</strong>
+                  <p>현재는 브라우저 localStorage 사용</p>
+                </div>
+              </article>
+              <article class="settings-row">
+                <div class="stack">
+                  <strong>공유 DB</strong>
+                  <p>추후 Cloudflare/Supabase 같은 공용 저장소 연결 권장</p>
+                </div>
+              </article>
+            </div>
+          </section>
+        </section>
+
+        <button class="mini-fab" id="quick-action-button" type="button" aria-label="빠른 작업">
+          <i data-lucide="list-filter"></i>
+        </button>
+        <button class="fab" id="open-entry-button" type="button" aria-label="내역 추가">
+          <i data-lucide="plus"></i>
+        </button>
+
+        <nav class="tabbar">
+          <button class="tabbar-button is-active" type="button" data-screen-target="calendar" aria-label="달력">
+            <i data-lucide="calendar-days"></i>
+            <span>달력</span>
+          </button>
+          <button class="tabbar-button" type="button" data-screen-target="list" aria-label="가계부">
+            <i data-lucide="file-text"></i>
+            <span>가계부</span>
+          </button>
+          <button class="tabbar-button" type="button" data-screen-target="stats" aria-label="차트">
+            <i data-lucide="pie-chart"></i>
+            <span>차트</span>
+          </button>
+          <button class="tabbar-button" type="button" data-screen-target="budget" aria-label="예산">
+            <i data-lucide="piggy-bank"></i>
+            <span>예산</span>
+          </button>
+          <button class="tabbar-button" type="button" data-screen-target="settings" aria-label="설정">
+            <i data-lucide="settings"></i>
+            <span>설정</span>
+          </button>
+        </nav>
+      </main>
+    </div>
+
+    <dialog class="install-dialog" id="install-dialog">
+      <form method="dialog" class="install-dialog__content">
+        <p class="section-label">Install</p>
+        <h2>홈 화면에 추가</h2>
+        <p>
+          모바일 브라우저에서 이 앱을 홈 화면에 추가하면 둘이 함께 쓰는 PWA처럼
+          앱 아이콘으로 바로 열 수 있습니다.
+        </p>
+        <div class="entry-form__actions">
+          <button class="secondary-button" value="cancel">닫기</button>
+          <button class="primary-button" id="install-button" value="default">설치</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="entry-dialog" id="entry-dialog">
+      <form method="dialog" class="entry-sheet" id="entry-form">
+        <div class="entry-sheet__header">
+          <button class="sheet-close" id="close-entry-button" type="button">×</button>
+          <p class="entry-sheet__amount-label" id="entry-type-label">지출</p>
+          <input name="amount" class="amount-input" type="number" min="0" step="100" placeholder="0" required />
+        </div>
+
+        <div class="type-picker">
+          <button class="type-chip is-active" type="button" data-type-value="expense">지출</button>
+          <button class="type-chip" type="button" data-type-value="income">수입</button>
+          <button class="type-chip" type="button" data-type-value="transfer">이체</button>
+        </div>
+
+        <input name="type" id="type-field" type="hidden" value="expense" />
+
+        <label>
+          <span>내역</span>
+          <input name="note" type="text" maxlength="80" placeholder="예: 점심, 관리비, 선물" />
+        </label>
+
+        <div class="entry-form__row">
+          <label>
+            <span>분류</span>
+            <select name="category" id="category-field"></select>
+          </label>
+          <label>
+            <span>사용자</span>
+            <select name="member" id="member-field"></select>
+          </label>
+        </div>
+
+        <div class="entry-form__row">
+          <label>
+            <span>지불수단</span>
+            <select name="account" id="account-field"></select>
+          </label>
+          <label>
+            <span>날짜</span>
+            <input name="date" type="date" id="date-field" required />
+          </label>
+        </div>
+
+        <div class="entry-form__actions">
+          <button class="secondary-button" id="reset-form-button" type="reset">초기화</button>
+          <button class="primary-button" type="submit">저장</button>
+        </div>
+      </form>
+    </dialog>
+
+    <template id="record-item-template">
+      <article class="record-card">
+        <div class="record-card__top">
+          <div>
+            <p class="record-card__category"></p>
+            <h3 class="record-card__note"></h3>
+          </div>
+          <strong class="record-card__amount"></strong>
+        </div>
+        <div class="record-card__meta"></div>
+        <div class="record-card__actions">
+          <button class="ghost-button ghost-button--small record-edit-button" type="button">수정</button>
+          <button class="ghost-button ghost-button--small record-delete-button" type="button">삭제</button>
+        </div>
+      </article>
+    </template>
+
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>
