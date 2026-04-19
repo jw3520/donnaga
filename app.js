@@ -42,7 +42,6 @@ const CATEGORY_META = {
     { id: "경조사", label: "경조사", color: "#f4b2ba", icon: "hand-heart" },
     { id: "가전", label: "가전", color: "#a8dff0", icon: "smartphone" },
     { id: "기부", label: "기부", color: "#c7e7a5", icon: "heart-handshake" },
-    { id: "레이", label: "레이", color: "#d6d2ff", icon: "car-taxi-front" },
     { id: "기타", label: "기타", color: "#f4b2ba", icon: "sparkles" },
     { id: "집세", label: "주거/공과금", color: "#f1d7a6", icon: "house" },
   ],
@@ -1095,18 +1094,19 @@ function filterBySearchPeriod(items, period) {
 }
 
 function normalizeTransaction(item, markPending) {
+  const normalizedCategory = normalizeCategoryId(item.category || "");
   const normalized = {
     id: item.id || crypto.randomUUID(),
     type: item.type || "",
     amount: Number(item.amount || 0),
-    category: item.category || "",
+    category: normalizedCategory,
     sub_category: item.sub_category || "",
     member: normalizeMemberId(item.member),
     account: item.account || "",
     payment_method: item.payment_method || "",
     card_name: item.card_name || "",
     date: item.date || todayISO(),
-    note: item.note || defaultNote(item.category || "기타"),
+    note: item.note || defaultNote(normalizedCategory || "기타"),
     memo: item.memo || "",
     updated_at: Number(item.updated_at || Date.now()),
     sync_status: item.sync_status || (markPending ? "pending" : "synced"),
@@ -1474,7 +1474,7 @@ function categoryOptionsForType(type) {
   const seen = new Set(base.map((item) => item.id));
   const dynamic = state.transactions
     .filter((item) => !item.deleted && item.type === type && item.category)
-    .map((item) => item.category)
+    .map((item) => normalizeCategoryId(item.category))
     .filter((category) => {
       if (seen.has(category)) return false;
       seen.add(category);
@@ -1519,12 +1519,13 @@ function accountName(id) {
 }
 
 function categoryAppearance(category, type) {
-  return CATEGORY_META[type]?.find((item) => item.id === category)
-    || CATEGORY_META.expense.find((item) => item.id === category)
-    || CATEGORY_META.income.find((item) => item.id === category)
-    || CATEGORY_META.transfer.find((item) => item.id === category)
-    || inferredCategoryMeta(category, type)
-    || { color: "#b8c1cc", icon: "circle", label: category };
+  const normalizedCategory = normalizeCategoryId(category);
+  return CATEGORY_META[type]?.find((item) => item.id === normalizedCategory)
+    || CATEGORY_META.expense.find((item) => item.id === normalizedCategory)
+    || CATEGORY_META.income.find((item) => item.id === normalizedCategory)
+    || CATEGORY_META.transfer.find((item) => item.id === normalizedCategory)
+    || inferredCategoryMeta(normalizedCategory, type)
+    || { color: "#b8c1cc", icon: "circle", label: normalizedCategory };
 }
 
 function inferredCategoryMeta(category, type) {
@@ -1543,6 +1544,12 @@ function inferredCategoryMeta(category, type) {
     transfer: {},
   };
   return inferred[type]?.[category] || inferred.expense[category] || null;
+}
+
+function normalizeCategoryId(category) {
+  if (!category) return "";
+  if (category === "레이") return "반려동물";
+  return category;
 }
 
 function renderCategoryIcon(category, type) {
