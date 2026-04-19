@@ -1472,6 +1472,13 @@ function sumByType(items, type) {
 function categoryOptionsForType(type) {
   const base = CATEGORY_META[type] || [];
   const seen = new Set(base.map((item) => item.id));
+  const usageCounts = state.transactions
+    .filter((item) => !item.deleted && item.type === type && item.category)
+    .reduce((acc, item) => {
+      const normalizedCategory = normalizeCategoryId(item.category);
+      acc[normalizedCategory] = (acc[normalizedCategory] || 0) + 1;
+      return acc;
+    }, {});
   const dynamic = state.transactions
     .filter((item) => !item.deleted && item.type === type && item.category)
     .map((item) => normalizeCategoryId(item.category))
@@ -1489,7 +1496,13 @@ function categoryOptionsForType(type) {
       };
       return { id: category, label: appearance.label, color: appearance.color, icon: appearance.icon };
     });
-  return [...base, ...dynamic];
+  return [...base, ...dynamic]
+    .map((item, index) => ({ ...item, _order: index, _count: usageCounts[item.id] || 0 }))
+    .sort((left, right) => {
+      if (right._count !== left._count) return right._count - left._count;
+      return left._order - right._order;
+    })
+    .map(({ _order, _count, ...item }) => item);
 }
 
 function groupNetAmount(items) {
@@ -1532,12 +1545,23 @@ function inferredCategoryMeta(category, type) {
   const inferred = {
     expense: {
       "가전": { color: "#a8dff0", icon: "smartphone", label: "가전" },
+      "건강": { color: "#b7e4c7", icon: "heart-pulse", label: "건강" },
+      "교통": { color: "#ffb4bf", icon: "bus-front", label: "교통" },
       "미용": { color: "#ffc2db", icon: "sparkles", label: "미용" },
+      "문화": { color: "#e6b8ef", icon: "clapperboard", label: "문화" },
+      "문화생활": { color: "#e6b8ef", icon: "gamepad-2", label: "여가/취미" },
+      "술": { color: "#f4b2ba", icon: "wine", label: "술" },
+      "오락": { color: "#d8c8ff", icon: "ticket", label: "오락" },
+      "자동차": { color: "#b9d7fb", icon: "car-front", label: "자동차" },
       "자동차유지비": { color: "#b9d7fb", icon: "car-front", label: "자동차유지비" },
       "경조사": { color: "#f4b2ba", icon: "hand-heart", label: "경조사" },
+      "주거비": { color: "#f1d7a6", icon: "house", label: "주거비" },
       "생활용품": { color: "#f3c6a1", icon: "shopping-basket", label: "생활용품" },
       "쇼핑": { color: "#a8dff0", icon: "gift", label: "쇼핑" },
+      "취미": { color: "#d6c8ff", icon: "palette", label: "취미" },
       "여가/취미": { color: "#e6b8ef", icon: "gamepad-2", label: "여가/취미" },
+      "카페": { color: "#c7b29b", icon: "coffee", label: "카페" },
+      "편의점": { color: "#c9ddb0", icon: "store", label: "편의점" },
       "주거/공과금": { color: "#f1d7a6", icon: "house", label: "주거/공과금" },
     },
     income: {},
