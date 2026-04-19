@@ -886,6 +886,7 @@ function renderEntryCategories(type, selectedCategory = "") {
           class="entry-category-chip ${isActive ? "is-active" : ""}"
           type="button"
           data-category-value="${item.id}"
+          aria-pressed="${isActive ? "true" : "false"}"
           style="--category-color:${item.color}; --category-soft:${hexToRgba(item.color, 0.18)}; --category-shadow:${hexToRgba(item.color, 0.34)}"
         >
           <span class="entry-category-chip__icon">
@@ -897,6 +898,11 @@ function renderEntryCategories(type, selectedCategory = "") {
     }).join("")
     : `<div class="entry-category-empty">수입, 지출, 이체 중 하나를 먼저 선택하세요.</div>`;
   renderIcons();
+  refs.entryCategoryGrid.querySelectorAll("[data-category-value]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setEntryCategory(button.dataset.categoryValue);
+    });
+  });
 }
 
 function renderEntryAccountOptions() {
@@ -915,7 +921,9 @@ function syncEntrySelectionUI() {
     button.classList.toggle("is-active", button.dataset.accountValue === refs.accountField.value);
   });
   refs.entryCategoryGrid.querySelectorAll("[data-category-value]").forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.categoryValue === refs.categoryField.value);
+    const isActive = button.dataset.categoryValue === refs.categoryField.value;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
   });
 }
 
