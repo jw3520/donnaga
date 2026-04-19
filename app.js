@@ -53,11 +53,12 @@ const CATEGORY_META = {
   ],
 };
 
-const BUDGETS = [
-  { category: "생활비", items: ["식비", "교통비", "생필품"], limit: 900000 },
-  { category: "고정지출", items: ["집세"], limit: 400000 },
-  { category: "특별지출", items: ["선물", "문화생활", "미용"], limit: 500000 },
-  { category: "저축", items: ["저축"], limit: 600000 },
+const BUDGET_GROUPS = [
+  { category: "생활 지출", items: ["식비", "교통비", "생필품", "반려동물", "카페", "편의점"], limit: 900000 },
+  { category: "고정 지출", items: ["집세", "주거/공과금", "주거비", "회비", "자동차유지비", "자동차"], limit: 700000 },
+  { category: "저축", items: ["저축", "이월"], limit: 600000 },
+  { category: "투자", items: ["투자", "주식", "펀드", "ETF", "코인", "가상자산"], limit: 500000 },
+  { category: "기타", items: ["문화생활", "선물", "미용", "의료/건강", "교육", "여행", "경조사", "가전", "기부", "계좌이체", "기타"], limit: 500000 },
 ];
 
 const refs = {
@@ -637,24 +638,7 @@ function renderMemo() {
 
 function renderAssets() {
   const items = getFilteredMonthTransactions();
-  refs.assetList.innerHTML = BUDGETS.map((budget) => {
-    const spent = items.filter((item) => budget.items.includes(item.category)).reduce((sum, item) => sum + item.amount, 0);
-    const progress = Math.min(100, Math.round((spent / budget.limit) * 100) || 0);
-    return `
-      <article class="asset-row">
-        <div class="asset-row__top">
-          <div class="asset-row__text">
-            <strong>${budget.category}</strong>
-            <p>${formatCurrency(spent)} / ${formatCurrency(budget.limit)}</p>
-          </div>
-          <strong>${progress}%</strong>
-        </div>
-        <div class="asset-row__progress">
-          <div class="asset-row__progress-bar" style="width:${progress}%"></div>
-        </div>
-      </article>
-    `;
-  }).join("");
+  refs.assetList.innerHTML = renderBudgetGroupCards(items, { variant: "asset" });
 }
 
 function renderAnalysis() {
@@ -677,25 +661,8 @@ function renderAnalysis() {
 
   const budgetExpense = sumByType(items, "expense");
   refs.budgetExpenseTotal.textContent = formatCurrency(budgetExpense);
-  refs.budgetLimitTotal.textContent = formatCurrency(BUDGETS.reduce((sum, item) => sum + item.limit, 0));
-  refs.budgetList.innerHTML = BUDGETS.map((budget) => {
-    const spent = items.filter((item) => budget.items.includes(item.category)).reduce((sum, item) => sum + item.amount, 0);
-    const progress = Math.min(100, Math.round((spent / budget.limit) * 100) || 0);
-    return `
-      <article class="budget-row">
-        <div class="asset-row__top">
-          <div class="asset-row__text">
-            <strong>${budget.category}</strong>
-            <p>${formatCurrency(spent)} / ${formatCurrency(budget.limit)}</p>
-          </div>
-          <strong>${progress}%</strong>
-        </div>
-        <div class="budget-row__progress">
-          <div class="budget-row__progress-bar ${spent > budget.limit ? "is-over" : ""}" style="width:${progress}%"></div>
-        </div>
-      </article>
-    `;
-  }).join("");
+  refs.budgetLimitTotal.textContent = formatCurrency(BUDGET_GROUPS.reduce((sum, item) => sum + item.limit, 0));
+  refs.budgetList.innerHTML = renderBudgetGroupCards(items, { variant: "budget" });
 
   const creditTotal = items
     .filter((item) => item.account === "credit-card" && item.type === "expense")
@@ -737,6 +704,48 @@ function renderAnalysis() {
   refs.analysisTabButtons.forEach((button) => {
     button.classList.toggle("is-active", button.dataset.analysisTabTarget === state.analysisTab);
   });
+}
+
+function renderBudgetGroupCards(items, options = {}) {
+  const variant = options.variant || "asset";
+  return budgetGroupsForItems(items)
+    .map((group) => {
+      const progress = Math.min(100, Math.round((group.spent / group.limit) * 100) || 0);
+      const categories = group.categories
+        .map((category) => {
+          const appearance = categoryAppearance(category, categoryTypeForBudget(category));
+          return `
+            <span class="asset-category-pill" style="--pill-color:${appearance.color}">
+              ${renderIconMarkup(appearance.icon)}
+              <span>${appearance.label || category}</span>
+            </span>
+          `;
+        })
+        .join("");
+      return `
+        <details class="${variant === "budget" ? "budget-row" : "asset-row"} asset-row--expandable">
+          <summary class="asset-row__summary">
+            <div class="asset-row__top">
+              <div class="asset-row__text">
+                <strong>${group.category}</strong>
+                <p>${formatCurrency(group.spent)} / ${formatCurrency(group.limit)}</p>
+              </div>
+              <strong>${progress}%</strong>
+            </div>
+            <div class="${variant === "budget" ? "budget-row__progress" : "asset-row__progress"}">
+              <div class="${variant === "budget" ? "budget-row__progress-bar" : "asset-row__progress-bar"} ${variant === "budget" && group.spent > group.limit ? "is-over" : ""}" style="width:${progress}%"></div>
+            </div>
+          </summary>
+          <div class="asset-row__details">
+            <p class="asset-row__caption">포함 카테고리</p>
+            <div class="asset-category-list">
+              ${categories}
+            </div>
+          </div>
+        </details>
+      `;
+    })
+    .join("");
 }
 
 function renderRecordCollection(container, items, mode, sortOrder = "desc") {
@@ -1131,6 +1140,48 @@ function groupTransactions(items, mode) {
     acc[key].push(item);
     return acc;
   }, {});
+}
+
+function budgetGroupsForItems(items) {
+  const groups = BUDGET_GROUPS.map((group) => ({
+    ...group,
+    categories: [...new Set(group.items.map((item) => normalizeCategoryId(item)))],
+    spent: 0,
+  }));
+
+  items.forEach((item) => {
+    if (!item.category || item.deleted) return;
+    const normalizedCategory = normalizeCategoryId(item.category);
+    const groupIndex = groups.findIndex((group) => budgetGroupMatchesCategory(group.category, normalizedCategory));
+    const target = groups[groupIndex >= 0 ? groupIndex : groups.length - 1];
+    if (!target.categories.includes(normalizedCategory)) {
+      target.categories.push(normalizedCategory);
+    }
+    if (item.type === "expense" || item.type === "transfer") {
+      target.spent += item.amount;
+    }
+  });
+
+  return groups;
+}
+
+function budgetGroupMatchesCategory(groupCategory, category) {
+  const normalizedCategory = normalizeCategoryId(category);
+  const group = BUDGET_GROUPS.find((item) => item.category === groupCategory);
+  if (!group) return false;
+  if (group.category === "기타") {
+    return !BUDGET_GROUPS
+      .filter((item) => item.category !== "기타")
+      .some((item) => item.items.map((entry) => normalizeCategoryId(entry)).includes(normalizedCategory));
+  }
+  return group.items.map((item) => normalizeCategoryId(item)).includes(normalizedCategory);
+}
+
+function categoryTypeForBudget(category) {
+  const normalizedCategory = normalizeCategoryId(category);
+  if (CATEGORY_META.transfer.some((item) => item.id === normalizedCategory)) return "transfer";
+  if (CATEGORY_META.income.some((item) => item.id === normalizedCategory)) return "income";
+  return "expense";
 }
 
 function getMonthTransactions() {
