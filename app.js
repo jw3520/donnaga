@@ -886,7 +886,7 @@ function setEntryType(type) {
   refs.typeChips.forEach((chip) => {
     chip.classList.toggle("is-active", chip.dataset.typeValue === type);
   });
-  renderEntryCategories(type, refs.categoryField.value);
+  renderEntryCategories(type, refs.categoryField.value, { alignToSelected: true });
   if (!categoryOptionsForType(type).some((item) => item.id === refs.categoryField.value)) {
     setEntryCategory("");
   } else {
@@ -894,11 +894,11 @@ function setEntryType(type) {
   }
 }
 
-function renderEntryCategories(type, selectedCategory = "") {
+function renderEntryCategories(type, selectedCategory = "", options = {}) {
   const categories = categoryOptionsForType(type);
   const selectedIndex = categories.findIndex((item) => item.id === selectedCategory);
   const totalPages = Math.max(1, Math.ceil(categories.length / ENTRY_CATEGORY_PAGE_SIZE));
-  if (selectedIndex >= 0) {
+  if (options.alignToSelected && selectedIndex >= 0) {
     entryCategoryPage = Math.floor(selectedIndex / ENTRY_CATEGORY_PAGE_SIZE);
   } else {
     entryCategoryPage = Math.min(entryCategoryPage, totalPages - 1);
@@ -934,7 +934,7 @@ function shiftEntryCategoryPage(direction) {
   const categories = categoryOptionsForType(refs.typeField.value);
   const totalPages = Math.max(1, Math.ceil(categories.length / ENTRY_CATEGORY_PAGE_SIZE));
   entryCategoryPage = Math.max(0, Math.min(totalPages - 1, entryCategoryPage + direction));
-  renderEntryCategories(refs.typeField.value, refs.categoryField.value);
+  renderEntryCategories(refs.typeField.value, refs.categoryField.value, { alignToSelected: false });
 }
 
 function bindEntryPagerButton(button, direction) {
