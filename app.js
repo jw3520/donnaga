@@ -4,6 +4,7 @@ const DB_NAME = "donnaga-db";
 const SYNC_INTERVAL_MS = 60_000;
 const SYNC_PUSH_BATCH_SIZE = 200;
 const CALENDAR_SWIPE_THRESHOLD = 42;
+const ENTRY_CATEGORY_PAGE_SIZE = 9;
 
 const MEMBERS = [
   { id: "정우", name: "정우" },
@@ -150,6 +151,9 @@ const refs = {
   accountField: document.querySelector("#account-field"),
   dateField: document.querySelector("#date-field"),
   entryCategoryGrid: document.querySelector("#entry-category-grid"),
+  entryCategoryPrevButton: document.querySelector("#entry-category-prev-button"),
+  entryCategoryNextButton: document.querySelector("#entry-category-next-button"),
+  entryCategoryPageLabel: document.querySelector("#entry-category-page-label"),
   memberButtons: [...document.querySelectorAll("[data-member-value]")],
   entryAccountToggle: document.querySelector("#entry-account-toggle"),
   recordTemplate: document.querySelector("#record-item-template"),
@@ -190,6 +194,7 @@ const state = {
 let deferredInstallPrompt = null;
 let syncTimerId = null;
 let calendarTouchState = null;
+let entryCategoryPage = 0;
 
 await boot();
 
@@ -304,6 +309,8 @@ function bindEvents() {
   refs.memberButtons.forEach((button) => {
     button.addEventListener("click", () => setEntryMember(button.dataset.memberValue));
   });
+  refs.entryCategoryPrevButton.addEventListener("click", () => shiftEntryCategoryPage(-1));
+  refs.entryCategoryNextButton.addEventListener("click", () => shiftEntryCategoryPage(1));
   refs.entryAccountToggle.addEventListener("click", (event) => {
     const button = event.target.closest("[data-account-value]");
     if (!button) return;
@@ -881,8 +888,17 @@ function setEntryType(type) {
 
 function renderEntryCategories(type, selectedCategory = "") {
   const categories = categoryOptionsForType(type);
+  const selectedIndex = categories.findIndex((item) => item.id === selectedCategory);
+  const totalPages = Math.max(1, Math.ceil(categories.length / ENTRY_CATEGORY_PAGE_SIZE));
+  if (selectedIndex >= 0) {
+    entryCategoryPage = Math.floor(selectedIndex / ENTRY_CATEGORY_PAGE_SIZE);
+  } else {
+    entryCategoryPage = Math.min(entryCategoryPage, totalPages - 1);
+  }
+  const pageStart = entryCategoryPage * ENTRY_CATEGORY_PAGE_SIZE;
+  const visibleCategories = categories.slice(pageStart, pageStart + ENTRY_CATEGORY_PAGE_SIZE);
   refs.entryCategoryGrid.innerHTML = categories.length
-    ? categories.map((item) => {
+    ? visibleCategories.map((item) => {
       const isActive = item.id === selectedCategory;
       return `
         <button
@@ -900,6 +916,9 @@ function renderEntryCategories(type, selectedCategory = "") {
       `;
     }).join("")
     : `<div class="entry-category-empty">수입, 지출, 이체 중 하나를 먼저 선택하세요.</div>`;
+  refs.entryCategoryPageLabel.textContent = `${totalPages ? entryCategoryPage + 1 : 0} / ${totalPages}`;
+  refs.entryCategoryPrevButton.disabled = entryCategoryPage <= 0;
+  refs.entryCategoryNextButton.disabled = entryCategoryPage >= totalPages - 1;
   renderIcons();
   refs.entryCategoryGrid.querySelectorAll("[data-category-value]").forEach((button) => {
     const applySelection = (event) => {
@@ -911,6 +930,13 @@ function renderEntryCategories(type, selectedCategory = "") {
     button.addEventListener("pointerdown", applySelection);
     button.addEventListener("touchstart", applySelection, { passive: false });
   });
+}
+
+function shiftEntryCategoryPage(direction) {
+  const categories = categoryOptionsForType(refs.typeField.value);
+  const totalPages = Math.max(1, Math.ceil(categories.length / ENTRY_CATEGORY_PAGE_SIZE));
+  entryCategoryPage = Math.max(0, Math.min(totalPages - 1, entryCategoryPage + direction));
+  renderEntryCategories(refs.typeField.value, refs.categoryField.value);
 }
 
 function renderEntryAccountOptions() {
@@ -957,6 +983,7 @@ function setAmountValue(value) {
 
 function resetEntryForm() {
   state.editingId = null;
+  entryCategoryPage = 0;
   refs.editingIdField.value = "";
   refs.entryDeleteButton.classList.add("is-hidden");
   clearEntrySelections();

@@ -450,7 +450,14 @@
 
         <section class="entry-panel">
           <div class="entry-field-group">
-            <span class="entry-panel__label">카테고리</span>
+            <div class="entry-panel__label-row">
+              <span class="entry-panel__label">카테고리</span>
+              <div class="entry-category-pager">
+                <button class="entry-pager-button" id="entry-category-prev-button" type="button" aria-label="이전 카테고리">‹</button>
+                <span class="entry-category-page-label" id="entry-category-page-label">1 / 1</span>
+                <button class="entry-pager-button" id="entry-category-next-button" type="button" aria-label="다음 카테고리">›</button>
+              </div>
+            </div>
             <div class="entry-category-grid" id="entry-category-grid"></div>
           </div>
 
