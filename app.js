@@ -309,8 +309,8 @@ function bindEvents() {
   refs.memberButtons.forEach((button) => {
     button.addEventListener("click", () => setEntryMember(button.dataset.memberValue));
   });
-  refs.entryCategoryPrevButton.addEventListener("click", () => shiftEntryCategoryPage(-1));
-  refs.entryCategoryNextButton.addEventListener("click", () => shiftEntryCategoryPage(1));
+  bindEntryPagerButton(refs.entryCategoryPrevButton, -1);
+  bindEntryPagerButton(refs.entryCategoryNextButton, 1);
   refs.entryAccountToggle.addEventListener("click", (event) => {
     const button = event.target.closest("[data-account-value]");
     if (!button) return;
@@ -937,6 +937,17 @@ function shiftEntryCategoryPage(direction) {
   const totalPages = Math.max(1, Math.ceil(categories.length / ENTRY_CATEGORY_PAGE_SIZE));
   entryCategoryPage = Math.max(0, Math.min(totalPages - 1, entryCategoryPage + direction));
   renderEntryCategories(refs.typeField.value, refs.categoryField.value);
+}
+
+function bindEntryPagerButton(button, direction) {
+  const handle = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    refs.amountInput.blur();
+    shiftEntryCategoryPage(direction);
+  };
+  button.addEventListener("pointerdown", handle);
+  button.addEventListener("touchstart", handle, { passive: false });
 }
 
 function renderEntryAccountOptions() {
