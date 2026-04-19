@@ -499,6 +499,7 @@ function render() {
   renderMemo();
   renderAssets();
   renderAnalysis();
+  renderFilterChips();
   syncScreens();
   syncFilterForm();
   renderIcons();
@@ -779,9 +780,9 @@ function renderMonthPicker() {
 }
 
 function renderFilterChips() {
-  renderCategoryChipGroup(refs.incomeCategoryChips, CATEGORY_META.income, "income");
-  renderCategoryChipGroup(refs.expenseCategoryChips, CATEGORY_META.expense, "expense");
-  renderCategoryChipGroup(refs.transferCategoryChips, CATEGORY_META.transfer, "transfer");
+  renderCategoryChipGroup(refs.incomeCategoryChips, categoryOptionsForType("income"), "income");
+  renderCategoryChipGroup(refs.expenseCategoryChips, categoryOptionsForType("expense"), "expense");
+  renderCategoryChipGroup(refs.transferCategoryChips, categoryOptionsForType("transfer"), "transfer");
 }
 
 function renderCategoryChipGroup(container, items, type) {
