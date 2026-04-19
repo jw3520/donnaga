@@ -86,7 +86,7 @@ const BUDGET_GROUPS = [
       { id: "적금", label: "적금", color: "#f2de96", icon: "piggy-bank" },
       { id: "청약", label: "청약", color: "#efc2a8", icon: "building-2" },
       { id: "비상금", label: "비상금", color: "#c8e58f", icon: "wallet" },
-      { id: "savings-other", label: "기타", color: "#d9d4a8", icon: "circle-ellipsis" },
+      { id: "기타", label: "기타", color: "#d9d4a8", icon: "circle-ellipsis" },
     ],
   },
   {
@@ -264,6 +264,7 @@ async function boot() {
   await migrateLegacyLocalState();
   await migrateLegacyMemberNames();
   await migrateLegacyBudgetReorg();
+  await migrateLegacySavingsOtherCleanup();
   await purgeSeedTransactions();
   await loadUiMeta();
   await loadBudgetLimits();
@@ -1421,6 +1422,35 @@ async function migrateLegacyBudgetReorg() {
   await setMeta("legacyBudgetReorgMigrated", true);
 }
 
+async function migrateLegacySavingsOtherCleanup() {
+  const migrated = await getMeta("legacySavingsOtherCleanupMigrated");
+  if (migrated) return;
+
+  const rows = await db.transactions.toArray();
+  const rewritten = rows
+    .map((item) => {
+      const normalizedType = normalizeTypeId(item.type || "");
+      const normalizedCategory = normalizeCategoryId(item.category || "", normalizedType);
+      if (normalizedCategory === item.category) return null;
+      return normalizeTransaction(
+        {
+          ...item,
+          type: normalizedType,
+          category: normalizedCategory,
+          updated_at: Date.now(),
+        },
+        true,
+      );
+    })
+    .filter(Boolean);
+
+  if (rewritten.length) {
+    await db.transactions.bulkPut(rewritten);
+    state.syncDetailMessage = `기존 데이터 ${rewritten.length}건의 기타 카테고리를 정리했습니다.`;
+  }
+  await setMeta("legacySavingsOtherCleanupMigrated", true);
+}
+
 function buildFingerprint(item) {
   return [item.date, item.type, item.amount, item.note || "", item.member || "", item.category || ""].join("|");
 }
@@ -1890,27 +1920,36 @@ function inferredCategoryMeta(category, type) {
 
 function normalizeCategoryId(category, type = "") {
   if (!category) return "";
-  if (category === "레이") return "반려동물";
-  if (category === "의류") return "미용";
-  if (category === "교통비") return "교통";
-  if (category === "주거/공과금" || category === "집세") return "주거비";
-  if (category === "생활용품") return "생필품";
-  if (category === "여가/취미" || category === "오락" || category === "문화") return "취미";
-  if (category === "쇼핑") return "선물";
-  if (category === "회비") return "구독";
-  if (category === "저축") return "적금";
-  if (category === "이월") return "savings-other";
-  if (category === "계좌이체") return "investment-other";
-  if (category === "투자" || category === "주식" || category === "국내 주식") return "국내주식";
-  if (category === "해외 주식") return "해외주식";
-  if (category === "코인" || category === "가상 화폐") return "가상자산";
-  if (category === "기타") {
-    if (type === "investment") return "investment-other";
-    if (type === "expense") return "variable-other";
+  let normalized = category;
+  if (normalized === "레이") normalized = "반려동물";
+  else if (normalized === "의류") normalized = "미용";
+  else if (normalized === "교통비") normalized = "교통";
+  else if (normalized === "주거/공과금" || normalized === "집세") normalized = "주거비";
+  else if (normalized === "생활용품") normalized = "생필품";
+  else if (normalized === "여가/취미" || normalized === "오락" || normalized === "문화") normalized = "취미";
+  else if (normalized === "쇼핑") normalized = "선물";
+  else if (normalized === "회비") normalized = "구독";
+  else if (normalized === "저축") normalized = "적금";
+  else if (normalized === "이월" || normalized === "savings-other") normalized = "기타";
+  else if (normalized === "계좌이체") normalized = "investment-other";
+  else if (normalized === "투자" || normalized === "주식" || normalized === "국내 주식") normalized = "국내주식";
+  else if (normalized === "해외 주식") normalized = "해외주식";
+  else if (normalized === "코인" || normalized === "가상 화폐") normalized = "가상자산";
+  else if (["가전", "기부", "여행", "자동차유지비", "자동차"].includes(normalized)) normalized = "variable-other";
+
+  const normalizedType = normalizeTypeId(type);
+  if (normalizedType && CATEGORY_META[normalizedType]?.some((item) => item.id === normalized)) {
+    return normalized;
+  }
+  if (normalized === "기타") {
+    if (normalizedType === "expense") return "variable-other";
+    if (normalizedType === "investment") return "기타";
     return "기타";
   }
-  if (["가전", "기부", "여행", "자동차유지비", "자동차"].includes(category)) return "variable-other";
-  return category;
+  if (normalizedType === "income") return "기타";
+  if (normalizedType === "expense") return "variable-other";
+  if (normalizedType === "investment") return "기타";
+  return normalized;
 }
 
 function renderCategoryIcon(category, type) {
