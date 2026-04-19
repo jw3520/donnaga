@@ -34,7 +34,7 @@ const CATEGORY_META = {
     { id: "생필품", label: "생활용품", color: "#f3c6a1", icon: "shopping-basket" },
     { id: "반려동물", label: "반려동물", color: "#c9d7ff", icon: "paw-print" },
     { id: "선물", label: "쇼핑", color: "#a8dff0", icon: "gift" },
-    { id: "의류", label: "미용", color: "#ffc2db", icon: "shirt" },
+    { id: "미용", label: "미용", color: "#ffc2db", icon: "shirt" },
     { id: "의료/건강", label: "의료/건강", color: "#b3dec1", icon: "heart-pulse" },
     { id: "교육", label: "교육", color: "#d0c0f3", icon: "book-open-text" },
     { id: "여행", label: "여행", color: "#bde7d9", icon: "plane" },
@@ -56,7 +56,7 @@ const CATEGORY_META = {
 const BUDGETS = [
   { category: "생활비", items: ["식비", "교통비", "생필품"], limit: 900000 },
   { category: "고정지출", items: ["집세"], limit: 400000 },
-  { category: "특별지출", items: ["선물", "문화생활", "의류"], limit: 500000 },
+  { category: "특별지출", items: ["선물", "문화생활", "미용"], limit: 500000 },
   { category: "저축", items: ["저축"], limit: 600000 },
 ];
 
@@ -1607,6 +1607,7 @@ function inferredCategoryMeta(category, type) {
 function normalizeCategoryId(category) {
   if (!category) return "";
   if (category === "레이") return "반려동물";
+  if (category === "의류") return "미용";
   return category;
 }
 
