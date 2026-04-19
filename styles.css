@@ -929,7 +929,8 @@ button:active {
 
 .budget-row__progress-overflow {
   position: absolute;
-  inset: 0 0 0 auto;
+  top: 0;
+  bottom: 0;
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, #ff8aa3 0%, #ff7043 100%);
@@ -939,7 +940,7 @@ button:active {
   position: absolute;
   top: -1px;
   bottom: -1px;
-  right: 0;
+  margin-left: -1px;
   width: 2px;
   background: rgba(118, 96, 80, 0.9);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8);

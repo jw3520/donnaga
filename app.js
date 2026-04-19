@@ -793,9 +793,10 @@ function renderBudgetGroupCards(items, options = {}) {
   return budgetGroupsForItems(items)
     .map((group) => {
       const rawProgress = Math.round((group.spent / Math.max(group.limit, 1)) * 100) || 0;
-      const progress = Math.min(100, rawProgress);
       const overflow = Math.max(0, rawProgress - 100);
-      const overflowWidth = overflow ? Math.min(100, overflow) : 0;
+      const withinBarWidth = rawProgress > 100 ? (100 / rawProgress) * 100 : Math.min(100, rawProgress);
+      const overflowWidth = rawProgress > 100 ? ((rawProgress - 100) / rawProgress) * 100 : 0;
+      const markerOffset = rawProgress > 100 ? withinBarWidth : Math.min(100, rawProgress);
       const categoryRows = group.categories
         .map((category) => {
           const appearance = categoryAppearance(category.id, group.type);
@@ -823,11 +824,11 @@ function renderBudgetGroupCards(items, options = {}) {
               <strong>${rawProgress}%</strong>
             </div>
             <div class="${variant === "budget" ? "budget-row__progress" : "asset-row__progress"}">
-              <div class="${variant === "budget" ? "budget-row__progress-bar" : "asset-row__progress-bar"}" style="width:${progress}%"></div>
+              <div class="${variant === "budget" ? "budget-row__progress-bar" : "asset-row__progress-bar"}" style="width:${withinBarWidth}%"></div>
               ${overflow
-                ? `<div class="budget-row__progress-overflow" style="width:${overflowWidth}%"></div>`
+                ? `<div class="budget-row__progress-overflow" style="left:${withinBarWidth}%; width:${overflowWidth}%"></div>`
                 : ""}
-              ${overflow ? '<span class="budget-row__progress-marker" aria-hidden="true"></span>' : ""}
+              ${overflow ? `<span class="budget-row__progress-marker" aria-hidden="true" style="left:${markerOffset}%"></span>` : ""}
             </div>
           </summary>
           <div class="asset-row__details">
