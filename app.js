@@ -999,6 +999,7 @@ function resetEntryForm() {
 
 function openEntryDialog() {
   resetEntryForm();
+  refs.dateField.value = todayISO();
   requestAnimationFrame(() => refs.entryDialog.showModal());
 }
 
