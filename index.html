@@ -409,9 +409,10 @@
     </dialog>
 
     <dialog class="entry-dialog" id="entry-dialog">
-      <form method="dialog" class="entry-sheet" id="entry-form" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <form class="entry-sheet" id="entry-form" autocomplete="off" autocapitalize="off" spellcheck="false">
         <input type="text" autocomplete="username" tabindex="-1" aria-hidden="true" class="autofill-decoy" />
         <input type="password" autocomplete="new-password" tabindex="-1" aria-hidden="true" class="autofill-decoy" />
+        <input name="editing_id" id="editing-id-field" type="hidden" value="" />
         <div class="entry-sheet__header">
           <button class="sheet-close" id="close-entry-button" type="button">×</button>
           <p class="entry-sheet__amount-label" id="entry-type-label">내역 추가</p>

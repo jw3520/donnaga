@@ -128,6 +128,7 @@ const refs = {
   closeEntryButton: document.querySelector("#close-entry-button"),
   entryForm: document.querySelector("#entry-form"),
   entryDeleteButton: document.querySelector("#entry-delete-button"),
+  editingIdField: document.querySelector("#editing-id-field"),
   typeField: document.querySelector("#type-field"),
   typeLabel: document.querySelector("#entry-type-label"),
   typeChips: [...document.querySelectorAll(".type-chip")],
@@ -820,9 +821,10 @@ async function onSubmitEntry(event) {
   event.preventDefault();
   const formData = new FormData(refs.entryForm);
   const category = String(formData.get("category") || "");
+  const editingId = String(formData.get("editing_id") || state.editingId || "");
   const transaction = normalizeTransaction(
     {
-      id: state.editingId || crypto.randomUUID(),
+      id: editingId || crypto.randomUUID(),
       type: String(formData.get("type")),
       amount: Number(formData.get("amount")),
       category,
@@ -926,6 +928,7 @@ function setAmountValue(value) {
 function resetEntryForm() {
   refs.entryForm.reset();
   state.editingId = null;
+  refs.editingIdField.value = "";
   refs.entryDeleteButton.classList.add("is-hidden");
   clearEntrySelections();
 }
@@ -934,6 +937,7 @@ function openEntryDialog() {
   refs.entryForm.reset();
   clearEntrySelections();
   state.editingId = null;
+  refs.editingIdField.value = "";
   refs.entryDeleteButton.classList.add("is-hidden");
   refs.entryDialog.showModal();
 }
@@ -942,6 +946,7 @@ function startEdit(id) {
   const transaction = state.transactions.find((item) => item.id === id);
   if (!transaction) return;
   state.editingId = id;
+  refs.editingIdField.value = id;
   refs.entryDeleteButton.classList.remove("is-hidden");
   setEntryType(transaction.type);
   setAmountValue(transaction.amount);
