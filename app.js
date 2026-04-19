@@ -3,10 +3,11 @@ const STORAGE_KEY_V4 = "donnaga-state-v4";
 const DB_NAME = "donnaga-db";
 const SYNC_INTERVAL_MS = 60_000;
 const SYNC_PUSH_BATCH_SIZE = 200;
+const INSTALL_PROMPT_DELAY_MS = 5_000;
 
 const MEMBERS = [
-  { id: "jw", name: "나" },
-  { id: "partner", name: "예비신부" },
+  { id: "jw", name: "정우" },
+  { id: "partner", name: "솔이" },
 ];
 
 const ACCOUNTS = [
@@ -140,6 +141,9 @@ const refs = {
   analysisPanels: [...document.querySelectorAll("[data-analysis-tab]")],
   installDialog: document.querySelector("#install-dialog"),
   installButton: document.querySelector("#install-button"),
+  installLaterButton: document.querySelector("#install-later-button"),
+  installDescription: document.querySelector("#install-description"),
+  installSteps: document.querySelector("#install-steps"),
 };
 
 const db = new window.Dexie(DB_NAME);
@@ -166,6 +170,7 @@ const state = {
 
 let deferredInstallPrompt = null;
 let syncTimerId = null;
+let installPromptTimerId = null;
 
 await boot();
 
@@ -175,6 +180,7 @@ async function boot() {
   bindEvents();
   updateSyncUI("로컬 데이터베이스 준비 중", "idle");
   await migrateLegacyLocalState();
+  await migrateAllMembersToSoli();
   await purgeSeedTransactions();
   await loadUiMeta();
   await loadTransactionsFromDb();
@@ -187,6 +193,7 @@ async function boot() {
   schedulePeriodicSync();
   registerConnectivityHooks();
   registerServiceWorker();
+  scheduleInstallPrompt();
 }
 
 function populateStaticOptions() {
@@ -276,12 +283,20 @@ function bindEvents() {
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     deferredInstallPrompt = event;
-    refs.installDialog.showModal();
+    scheduleInstallPrompt(true);
+  });
+
+  window.addEventListener("appinstalled", () => {
+    clearTimeout(installPromptTimerId);
+    deferredInstallPrompt = null;
+    refs.installDialog.close();
+    localStorage.setItem("donnaga-install-dismissed-at", String(Date.now()));
   });
 
   refs.installButton.addEventListener("click", async (event) => {
     event.preventDefault();
     if (!deferredInstallPrompt) {
+      refs.installDescription.textContent = "브라우저 메뉴에서 '홈 화면에 추가'를 선택해 설치를 완료해 주세요.";
       refs.installDialog.close();
       return;
     }
@@ -289,6 +304,9 @@ function bindEvents() {
     await deferredInstallPrompt.userChoice;
     deferredInstallPrompt = null;
     refs.installDialog.close();
+  });
+  refs.installLaterButton.addEventListener("click", () => {
+    localStorage.setItem("donnaga-install-dismissed-at", String(Date.now()));
   });
 }
 
@@ -338,6 +356,32 @@ async function purgeSeedTransactions() {
   );
   await db.transactions.bulkPut(tombstones);
   state.syncDetailMessage = `기존 더미 데이터 ${seedRows.length}건을 정리했습니다.`;
+}
+
+async function migrateAllMembersToSoli() {
+  const migrated = await getMeta("allMembersMigratedToSoli");
+  if (migrated) return;
+
+  const rows = await db.transactions.toArray();
+  if (!rows.length) {
+    await setMeta("allMembersMigratedToSoli", true);
+    return;
+  }
+
+  const now = Date.now();
+  const rewritten = rows.map((item) =>
+    normalizeTransaction(
+      {
+        ...item,
+        member: "partner",
+        updated_at: now,
+      },
+      true,
+    ),
+  );
+  await db.transactions.bulkPut(rewritten);
+  await setMeta("allMembersMigratedToSoli", true);
+  state.syncDetailMessage = `기존 데이터 ${rewritten.length}건의 사용자를 솔이로 통일했습니다.`;
 }
 
 async function loadUiMeta() {
@@ -878,7 +922,7 @@ function normalizeTransaction(item, markPending) {
     amount: Number(item.amount || 0),
     category: item.category || "기타",
     sub_category: item.sub_category || "",
-    member: item.member || "jw",
+    member: normalizeMemberId(item.member),
     account: item.account || "other",
     payment_method: item.payment_method || "",
     card_name: item.card_name || "",
@@ -891,6 +935,12 @@ function normalizeTransaction(item, markPending) {
   };
   normalized.fingerprint = buildFingerprint(normalized);
   return normalized;
+}
+
+function normalizeMemberId(value) {
+  if (value === "partner" || value === "솔이" || value === "예비신부") return "partner";
+  if (value === "jw" || value === "정우" || value === "나" || value === "Default") return "jw";
+  return "jw";
 }
 
 function buildFingerprint(item) {
@@ -1019,6 +1069,36 @@ function renderIcons() {
 
 function populateSelect(select, items, valueKey, labelKey) {
   select.innerHTML = items.map((item) => `<option value="${item[valueKey]}">${item[labelKey]}</option>`).join("");
+}
+
+function scheduleInstallPrompt(force = false) {
+  clearTimeout(installPromptTimerId);
+  const dismissedAt = Number(localStorage.getItem("donnaga-install-dismissed-at") || "0");
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+  if (isStandalone) return;
+  if (!force && dismissedAt && Date.now() - dismissedAt < 24 * 60 * 60 * 1000) return;
+
+  installPromptTimerId = window.setTimeout(() => {
+    const hasDeferredPrompt = Boolean(deferredInstallPrompt);
+    refs.installDescription.textContent = hasDeferredPrompt
+      ? "설치하기를 누르면 브라우저 설치 창이 바로 열립니다."
+      : "브라우저 메뉴에서 '홈 화면에 추가'를 선택하면 앱처럼 사용할 수 있습니다.";
+    refs.installButton.textContent = hasDeferredPrompt ? "설치하기" : "안내 확인";
+    refs.installSteps.innerHTML = hasDeferredPrompt
+      ? `
+          <li>아래 설치하기 버튼을 누릅니다.</li>
+          <li>브라우저가 띄운 설치 창에서 확인합니다.</li>
+          <li>홈 화면 아이콘으로 바로 실행할 수 있습니다.</li>
+        `
+      : `
+          <li>브라우저 메뉴를 엽니다.</li>
+          <li>'홈 화면에 추가' 또는 '앱 설치'를 선택합니다.</li>
+          <li>추가 또는 설치를 누르면 완료됩니다.</li>
+        `;
+    if (!refs.installDialog.open) {
+      refs.installDialog.showModal();
+    }
+  }, force ? 600 : INSTALL_PROMPT_DELAY_MS);
 }
 
 function availableYears() {

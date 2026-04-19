@@ -376,10 +376,17 @@
     <dialog class="install-dialog" id="install-dialog">
       <form method="dialog" class="install-dialog__content">
         <p class="section-label">Install</p>
-        <h2>홈 화면에 추가</h2>
-        <p>모바일 브라우저에서 이 앱을 홈 화면에 추가하면 설치형 PWA처럼 바로 열 수 있습니다.</p>
+        <h2>홈 화면에 추가하여 앱처럼 사용하세요</h2>
+        <p id="install-description">
+          홈 화면에 추가하면 위플처럼 앱 아이콘으로 바로 열 수 있습니다.
+        </p>
+        <ol class="install-steps" id="install-steps">
+          <li>브라우저 메뉴를 엽니다.</li>
+          <li>'홈 화면에 추가' 또는 '앱 설치'를 선택합니다.</li>
+          <li>확인 버튼을 누르면 설치가 완료됩니다.</li>
+        </ol>
         <div class="entry-form__actions">
-          <button class="secondary-button" value="cancel">닫기</button>
+          <button class="secondary-button" id="install-later-button" value="cancel">나중에</button>
           <button class="primary-button" id="install-button" value="default">설치</button>
         </div>
       </form>
