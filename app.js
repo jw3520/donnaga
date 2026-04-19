@@ -3,7 +3,6 @@ const STORAGE_KEY_V4 = "donnaga-state-v4";
 const DB_NAME = "donnaga-db";
 const SYNC_INTERVAL_MS = 60_000;
 const SYNC_PUSH_BATCH_SIZE = 200;
-const INSTALL_PROMPT_DELAY_MS = 5_000;
 
 const MEMBERS = [
   { id: "jw", name: "정우" },
@@ -64,6 +63,7 @@ const refs = {
   remoteStatusLabel: document.querySelector("#remote-status-label"),
   syncDetailLabel: document.querySelector("#sync-detail-label"),
   manualSyncButton: document.querySelector("#manual-sync-button"),
+  openInstallDialogButton: document.querySelector("#open-install-dialog-button"),
   calendarGrid: document.querySelector("#calendar-grid"),
   selectedDateTitle: document.querySelector("#selected-date-title"),
   recordsList: document.querySelector("#records-list"),
@@ -170,7 +170,6 @@ const state = {
 
 let deferredInstallPrompt = null;
 let syncTimerId = null;
-let installPromptTimerId = null;
 
 await boot();
 
@@ -193,7 +192,6 @@ async function boot() {
   schedulePeriodicSync();
   registerConnectivityHooks();
   registerServiceWorker();
-  scheduleInstallPrompt();
 }
 
 function populateStaticOptions() {
@@ -246,6 +244,9 @@ function bindEvents() {
   refs.manualSyncButton.addEventListener("click", async () => {
     await fullSyncCycle();
   });
+  refs.openInstallDialogButton.addEventListener("click", () => {
+    openInstallDialog();
+  });
 
   refs.screenButtons.forEach((button) => {
     button.addEventListener("click", () => switchScreen(button.dataset.screenTarget));
@@ -283,20 +284,16 @@ function bindEvents() {
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     deferredInstallPrompt = event;
-    scheduleInstallPrompt(true);
   });
 
   window.addEventListener("appinstalled", () => {
-    clearTimeout(installPromptTimerId);
     deferredInstallPrompt = null;
     refs.installDialog.close();
-    localStorage.setItem("donnaga-install-dismissed-at", String(Date.now()));
   });
 
   refs.installButton.addEventListener("click", async (event) => {
     event.preventDefault();
     if (!deferredInstallPrompt) {
-      refs.installDescription.textContent = "브라우저 메뉴에서 '홈 화면에 추가'를 선택해 설치를 완료해 주세요.";
       refs.installDialog.close();
       return;
     }
@@ -305,9 +302,7 @@ function bindEvents() {
     deferredInstallPrompt = null;
     refs.installDialog.close();
   });
-  refs.installLaterButton.addEventListener("click", () => {
-    localStorage.setItem("donnaga-install-dismissed-at", String(Date.now()));
-  });
+  refs.installLaterButton.addEventListener("click", () => refs.installDialog.close());
 }
 
 async function migrateLegacyLocalState() {
@@ -1071,34 +1066,67 @@ function populateSelect(select, items, valueKey, labelKey) {
   select.innerHTML = items.map((item) => `<option value="${item[valueKey]}">${item[labelKey]}</option>`).join("");
 }
 
-function scheduleInstallPrompt(force = false) {
-  clearTimeout(installPromptTimerId);
-  const dismissedAt = Number(localStorage.getItem("donnaga-install-dismissed-at") || "0");
+function openInstallDialog() {
   const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
-  if (isStandalone) return;
-  if (!force && dismissedAt && Date.now() - dismissedAt < 24 * 60 * 60 * 1000) return;
+  const ua = navigator.userAgent || "";
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+  const isAndroid = /Android/i.test(ua);
+  const isSamsung = /SamsungBrowser/i.test(ua);
 
-  installPromptTimerId = window.setTimeout(() => {
-    const hasDeferredPrompt = Boolean(deferredInstallPrompt);
-    refs.installDescription.textContent = hasDeferredPrompt
-      ? "설치하기를 누르면 브라우저 설치 창이 바로 열립니다."
-      : "브라우저 메뉴에서 '홈 화면에 추가'를 선택하면 앱처럼 사용할 수 있습니다.";
-    refs.installButton.textContent = hasDeferredPrompt ? "설치하기" : "안내 확인";
-    refs.installSteps.innerHTML = hasDeferredPrompt
+  if (isStandalone) {
+    refs.installDescription.textContent = "이미 홈 화면에 추가되어 앱처럼 사용할 수 있습니다.";
+    refs.installButton.textContent = "확인";
+    refs.installButton.disabled = true;
+    refs.installSteps.innerHTML = `
+      <li>홈 화면에서 DonnaGa 아이콘을 찾아 실행합니다.</li>
+      <li>브라우저가 아닌 앱처럼 전체 화면으로 열립니다.</li>
+    `;
+    refs.installDialog.showModal();
+    return;
+  }
+
+  refs.installButton.disabled = !deferredInstallPrompt;
+  refs.installButton.textContent = deferredInstallPrompt ? "설치하기" : "브라우저 설치창 없음";
+
+  if (deferredInstallPrompt) {
+    refs.installDescription.textContent = "이 브라우저는 설치 창을 바로 띄울 수 있습니다. 아래 버튼을 누르세요.";
+    refs.installSteps.innerHTML = `
+      <li>아래 설치하기 버튼을 누릅니다.</li>
+      <li>브라우저 설치 창에서 확인을 누릅니다.</li>
+      <li>홈 화면 아이콘으로 바로 실행할 수 있습니다.</li>
+    `;
+  } else if (isIOS) {
+    refs.installDescription.textContent = "iPhone/iPad에서는 Safari의 공유 메뉴에서 직접 홈 화면에 추가해야 합니다.";
+    refs.installSteps.innerHTML = `
+      <li>Safari 하단의 공유 버튼을 누릅니다.</li>
+      <li>'홈 화면에 추가'를 선택합니다.</li>
+      <li>가능하면 'Open as Web App'를 켠 뒤 추가합니다.</li>
+    `;
+  } else if (isSamsung || isAndroid) {
+    refs.installDescription.textContent = isSamsung
+      ? "Samsung Internet 메뉴 또는 주소창 설치 아이콘으로 추가해 주세요."
+      : "Chrome 메뉴에서 홈 화면 추가 또는 앱 설치를 선택해 주세요.";
+    refs.installSteps.innerHTML = isSamsung
       ? `
-          <li>아래 설치하기 버튼을 누릅니다.</li>
-          <li>브라우저가 띄운 설치 창에서 확인합니다.</li>
-          <li>홈 화면 아이콘으로 바로 실행할 수 있습니다.</li>
+          <li>주소창 또는 메뉴의 설치 아이콘을 누릅니다.</li>
+          <li>'Install on your Apps screen' 또는 비슷한 항목을 선택합니다.</li>
+          <li>확인하면 홈 화면에 앱 아이콘이 생깁니다.</li>
         `
       : `
-          <li>브라우저 메뉴를 엽니다.</li>
-          <li>'홈 화면에 추가' 또는 '앱 설치'를 선택합니다.</li>
-          <li>추가 또는 설치를 누르면 완료됩니다.</li>
+          <li>브라우저 오른쪽 위 메뉴를 엽니다.</li>
+          <li>'홈 화면에 추가' 또는 'Install app'를 선택합니다.</li>
+          <li>설치 확인 후 홈 화면 아이콘으로 실행합니다.</li>
         `;
-    if (!refs.installDialog.open) {
-      refs.installDialog.showModal();
-    }
-  }, force ? 600 : INSTALL_PROMPT_DELAY_MS);
+  } else {
+    refs.installDescription.textContent = "브라우저 메뉴에서 홈 화면에 추가 또는 앱 설치 항목을 찾아 주세요.";
+    refs.installSteps.innerHTML = `
+      <li>브라우저 메뉴를 엽니다.</li>
+      <li>'홈 화면에 추가' 또는 '앱 설치'를 선택합니다.</li>
+      <li>설치 후 홈 화면에서 DonnaGa를 실행합니다.</li>
+    `;
+  }
+
+  refs.installDialog.showModal();
 }
 
 function availableYears() {
