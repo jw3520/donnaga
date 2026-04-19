@@ -1003,6 +1003,7 @@ async function pushPendingToServer() {
       const chunk = pending.slice(index, index + SYNC_PUSH_BATCH_SIZE);
       const response = await fetch("/api/sync", {
         method: "POST",
+        cache: "no-store",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ transactions: chunk }),
       });
@@ -1037,7 +1038,7 @@ async function pullFromServer() {
   }
   updateSyncUI("최신 데이터 확인 중", "syncing");
   try {
-    const response = await fetch("/api/sync");
+    const response = await fetch("/api/sync", { cache: "no-store" });
     if (!response.ok) throw new Error(`pull failed: ${response.status}`);
     const payload = await response.json();
     const remoteTransactions = Array.isArray(payload.transactions) ? payload.transactions.map((item) => normalizeTransaction(item, false)) : [];
