@@ -30,6 +30,7 @@ const CATEGORY_META = {
     { id: "교통비", label: "교통비", color: "#ffb4bf", icon: "bus-front" },
     { id: "문화생활", label: "여가/취미", color: "#e6b8ef", icon: "music" },
     { id: "생필품", label: "생활용품", color: "#f3c6a1", icon: "shopping-basket" },
+    { id: "반려동물", label: "반려동물", color: "#c9d7ff", icon: "paw-print" },
     { id: "선물", label: "쇼핑", color: "#a8dff0", icon: "gift" },
     { id: "의류", label: "미용", color: "#ffc2db", icon: "shirt" },
     { id: "의료/건강", label: "의료/건강", color: "#b3dec1", icon: "heart-pulse" },
