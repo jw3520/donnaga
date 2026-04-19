@@ -181,6 +181,7 @@ const state = {
   currentMonth: monthKeyFromDate(new Date()),
   currentScreen: "calendar",
   selectedDate: todayISO(),
+  selectedDateByUser: false,
   analysisTab: "stats",
   analysisMode: "expense",
   searchPeriod: "all",
@@ -399,6 +400,7 @@ async function migrateLegacyLocalState() {
       if (parsed.currentMonth) state.currentMonth = parsed.currentMonth;
       if (parsed.currentScreen) state.currentScreen = parsed.currentScreen;
       if (parsed.selectedDate) state.selectedDate = parsed.selectedDate;
+      if (typeof parsed.selectedDateByUser === "boolean") state.selectedDateByUser = parsed.selectedDateByUser;
       if (parsed.analysisTab) state.analysisTab = parsed.analysisTab;
       localStorage.removeItem(key);
     } catch {
@@ -465,6 +467,7 @@ async function loadUiMeta() {
   state.currentMonth = savedUi.currentMonth || state.currentMonth;
   state.currentScreen = savedUi.currentScreen || state.currentScreen;
   state.selectedDate = savedUi.selectedDate || state.selectedDate;
+  state.selectedDateByUser = savedUi.selectedDateByUser || false;
   state.analysisTab = savedUi.analysisTab || state.analysisTab;
   state.analysisMode = savedUi.analysisMode || state.analysisMode;
   state.filters = savedUi.filters || state.filters;
@@ -476,6 +479,7 @@ async function persistUiMeta() {
     currentMonth: state.currentMonth,
     currentScreen: state.currentScreen,
     selectedDate: state.selectedDate,
+    selectedDateByUser: state.selectedDateByUser,
     analysisTab: state.analysisTab,
     analysisMode: state.analysisMode,
     filters: state.filters,
@@ -569,6 +573,7 @@ function renderCalendar() {
   refs.calendarGrid.querySelectorAll("[data-date]").forEach((button) => {
     button.addEventListener("click", async () => {
       state.selectedDate = button.dataset.date;
+      state.selectedDateByUser = true;
       await persistUiMeta();
       renderCalendar();
       renderDailyRecords();
@@ -1025,7 +1030,7 @@ function resetEntryForm() {
 
 function openEntryDialog() {
   resetEntryForm();
-  refs.dateField.value = todayISO();
+  refs.dateField.value = state.selectedDateByUser && state.selectedDate ? state.selectedDate : todayISO();
   requestAnimationFrame(() => refs.entryDialog.showModal());
 }
 
@@ -1378,6 +1383,7 @@ async function setCurrentMonth(monthKey, options = {}) {
   const direction = monthDirection(state.currentMonth, monthKey);
   state.currentMonth = monthKey;
   state.selectedDate = defaultSelectedDateForMonth(state.currentMonth);
+  state.selectedDateByUser = false;
   await persistUiMeta();
   render();
 }
