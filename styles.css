@@ -85,6 +85,39 @@ select {
   color: white;
 }
 
+.sync-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 1rem 0.55rem;
+  background: linear-gradient(180deg, #61d5cb 0%, #ffffff 100%);
+  font-size: 0.78rem;
+  color: #6b7280;
+}
+
+.sync-strip__dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: #cbd5e1;
+}
+
+.sync-strip__dot[data-status="syncing"] {
+  background: #ffbf54;
+}
+
+.sync-strip__dot[data-status="success"] {
+  background: #2caf60;
+}
+
+.sync-strip__dot[data-status="offline"] {
+  background: #94a3b8;
+}
+
+.sync-strip__dot[data-status="error"] {
+  background: #ef6d88;
+}
+
 .topbar__icons {
   min-width: 4.9rem;
   display: flex;
@@ -352,6 +385,24 @@ select {
   border-radius: 18px;
   padding: 0.95rem 1rem;
   box-shadow: 0 4px 16px rgba(34, 38, 46, 0.04);
+}
+
+.settings-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.settings-row--import {
+  align-items: flex-start;
+}
+
+.settings-import-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .record-card__note,

@@ -1,6 +1,7 @@
-import { importedTransactions } from "./seed-data.js";
-
-const STORAGE_KEY = "donnaga-state-v4";
+const STORAGE_KEY_V3 = "donnaga-state-v3";
+const STORAGE_KEY_V4 = "donnaga-state-v4";
+const DB_NAME = "donnaga-db";
+const SYNC_INTERVAL_MS = 60_000;
 
 const MEMBERS = [
   { id: "jw", name: "나" },
@@ -48,8 +49,6 @@ const BUDGETS = [
   { category: "저축", items: ["저축"], limit: 600000 },
 ];
 
-const defaultTransactions = importedTransactions;
-
 const refs = {
   monthTitleLabel: document.querySelector("#month-title-label"),
   incomeTotal: document.querySelector("#income-total"),
@@ -57,6 +56,16 @@ const refs = {
   balanceTotal: document.querySelector("#balance-total"),
   cashExpenseTotal: document.querySelector("#cash-expense-total"),
   cardExpenseTotal: document.querySelector("#card-expense-total"),
+  syncDot: document.querySelector("#sync-dot"),
+  syncStatusLabel: document.querySelector("#sync-status-label"),
+  storageStatusLabel: document.querySelector("#storage-status-label"),
+  remoteStatusLabel: document.querySelector("#remote-status-label"),
+  syncDetailLabel: document.querySelector("#sync-detail-label"),
+  importStatusLabel: document.querySelector("#import-status-label"),
+  manualSyncButton: document.querySelector("#manual-sync-button"),
+  importDefaultCsvButton: document.querySelector("#import-default-csv-button"),
+  openCsvImportButton: document.querySelector("#open-csv-import-button"),
+  wepleCsvInput: document.querySelector("#weple-csv-input"),
   calendarGrid: document.querySelector("#calendar-grid"),
   selectedDateTitle: document.querySelector("#selected-date-title"),
   recordsList: document.querySelector("#records-list"),
@@ -99,6 +108,8 @@ const refs = {
   searchForm: document.querySelector("#search-form"),
   searchQuery: document.querySelector("#search-query"),
   searchDateLabel: document.querySelector("#search-date-label"),
+  searchCategorySummary: document.querySelector("#search-category-summary"),
+  searchAccountSummary: document.querySelector("#search-account-summary"),
   searchIncomeTotal: document.querySelector("#search-income-total"),
   searchExpenseTotal: document.querySelector("#search-expense-total"),
   searchResults: document.querySelector("#search-results"),
@@ -126,66 +137,65 @@ const refs = {
   screens: [...document.querySelectorAll(".screen")],
   screenButtons: [...document.querySelectorAll("[data-screen-target]")],
   analysisTabButtons: [...document.querySelectorAll("[data-analysis-tab-target]")],
+  analysisModeButtons: [...document.querySelectorAll("[data-analysis-mode]")],
   analysisPanels: [...document.querySelectorAll("[data-analysis-tab]")],
   installDialog: document.querySelector("#install-dialog"),
   installButton: document.querySelector("#install-button"),
 };
 
-const state = loadState();
+const db = new window.Dexie(DB_NAME);
+db.version(1).stores({
+  transactions: "id, type, amount, category, member, account, date, note, updated_at, sync_status, fingerprint",
+  meta: "key",
+});
+
+const state = {
+  transactions: [],
+  currentMonth: monthKeyFromDate(new Date()),
+  currentScreen: "calendar",
+  selectedDate: todayISO(),
+  analysisTab: "stats",
+  analysisMode: "expense",
+  searchPeriod: "all",
+  filters: { types: ["income", "expense", "transfer"], categories: [] },
+  editingId: null,
+  syncing: false,
+  syncMessage: "로컬 준비 중",
+  lastSyncedAt: null,
+  importSummary: "아직 가져온 파일이 없습니다.",
+};
+
 let deferredInstallPrompt = null;
-let searchPeriod = "all";
+let syncTimerId = null;
 
-boot();
+await boot();
 
-function boot() {
+async function boot() {
   populateStaticOptions();
   renderFilterChips();
   bindEvents();
+  updateSyncUI("로컬 데이터베이스 준비 중", "idle");
+  await migrateLegacyLocalState();
+  await purgeSeedTransactions();
+  await autoImportDefaultCsvIfEmpty();
+  await loadUiMeta();
+  await loadTransactionsFromDb();
   render();
+  updateSyncUI(navigator.onLine ? "초기 동기화 중" : "오프라인", navigator.onLine ? "syncing" : "offline");
+  await pullFromServer();
+  if (navigator.onLine) {
+    await pushPendingToServer();
+  }
+  schedulePeriodicSync();
+  registerConnectivityHooks();
   registerServiceWorker();
 }
 
-function loadState() {
-  const today = new Date();
-  const initialMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-  const stored = localStorage.getItem(STORAGE_KEY);
-  const defaults = {
-    currentMonth: initialMonth,
-    currentScreen: "calendar",
-    selectedDate: todayISO(),
-    analysisTab: "stats",
-    transactions: defaultTransactions,
-    editingId: null,
-    filters: { types: ["income", "expense", "transfer"], categories: [] },
-  };
-
-  if (!stored) return defaults;
-  try {
-    const parsed = JSON.parse(stored);
-    return {
-      ...defaults,
-      ...parsed,
-      transactions: Array.isArray(parsed.transactions) ? parsed.transactions : defaultTransactions,
-      filters: parsed.filters || defaults.filters,
-      editingId: null,
-    };
-  } catch {
-    return defaults;
-  }
-}
-
-function saveState() {
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify({
-      currentMonth: state.currentMonth,
-      currentScreen: state.currentScreen,
-      selectedDate: state.selectedDate,
-      analysisTab: state.analysisTab,
-      transactions: state.transactions,
-      filters: state.filters,
-    }),
-  );
+function populateStaticOptions() {
+  populateSelect(refs.memberField, MEMBERS, "id", "name");
+  populateSelect(refs.accountField, ACCOUNTS, "id", "name");
+  refs.dateField.value = todayISO();
+  setEntryType("expense");
 }
 
 function bindEvents() {
@@ -211,7 +221,7 @@ function bindEvents() {
   refs.searchDialog.addEventListener("click", (event) => {
     const button = event.target.closest("[data-search-period]");
     if (!button) return;
-    searchPeriod = button.dataset.searchPeriod;
+    state.searchPeriod = button.dataset.searchPeriod;
     refs.searchDialog.querySelectorAll("[data-search-period]").forEach((item) => {
       item.classList.toggle("is-active", item === button);
     });
@@ -220,18 +230,40 @@ function bindEvents() {
   refs.openFilterButton.addEventListener("click", () => refs.filterDialog.showModal());
   refs.closeFilterButton.addEventListener("click", () => refs.filterDialog.close());
   refs.filterForm.addEventListener("submit", onFilterSubmit);
-  refs.resetFilterButton.addEventListener("click", resetFilters);
+  refs.resetFilterButton.addEventListener("click", async () => {
+    state.filters = { types: ["income", "expense", "transfer"], categories: [] };
+    syncFilterForm();
+    await persistUiMeta();
+    render();
+  });
+
+  refs.manualSyncButton.addEventListener("click", async () => {
+    await fullSyncCycle();
+  });
+
+  refs.openCsvImportButton.addEventListener("click", () => refs.wepleCsvInput.click());
+  refs.wepleCsvInput.addEventListener("change", onCsvSelected);
+  refs.importDefaultCsvButton.addEventListener("click", onImportDefaultCsv);
 
   refs.screenButtons.forEach((button) => {
     button.addEventListener("click", () => switchScreen(button.dataset.screenTarget));
   });
 
   refs.analysisTabButtons.forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", async () => {
       state.analysisTab = button.dataset.analysisTabTarget;
-      saveState();
+      await persistUiMeta();
       renderAnalysis();
       renderIcons();
+    });
+  });
+
+  refs.analysisModeButtons.forEach((button) => {
+    button.addEventListener("click", async () => {
+      state.analysisMode = button.dataset.analysisMode;
+      refs.analysisModeButtons.forEach((item) => item.classList.toggle("is-active", item === button));
+      await persistUiMeta();
+      renderAnalysis();
     });
   });
 
@@ -239,7 +271,6 @@ function bindEvents() {
   refs.closeEntryButton.addEventListener("click", () => refs.entryDialog.close());
   refs.entryForm.addEventListener("submit", onSubmitEntry);
   refs.entryForm.addEventListener("reset", () => requestAnimationFrame(resetEntryForm));
-
   refs.typeChips.forEach((chip) => chip.addEventListener("click", () => setEntryType(chip.dataset.typeValue)));
 
   window.addEventListener("beforeinstallprompt", (event) => {
@@ -261,15 +292,101 @@ function bindEvents() {
   });
 }
 
-function populateStaticOptions() {
-  populateSelect(refs.memberField, MEMBERS, "id", "name");
-  populateSelect(refs.accountField, ACCOUNTS, "id", "name");
-  refs.dateField.value = todayISO();
-  setEntryType("expense");
+async function migrateLegacyLocalState() {
+  const migrated = await getMeta("legacyMigrated");
+  if (migrated) return;
+
+  const legacyKeys = [STORAGE_KEY_V4, STORAGE_KEY_V3];
+  let migratedCount = 0;
+  for (const key of legacyKeys) {
+    const raw = localStorage.getItem(key);
+    if (!raw) continue;
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed.transactions)) {
+        const normalized = parsed.transactions.map((item) => normalizeTransaction(item, false));
+        await db.transactions.bulkPut(normalized);
+        migratedCount += normalized.length;
+      }
+      if (parsed.currentMonth) state.currentMonth = parsed.currentMonth;
+      if (parsed.currentScreen) state.currentScreen = parsed.currentScreen;
+      if (parsed.selectedDate) state.selectedDate = parsed.selectedDate;
+      if (parsed.analysisTab) state.analysisTab = parsed.analysisTab;
+      localStorage.removeItem(key);
+    } catch {
+      // Ignore malformed legacy state.
+    }
+  }
+  await setMeta("legacyMigrated", true);
+  if (migratedCount) {
+    state.importSummary = `기존 localStorage 데이터 ${migratedCount}건을 IndexedDB로 이전했습니다.`;
+  }
 }
 
-function populateSelect(select, items, valueKey, labelKey) {
-  select.innerHTML = items.map((item) => `<option value="${item[valueKey]}">${item[labelKey]}</option>`).join("");
+async function purgeSeedTransactions() {
+  const seedRows = await db.transactions.filter((item) => String(item.id || "").startsWith("seed-")).toArray();
+  if (!seedRows.length) return;
+  const tombstones = seedRows.map((item) =>
+    normalizeTransaction(
+      {
+        ...item,
+        deleted: 1,
+        updated_at: Date.now(),
+      },
+      true,
+    ),
+  );
+  await db.transactions.bulkPut(tombstones);
+  state.importSummary = `기존 더미 데이터 ${seedRows.length}건을 정리했습니다.`;
+}
+
+async function autoImportDefaultCsvIfEmpty() {
+  const activeCount = await db.transactions.filter((item) => !item.deleted).count();
+  if (activeCount > 0) return;
+  try {
+    const response = await fetch("./origin_data/weple_2026-04-19.csv");
+    if (!response.ok) return;
+    const blob = await response.blob();
+    const file = new File([blob], "weple_2026-04-19.csv", { type: "text/csv" });
+    const imported = await importWepleCsv(file, { replaceExisting: true });
+    state.importSummary = `기본 CSV에서 ${imported.inserted}건을 자동 가져왔습니다.`;
+    await setMeta("importSummary", state.importSummary);
+  } catch {
+    // Ignore when the local origin_data file is unavailable.
+  }
+}
+
+async function loadUiMeta() {
+  const savedUi = (await getMeta("uiState")) || {};
+  state.currentMonth = savedUi.currentMonth || state.currentMonth;
+  state.currentScreen = savedUi.currentScreen || state.currentScreen;
+  state.selectedDate = savedUi.selectedDate || state.selectedDate;
+  state.analysisTab = savedUi.analysisTab || state.analysisTab;
+  state.analysisMode = savedUi.analysisMode || state.analysisMode;
+  state.filters = savedUi.filters || state.filters;
+  state.lastSyncedAt = (await getMeta("lastSyncedAt")) || null;
+  state.importSummary = (await getMeta("importSummary")) || state.importSummary;
+}
+
+async function persistUiMeta() {
+  await setMeta("uiState", {
+    currentMonth: state.currentMonth,
+    currentScreen: state.currentScreen,
+    selectedDate: state.selectedDate,
+    analysisTab: state.analysisTab,
+    analysisMode: state.analysisMode,
+    filters: state.filters,
+  });
+}
+
+async function loadTransactionsFromDb() {
+  state.transactions = await db.transactions.orderBy("date").reverse().toArray();
+  refs.storageStatusLabel.textContent = `IndexedDB에 ${state.transactions.filter((item) => !item.deleted).length}건 저장됨`;
+  refs.remoteStatusLabel.textContent = navigator.onLine ? "Cloudflare D1 동기화 가능" : "오프라인";
+  refs.importStatusLabel.textContent = state.importSummary;
+  refs.syncDetailLabel.textContent = state.lastSyncedAt
+    ? `마지막 동기화 ${formatDateTime(state.lastSyncedAt)}`
+    : "마지막 동기화 기록 없음";
 }
 
 function render() {
@@ -282,6 +399,7 @@ function render() {
   renderAssets();
   renderAnalysis();
   syncScreens();
+  syncFilterForm();
   renderIcons();
 }
 
@@ -304,7 +422,6 @@ function renderSummary() {
   const cardExpense = transactions
     .filter((item) => item.type === "expense" && item.account !== "cash")
     .reduce((sum, item) => sum + item.amount, 0);
-
   refs.incomeTotal.textContent = formatCurrency(income);
   refs.expenseTotal.textContent = formatCurrency(expense);
   refs.balanceTotal.textContent = formatCurrency(income - expense);
@@ -327,7 +444,6 @@ function renderCalendar() {
   for (let index = 0; index < firstDay.getDay(); index += 1) {
     cells.push(`<div class="calendar-day is-empty"></div>`);
   }
-
   for (let day = 1; day <= daysInMonth; day += 1) {
     const date = `${state.currentMonth}-${String(day).padStart(2, "0")}`;
     const dateObj = new Date(`${date}T00:00:00`);
@@ -342,12 +458,11 @@ function renderCalendar() {
       </button>
     `);
   }
-
   refs.calendarGrid.innerHTML = cells.join("");
   refs.calendarGrid.querySelectorAll("[data-date]").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", async () => {
       state.selectedDate = button.dataset.date;
-      saveState();
+      await persistUiMeta();
       renderCalendar();
       renderDailyRecords();
       renderIcons();
@@ -408,20 +523,21 @@ function renderAssets() {
 
 function renderAnalysis() {
   const items = getFilteredMonthTransactions();
-  const expense = sumByType(items, "expense");
-  const transfer = sumByType(items, "transfer");
-  refs.analysisExpenseTotal.textContent = formatCurrency(expense);
-  refs.analysisTransferTotal.textContent = formatCurrency(transfer);
-  refs.analysisEmptyText.textContent = items.length ? "기록이 있습니다." : "내역이 없습니다.";
+  const sourceItems =
+    state.analysisMode === "income" ? items.filter((item) => item.type === "income") : items.filter((item) => item.type !== "income");
+  refs.analysisExpenseTotal.textContent = formatCurrency(
+    sourceItems.filter((item) => item.type === "expense").reduce((sum, item) => sum + item.amount, 0),
+  );
+  refs.analysisTransferTotal.textContent = formatCurrency(
+    sourceItems.filter((item) => item.type === "transfer").reduce((sum, item) => sum + item.amount, 0),
+  );
+  refs.analysisEmptyText.textContent = sourceItems.length ? "기록이 있습니다." : "내역이 없습니다.";
 
   const budgetExpense = sumByType(items, "expense");
-  const budgetLimit = BUDGETS.reduce((sum, item) => sum + item.limit, 0);
   refs.budgetExpenseTotal.textContent = formatCurrency(budgetExpense);
-  refs.budgetLimitTotal.textContent = formatCurrency(budgetLimit);
+  refs.budgetLimitTotal.textContent = formatCurrency(BUDGETS.reduce((sum, item) => sum + item.limit, 0));
   refs.budgetList.innerHTML = BUDGETS.map((budget) => {
-    const spent = items
-      .filter((item) => budget.items.includes(item.category))
-      .reduce((sum, item) => sum + item.amount, 0);
+    const spent = items.filter((item) => budget.items.includes(item.category)).reduce((sum, item) => sum + item.amount, 0);
     return `
       <article class="budget-row">
         <div class="stack">
@@ -432,17 +548,21 @@ function renderAnalysis() {
     `;
   }).join("");
 
-  const cardItems = items.filter((item) => item.account === "credit-card" || item.account === "debit-card");
-  refs.cardTotalAmount.textContent = formatCurrency(
-    cardItems.filter((item) => item.account === "credit-card").reduce((sum, item) => sum + item.amount, 0),
-  );
-  refs.debitTotalAmount.textContent = formatCurrency(
-    cardItems.filter((item) => item.account === "debit-card").reduce((sum, item) => sum + item.amount, 0),
-  );
+  const creditTotal = items
+    .filter((item) => item.account === "credit-card" && item.type === "expense")
+    .reduce((sum, item) => sum + item.amount, 0);
+  const debitTotal = items
+    .filter((item) => item.account === "debit-card" && item.type === "expense")
+    .reduce((sum, item) => sum + item.amount, 0);
+  const cashTotal = items
+    .filter((item) => item.account === "cash" && item.type === "expense")
+    .reduce((sum, item) => sum + item.amount, 0);
+  refs.cardTotalAmount.textContent = formatCurrency(creditTotal);
+  refs.debitTotalAmount.textContent = formatCurrency(debitTotal);
   refs.cardSummaryList.innerHTML = [
-    { label: "카드", amount: refs.cardTotalAmount.textContent },
-    { label: "체크카드", amount: refs.debitTotalAmount.textContent },
-    { label: "현금", amount: formatCurrency(items.filter((item) => item.account === "cash").reduce((sum, item) => sum + item.amount, 0)) },
+    { label: "카드", amount: formatCurrency(creditTotal) },
+    { label: "체크카드", amount: formatCurrency(debitTotal) },
+    { label: "현금", amount: formatCurrency(cashTotal) },
   ]
     .map(
       (item) => `
@@ -456,10 +576,12 @@ function renderAnalysis() {
     )
     .join("");
 
+  refs.analysisModeButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.analysisMode === state.analysisMode);
+  });
   refs.analysisModeSwitch.classList.toggle("is-hidden", state.analysisTab !== "stats");
   refs.analysisCopyButton.classList.toggle("is-hidden", state.analysisTab !== "budget");
   refs.analysisCardSwitch.classList.toggle("is-hidden", state.analysisTab !== "card");
-
   refs.analysisPanels.forEach((panel) => {
     panel.classList.toggle("is-hidden", panel.dataset.analysisTab !== state.analysisTab);
   });
@@ -473,7 +595,6 @@ function renderRecordCollection(container, items, mode) {
     container.innerHTML = emptyState("내역이 없어요.", "표시할 데이터가 없습니다.");
     return;
   }
-
   const groups = groupTransactions(items, mode);
   container.innerHTML = "";
   Object.entries(groups)
@@ -512,20 +633,20 @@ function renderMonthPicker() {
   const years = availableYears();
   refs.yearSelect.innerHTML = years.map((year) => `<option value="${year}">${year}년</option>`).join("");
   refs.yearSelect.value = state.currentMonth.slice(0, 4);
+  const currentYear = Number(state.currentMonth.slice(0, 4));
   const currentMonth = Number(state.currentMonth.slice(5, 7));
   const selectedYear = Number(refs.yearSelect.value);
   refs.monthGrid.innerHTML = Array.from({ length: 12 }, (_, index) => {
     const month = index + 1;
-    const isActive = selectedYear === Number(state.currentMonth.slice(0, 4)) && month === currentMonth;
+    const isActive = selectedYear === currentYear && month === currentMonth;
     return `<button class="month-button ${isActive ? "is-active" : ""}" type="button" data-month-value="${month}">${month}월</button>`;
   }).join("");
-
   refs.monthGrid.querySelectorAll("[data-month-value]").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", async () => {
       const month = String(button.dataset.monthValue).padStart(2, "0");
       state.currentMonth = `${refs.yearSelect.value}-${month}`;
       state.selectedDate = defaultSelectedDateForMonth(state.currentMonth);
-      saveState();
+      await persistUiMeta();
       refs.monthPickerDialog.close();
       render();
     });
@@ -536,7 +657,6 @@ function renderFilterChips() {
   renderCategoryChipGroup(refs.incomeCategoryChips, CATEGORY_META.income, "income");
   renderCategoryChipGroup(refs.expenseCategoryChips, CATEGORY_META.expense, "expense");
   renderCategoryChipGroup(refs.transferCategoryChips, CATEGORY_META.transfer, "transfer");
-  syncFilterForm();
 }
 
 function renderCategoryChipGroup(container, items, type) {
@@ -560,25 +680,36 @@ function syncFilterForm() {
   refs.filterForm.querySelectorAll("[data-filter-category]").forEach((input) => {
     input.checked = state.filters.categories.length === 0 || state.filters.categories.includes(input.dataset.filterCategory);
   });
+  refs.searchCategorySummary.textContent =
+    state.filters.categories.length === 0 ? "전체 카테고리" : `${state.filters.categories.length}개 선택`;
+  refs.searchAccountSummary.textContent = "전체";
 }
 
-function onSearchSubmit(event) {
+async function onFilterSubmit(event) {
+  event.preventDefault();
+  state.filters.types = [...refs.filterForm.querySelectorAll("input[name='type']:checked")].map((input) => input.value);
+  const categories = [...refs.filterForm.querySelectorAll("[data-filter-category]:checked")].map(
+    (input) => input.dataset.filterCategory,
+  );
+  const allCategories = allCategoryIds();
+  state.filters.categories = categories.length === allCategories.length ? [] : categories;
+  await persistUiMeta();
+  refs.filterDialog.close();
+  render();
+}
+
+async function onSearchSubmit(event) {
   event.preventDefault();
   const query = refs.searchQuery.value.trim().toLowerCase();
-  const items = state.transactions.filter((item) => {
-    const haystack = `${item.note} ${item.category} ${item.date}`.toLowerCase();
-    return haystack.includes(query);
-  });
-  const filtered = filterBySearchPeriod(items, searchPeriod);
-  refs.searchIncomeTotal.textContent = formatCompactCurrency(
-    filtered.filter((item) => item.type === "income").reduce((sum, item) => sum + item.amount, 0),
+  const filtered = filterBySearchPeriod(
+    state.transactions.filter((item) => `${item.note} ${item.category} ${item.memo || ""}`.toLowerCase().includes(query)),
+    state.searchPeriod,
   );
-  refs.searchExpenseTotal.textContent = formatCompactCurrency(
-    filtered.filter((item) => item.type === "expense").reduce((sum, item) => sum + item.amount, 0),
-  );
+  refs.searchIncomeTotal.textContent = formatCompactCurrency(sumByType(filtered, "income"));
+  refs.searchExpenseTotal.textContent = formatCompactCurrency(sumByType(filtered, "expense"));
   refs.searchResults.innerHTML = filtered.length
     ? filtered
-        .slice(0, 12)
+        .slice(0, 20)
         .map(
           (item) => `
             <article class="record-card">
@@ -597,38 +728,236 @@ function onSearchSubmit(event) {
     : emptyState("검색 결과가 없습니다.", "조건을 바꿔 다시 검색해 보세요.");
 }
 
-function filterBySearchPeriod(items, period) {
-  if (period === "all") return items;
-  const today = new Date(`${todayISO()}T00:00:00`);
-  if (period === "month") return items.filter((item) => item.date.startsWith(state.currentMonth));
-  const weekAgo = new Date(today);
-  weekAgo.setDate(today.getDate() - 7);
-  return items.filter((item) => new Date(`${item.date}T00:00:00`) >= weekAgo);
+async function onCsvSelected(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  try {
+    updateSyncUI("CSV 파싱 중", "syncing");
+    const imported = await importWepleCsv(file, { replaceExisting: true });
+    state.importSummary = `${file.name}에서 ${imported.inserted}건 가져오고 ${imported.replaced}건을 교체했습니다.`;
+    await setMeta("importSummary", state.importSummary);
+    refs.importStatusLabel.textContent = state.importSummary;
+    await loadTransactionsFromDb();
+    render();
+    await pushPendingToServer();
+  } catch (error) {
+    state.importSummary = `가져오기 실패: ${error.message}`;
+    refs.importStatusLabel.textContent = state.importSummary;
+    updateSyncUI("CSV 가져오기 실패", "error");
+  } finally {
+    refs.wepleCsvInput.value = "";
+  }
 }
 
-function onFilterSubmit(event) {
-  event.preventDefault();
-  state.filters.types = [...refs.filterForm.querySelectorAll("input[name='type']:checked")].map((input) => input.value);
-  const categories = [...refs.filterForm.querySelectorAll("[data-filter-category]:checked")].map(
-    (input) => input.dataset.filterCategory,
+async function onImportDefaultCsv() {
+  try {
+    updateSyncUI("기본 CSV 불러오는 중", "syncing");
+    const response = await fetch("./origin_data/weple_2026-04-19.csv");
+    if (!response.ok) {
+      throw new Error("origin_data/weple_2026-04-19.csv 파일을 찾지 못했습니다.");
+    }
+    const blob = await response.blob();
+    const file = new File([blob], "weple_2026-04-19.csv", { type: "text/csv" });
+    const imported = await importWepleCsv(file, { replaceExisting: true });
+    state.importSummary = `origin_data/weple_2026-04-19.csv에서 ${imported.inserted}건 가져오고 ${imported.replaced}건을 교체했습니다.`;
+    await setMeta("importSummary", state.importSummary);
+    await loadTransactionsFromDb();
+    render();
+    await pushPendingToServer();
+  } catch (error) {
+    state.importSummary = `기본 CSV 불러오기 실패: ${error.message}`;
+    refs.importStatusLabel.textContent = state.importSummary;
+    updateSyncUI("기본 CSV 불러오기 실패", "error");
+  }
+}
+
+async function importWepleCsv(file, options = {}) {
+  const buffer = await file.arrayBuffer();
+  const utf8Text = decodeBuffer(buffer, "utf-8");
+  const fallbackText = utf8LooksBroken(utf8Text) ? decodeBuffer(buffer, "euc-kr") : utf8Text;
+  const parsed = await parseCsvText(fallbackText);
+  const rows = parsed.data.filter((row) => row["거래일"]);
+  const incoming = rows.map(mapWepleRowToTransaction).filter(Boolean);
+  let replaced = 0;
+
+  if (options.replaceExisting) {
+    const current = await db.transactions.filter((item) => !item.deleted).toArray();
+    replaced = current.length;
+    if (current.length) {
+      const tombstones = current.map((item) =>
+        normalizeTransaction(
+          {
+            ...item,
+            deleted: 1,
+            updated_at: Date.now(),
+          },
+          true,
+        ),
+      );
+      await db.transactions.bulkPut(tombstones);
+      await pushPendingToServer();
+    }
+  }
+
+  const existingFingerprints = new Set(
+    (await db.transactions.filter((item) => !item.deleted).toArray()).map((item) => item.fingerprint),
   );
-  const allCategories = allCategoryIds();
-  state.filters.categories = categories.length === allCategories.length ? [] : categories;
-  saveState();
-  refs.filterDialog.close();
-  render();
+  const deduped = incoming.filter((item) => !existingFingerprints.has(item.fingerprint));
+  if (deduped.length) {
+    await db.transactions.bulkPut(deduped);
+  }
+  return { inserted: deduped.length, duplicates: incoming.length - deduped.length, replaced };
 }
 
-function resetFilters() {
-  state.filters = { types: ["income", "expense", "transfer"], categories: [] };
-  syncFilterForm();
-  saveState();
-  render();
+function decodeBuffer(buffer, encoding) {
+  return new TextDecoder(encoding, { fatal: false }).decode(buffer).replace(/^\uFEFF/, "");
 }
 
-function switchScreen(screen) {
+function utf8LooksBroken(text) {
+  return text.includes("�") || text.includes("\u0000");
+}
+
+function parseCsvText(text) {
+  return new Promise((resolve, reject) => {
+    window.Papa.parse(text, {
+      header: true,
+      skipEmptyLines: true,
+      complete: resolve,
+      error: reject,
+    });
+  });
+}
+
+function mapWepleRowToTransaction(row) {
+  const user = (row["사용자"] || "").trim();
+  const date = (row["거래일"] || "").trim();
+  if (!date) return null;
+  const amount = Number(String(row["금액"] || "0").replace(/[^\d.-]/g, ""));
+  if (!amount) return null;
+  const type = mapWepleType((row["수입/지출"] || "").trim());
+  const category = (row["분류"] || "기타").trim() || "기타";
+  const subCategory = (row["하위 분류"] || "").trim();
+  const note = (row["내역"] || row["메모"] || category).trim();
+  const paymentMethod = (row["지불"] || "").trim();
+  const cardName = (row["카드"] || "").trim();
+  const memo = (row["메모"] || "").trim();
+
+  return normalizeTransaction(
+    {
+      id: crypto.randomUUID(),
+      member: mapWepleMember(user),
+      date,
+      type,
+      amount,
+      category,
+      sub_category: subCategory,
+      note,
+      payment_method: paymentMethod,
+      card_name: cardName,
+      memo,
+      account: mapPaymentToAccount(paymentMethod, cardName),
+    },
+    true,
+  );
+}
+
+function mapWepleType(value) {
+  if (value === "수입") return "income";
+  if (value === "이체") return "transfer";
+  return "expense";
+}
+
+function mapWepleMember(value) {
+  return value === "Default" || value === "나" ? "jw" : "partner";
+}
+
+function mapPaymentToAccount(paymentMethod, cardName) {
+  const label = paymentMethod || cardName;
+  if (label.includes("현금")) return "cash";
+  if (label.includes("체크")) return "debit-card";
+  if (label.includes("카드")) return "credit-card";
+  if (label.includes("이체")) return "bank-transfer";
+  return "other";
+}
+
+async function onSubmitEntry(event) {
+  event.preventDefault();
+  const formData = new FormData(refs.entryForm);
+  const transaction = normalizeTransaction(
+    {
+      id: state.editingId || crypto.randomUUID(),
+      type: String(formData.get("type")),
+      amount: Number(formData.get("amount")),
+      category: String(formData.get("category")),
+      member: String(formData.get("member")),
+      account: String(formData.get("account")),
+      date: String(formData.get("date")),
+      note: String(formData.get("note") || "").trim() || defaultNote(formData.get("category")),
+    },
+    true,
+  );
+  if (!transaction.amount || !transaction.date) return;
+  await db.transactions.put(transaction);
+  state.currentMonth = transaction.date.slice(0, 7);
+  state.selectedDate = transaction.date;
+  state.editingId = null;
+  await persistUiMeta();
+  await loadTransactionsFromDb();
+  refs.entryDialog.close();
+  resetEntryForm();
+  render();
+  void pushPendingToServer();
+}
+
+function setEntryType(type) {
+  refs.typeField.value = type;
+  refs.typeLabel.textContent = typeLabel(type);
+  refs.typeChips.forEach((chip) => {
+    chip.classList.toggle("is-active", chip.dataset.typeValue === type);
+  });
+  refs.categoryField.innerHTML = categoryIdsForType(type).map((item) => `<option value="${item}">${item}</option>`).join("");
+}
+
+function resetEntryForm() {
+  refs.entryForm.reset();
+  refs.dateField.value = todayISO();
+  setEntryType("expense");
+}
+
+function openEntryDialog() {
+  refs.entryDialog.showModal();
+  refs.amountInput.focus();
+}
+
+function startEdit(id) {
+  const transaction = state.transactions.find((item) => item.id === id);
+  if (!transaction) return;
+  state.editingId = id;
+  setEntryType(transaction.type);
+  refs.amountInput.value = transaction.amount;
+  refs.categoryField.value = transaction.category;
+  refs.memberField.value = transaction.member;
+  refs.accountField.value = transaction.account;
+  refs.dateField.value = transaction.date;
+  refs.entryForm.note.value = transaction.note;
+  refs.entryDialog.showModal();
+}
+
+async function deleteRecord(id) {
+  const transaction = state.transactions.find((item) => item.id === id);
+  if (!transaction) return;
+  await db.transactions.delete(id);
+  state.transactions = state.transactions.filter((item) => item.id !== id);
+  render();
+  const tombstone = { ...transaction, deleted: 1, sync_status: "pending", updated_at: Date.now() };
+  await db.transactions.put(tombstone);
+  await loadTransactionsFromDb();
+  void pushPendingToServer();
+}
+
+async function switchScreen(screen) {
   state.currentScreen = screen;
-  saveState();
+  await persistUiMeta();
   syncScreens();
   renderIcons();
 }
@@ -642,84 +971,17 @@ function syncScreens() {
   });
 }
 
-function openEntryDialog() {
-  refs.entryDialog.showModal();
-  refs.amountInput.focus();
-}
-
-function onSubmitEntry(event) {
-  event.preventDefault();
-  const formData = new FormData(refs.entryForm);
-  const entry = {
-    id: state.editingId || crypto.randomUUID(),
-    type: String(formData.get("type")),
-    amount: Number(formData.get("amount")),
-    category: String(formData.get("category")),
-    member: String(formData.get("member")),
-    account: String(formData.get("account")),
-    date: String(formData.get("date")),
-    note: String(formData.get("note") || "").trim() || defaultNote(formData.get("category")),
-  };
-  if (!entry.amount || !entry.date) return;
-  if (state.editingId) {
-    state.transactions = state.transactions.map((item) => (item.id === state.editingId ? entry : item));
-  } else {
-    state.transactions = [entry, ...state.transactions];
-  }
-  state.currentMonth = entry.date.slice(0, 7);
-  state.selectedDate = entry.date;
-  state.editingId = null;
-  saveState();
-  refs.entryDialog.close();
-  resetEntryForm();
-  render();
-}
-
-function startEdit(id) {
-  const item = state.transactions.find((transaction) => transaction.id === id);
-  if (!item) return;
-  state.editingId = id;
-  setEntryType(item.type);
-  refs.amountInput.value = item.amount;
-  refs.categoryField.value = item.category;
-  refs.memberField.value = item.member;
-  refs.accountField.value = item.account;
-  refs.dateField.value = item.date;
-  refs.entryForm.note.value = item.note;
-  refs.entryDialog.showModal();
-}
-
-function deleteRecord(id) {
-  state.transactions = state.transactions.filter((item) => item.id !== id);
-  if (state.editingId === id) state.editingId = null;
-  saveState();
-  render();
-}
-
-function setEntryType(type) {
-  refs.typeField.value = type;
-  refs.typeLabel.textContent = typeLabel(type);
-  refs.typeChips.forEach((chip) => {
-    chip.classList.toggle("is-active", chip.dataset.typeValue === type);
-  });
-  const categories = categoryIdsForType(type);
-  refs.categoryField.innerHTML = categories.map((category) => `<option value="${category}">${category}</option>`).join("");
-}
-
-function resetEntryForm() {
-  refs.entryForm.reset();
-  refs.dateField.value = todayISO();
-  setEntryType("expense");
-}
-
-function renderIcons() {
-  if (window.lucide?.createIcons) {
-    window.lucide.createIcons();
-  }
+function groupTransactions(items, mode) {
+  return items.reduce((acc, item) => {
+    const key = mode === "daily" ? displaySelectedDate(item.date) : item.date.slice(0, 7);
+    acc[key] ??= [];
+    acc[key].push(item);
+    return acc;
+  }, {});
 }
 
 function getMonthTransactions() {
-  return state.transactions.filter((item) => item.date.startsWith(state.currentMonth));
+  return state.transactions.filter((item) => !item.deleted && item.date.startsWith(state.currentMonth));
 }
 
 function getFilteredMonthTransactions() {
@@ -734,21 +996,144 @@ function applyFilters(items) {
   });
 }
 
-function groupTransactions(items, mode) {
-  return items.reduce((acc, item) => {
-    const key = mode === "daily" ? displaySelectedDate(item.date) : item.date.slice(0, 7);
-    acc[key] ??= [];
-    acc[key].push(item);
-    return acc;
-  }, {});
+function filterBySearchPeriod(items, period) {
+  if (period === "all") return items;
+  if (period === "month") return items.filter((item) => item.date.startsWith(state.currentMonth));
+  const today = new Date(`${todayISO()}T00:00:00`);
+  const weekAgo = new Date(today);
+  weekAgo.setDate(today.getDate() - 7);
+  return items.filter((item) => new Date(`${item.date}T00:00:00`) >= weekAgo);
 }
 
-function sumByType(items, type) {
-  return items.filter((item) => item.type === type).reduce((total, item) => total + item.amount, 0);
+function normalizeTransaction(item, markPending) {
+  const normalized = {
+    id: item.id || crypto.randomUUID(),
+    type: item.type || "expense",
+    amount: Number(item.amount || 0),
+    category: item.category || "기타",
+    sub_category: item.sub_category || "",
+    member: item.member || "jw",
+    account: item.account || "other",
+    payment_method: item.payment_method || "",
+    card_name: item.card_name || "",
+    date: item.date || todayISO(),
+    note: item.note || defaultNote(item.category || "기타"),
+    memo: item.memo || "",
+    updated_at: Number(item.updated_at || Date.now()),
+    sync_status: item.sync_status || (markPending ? "pending" : "synced"),
+    deleted: item.deleted ? 1 : 0,
+  };
+  normalized.fingerprint = buildFingerprint(normalized);
+  return normalized;
 }
 
-function groupNetAmount(items) {
-  return items.reduce((total, item) => total + (item.type === "expense" ? -item.amount : item.amount), 0);
+function buildFingerprint(item) {
+  return [item.date, item.type, item.amount, item.note || "", item.member || "", item.category || ""].join("|");
+}
+
+async function fullSyncCycle() {
+  await pushPendingToServer();
+  await pullFromServer();
+}
+
+async function pushPendingToServer() {
+  if (!navigator.onLine) {
+    updateSyncUI("오프라인", "offline");
+    return;
+  }
+  const pending = await db.transactions.where("sync_status").equals("pending").toArray();
+  if (!pending.length) {
+    updateSyncUI("동기화 완료", "success");
+    return;
+  }
+
+  updateSyncUI("동기화 중", "syncing");
+  try {
+    const response = await fetch("/api/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ transactions: pending }),
+    });
+    if (!response.ok) throw new Error(`push failed: ${response.status}`);
+    await Promise.all(
+      pending.map((item) => db.transactions.update(item.id, { sync_status: "synced" })),
+    );
+    state.lastSyncedAt = Date.now();
+    await setMeta("lastSyncedAt", state.lastSyncedAt);
+    await loadTransactionsFromDb();
+    updateSyncUI("동기화 완료", "success");
+  } catch (error) {
+    updateSyncUI("동기화 실패", "error");
+  }
+}
+
+async function pullFromServer() {
+  if (!navigator.onLine) {
+    updateSyncUI("오프라인", "offline");
+    return;
+  }
+  updateSyncUI("최신 데이터 확인 중", "syncing");
+  try {
+    const response = await fetch("/api/sync");
+    if (!response.ok) throw new Error(`pull failed: ${response.status}`);
+    const payload = await response.json();
+    const remoteTransactions = Array.isArray(payload.transactions) ? payload.transactions.map((item) => normalizeTransaction(item, false)) : [];
+    if (remoteTransactions.length) {
+      const localMap = new Map(state.transactions.map((item) => [item.id, item]));
+      const toWrite = remoteTransactions.filter((remote) => {
+        const local = localMap.get(remote.id);
+        return !local || Number(remote.updated_at) >= Number(local.updated_at);
+      });
+      if (toWrite.length) {
+        await db.transactions.bulkPut(toWrite.map((item) => ({ ...item, sync_status: "synced" })));
+      }
+    }
+    state.lastSyncedAt = Date.now();
+    await setMeta("lastSyncedAt", state.lastSyncedAt);
+    await loadTransactionsFromDb();
+    render();
+    updateSyncUI("동기화 완료", "success");
+  } catch {
+    updateSyncUI("서버 연결 실패", "error");
+  }
+}
+
+function updateSyncUI(message, status) {
+  state.syncMessage = message;
+  refs.syncStatusLabel.textContent = message;
+  refs.syncDot.dataset.status = status;
+  refs.remoteStatusLabel.textContent =
+    status === "offline" ? "Cloudflare D1 연결 대기" : "Cloudflare D1 동기화 활성";
+  refs.syncDetailLabel.textContent = state.lastSyncedAt
+    ? `마지막 동기화 ${formatDateTime(state.lastSyncedAt)}`
+    : "마지막 동기화 기록 없음";
+}
+
+function schedulePeriodicSync() {
+  clearInterval(syncTimerId);
+  syncTimerId = window.setInterval(() => {
+    void fullSyncCycle();
+  }, SYNC_INTERVAL_MS);
+}
+
+function registerConnectivityHooks() {
+  window.addEventListener("online", () => {
+    refs.remoteStatusLabel.textContent = "Cloudflare D1 동기화 활성";
+    void fullSyncCycle();
+  });
+  window.addEventListener("offline", () => {
+    updateSyncUI("오프라인", "offline");
+  });
+}
+
+function renderIcons() {
+  if (window.lucide?.createIcons) {
+    window.lucide.createIcons();
+  }
+}
+
+function populateSelect(select, items, valueKey, labelKey) {
+  select.innerHTML = items.map((item) => `<option value="${item[valueKey]}">${item[labelKey]}</option>`).join("");
 }
 
 function availableYears() {
@@ -760,23 +1145,22 @@ function availableYears() {
   return [...years].sort((left, right) => left - right);
 }
 
-function allCategoryIds() {
-  return Object.values(CATEGORY_META)
-    .flat()
-    .map((item) => item.id);
-}
-
-function categoryIdsForType(type) {
-  return (CATEGORY_META[type] || []).map((item) => item.id);
-}
-
 function defaultSelectedDateForMonth(monthKey) {
-  const latest = state.transactions
-    .filter((item) => item.date.startsWith(monthKey))
+  const existing = state.transactions
+    .filter((item) => !item.deleted && item.date.startsWith(monthKey))
     .map((item) => item.date)
     .sort()
     .at(-1);
-  return latest || `${monthKey}-01`;
+  return existing || `${monthKey}-01`;
+}
+
+async function shiftMonth(direction) {
+  const [year, month] = state.currentMonth.split("-").map(Number);
+  const next = new Date(year, month - 1 + direction, 1);
+  state.currentMonth = monthKeyFromDate(next);
+  state.selectedDate = defaultSelectedDateForMonth(state.currentMonth);
+  await persistUiMeta();
+  render();
 }
 
 function monthLabel(monthKey) {
@@ -795,9 +1179,35 @@ function monthRangeLabel(monthKey) {
   return `${month}.1 - ${month}.${lastDay}`;
 }
 
+function monthKeyFromDate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
 function displaySelectedDate(date) {
   const parsed = new Date(`${date}T00:00:00`);
   return `${parsed.getMonth() + 1}월 ${parsed.getDate()}일`;
+}
+
+function sumByType(items, type) {
+  return items.filter((item) => item.type === type).reduce((sum, item) => sum + item.amount, 0);
+}
+
+function groupNetAmount(items) {
+  return items.reduce((total, item) => total + (item.type === "expense" ? -item.amount : item.amount), 0);
+}
+
+function typeLabel(type) {
+  return { expense: "지출", income: "수입", transfer: "이체" }[type] || type;
+}
+
+function categoryIdsForType(type) {
+  return (CATEGORY_META[type] || []).map((item) => item.id);
+}
+
+function allCategoryIds() {
+  return Object.values(CATEGORY_META)
+    .flat()
+    .map((item) => item.id);
 }
 
 function memberName(id) {
@@ -806,10 +1216,6 @@ function memberName(id) {
 
 function accountName(id) {
   return ACCOUNTS.find((account) => account.id === id)?.name || id;
-}
-
-function typeLabel(type) {
-  return { expense: "지출", income: "수입", transfer: "이체" }[type] || type;
 }
 
 function defaultNote(category) {
@@ -842,19 +1248,29 @@ function emptyState(title, description) {
   `;
 }
 
+function formatDateTime(timestamp) {
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(timestamp);
+}
+
 function todayISO() {
   const now = new Date();
   const offsetMs = now.getTimezoneOffset() * 60 * 1000;
   return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
 }
 
-function shiftMonth(direction) {
-  const [year, month] = state.currentMonth.split("-").map(Number);
-  const next = new Date(year, month - 1 + direction, 1);
-  state.currentMonth = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
-  state.selectedDate = defaultSelectedDateForMonth(state.currentMonth);
-  saveState();
-  render();
+async function getMeta(key) {
+  const row = await db.meta.get(key);
+  return row?.value;
+}
+
+async function setMeta(key, value) {
+  await db.meta.put({ key, value });
 }
 
 async function registerServiceWorker() {
@@ -862,6 +1278,6 @@ async function registerServiceWorker() {
   try {
     await navigator.serviceWorker.register("./sw.js");
   } catch {
-    // Ignore registration failures during local preview.
+    // Ignore registration failures.
   }
 }
