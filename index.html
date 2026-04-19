@@ -416,21 +416,23 @@
           <button class="sheet-close" id="close-entry-button" type="button">×</button>
           <p class="entry-sheet__amount-label" id="entry-type-label">내역 추가</p>
           <div class="entry-sheet__amount-box">
-            <strong class="amount-display" id="amount-display">0원</strong>
+            <input
+              name="amount"
+              class="amount-input"
+              type="text"
+              value=""
+              required
+              placeholder="0"
+              autocomplete="off"
+              inputmode="numeric"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="false"
+              enterkeyhint="done"
+              data-lpignore="true"
+            />
+            <span class="amount-suffix">원</span>
           </div>
-          <input
-            name="amount"
-            class="amount-input"
-            type="hidden"
-            value=""
-            required
-            autocomplete="off"
-            inputmode="numeric"
-            autocorrect="off"
-            autocapitalize="off"
-            spellcheck="false"
-            data-lpignore="true"
-          />
         </div>
 
         <div class="type-picker">
@@ -483,29 +485,6 @@
               <span>날짜</span>
               <input name="date" type="date" id="date-field" required autocomplete="off" />
             </label>
-          </div>
-        </section>
-
-        <section class="entry-keypad">
-          <div class="entry-keypad__grid">
-            <button class="keypad-key" type="button" data-keypad-value="1">1</button>
-            <button class="keypad-key" type="button" data-keypad-value="2">2</button>
-            <button class="keypad-key" type="button" data-keypad-value="3">3</button>
-            <button class="keypad-key" type="button" data-keypad-value="4">4</button>
-            <button class="keypad-key" type="button" data-keypad-value="5">5</button>
-            <button class="keypad-key" type="button" data-keypad-value="6">6</button>
-            <button class="keypad-key" type="button" data-keypad-value="7">7</button>
-            <button class="keypad-key" type="button" data-keypad-value="8">8</button>
-            <button class="keypad-key" type="button" data-keypad-value="9">9</button>
-            <button class="keypad-key keypad-key--function" type="button" data-keypad-action="clear">C</button>
-            <button class="keypad-key" type="button" data-keypad-value="0">0</button>
-            <button class="keypad-key keypad-key--function" type="button" data-keypad-action="backspace">⌫</button>
-          </div>
-          <div class="entry-keypad__quick">
-            <button class="quick-amount-chip" type="button" data-quick-amount="1000">+1천</button>
-            <button class="quick-amount-chip" type="button" data-quick-amount="5000">+5천</button>
-            <button class="quick-amount-chip" type="button" data-quick-amount="10000">+1만</button>
-            <button class="quick-amount-chip" type="button" data-quick-amount="50000">+5만</button>
           </div>
         </section>
 

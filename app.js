@@ -132,7 +132,6 @@ const refs = {
   typeLabel: document.querySelector("#entry-type-label"),
   typeChips: [...document.querySelectorAll(".type-chip")],
   amountInput: document.querySelector(".amount-input"),
-  amountDisplay: document.querySelector("#amount-display"),
   categoryField: document.querySelector("#category-field"),
   memberField: document.querySelector("#member-field"),
   accountField: document.querySelector("#account-field"),
@@ -140,8 +139,6 @@ const refs = {
   entryCategoryGrid: document.querySelector("#entry-category-grid"),
   memberButtons: [...document.querySelectorAll("[data-member-value]")],
   entryAccountToggle: document.querySelector("#entry-account-toggle"),
-  keypadButtons: [...document.querySelectorAll("[data-keypad-value], [data-keypad-action]")],
-  quickAmountButtons: [...document.querySelectorAll("[data-quick-amount]")],
   recordTemplate: document.querySelector("#record-item-template"),
   screens: [...document.querySelectorAll(".screen")],
   screenButtons: [...document.querySelectorAll("[data-screen-target]")],
@@ -304,23 +301,8 @@ function bindEvents() {
     if (!button) return;
     setEntryCategory(button.dataset.categoryValue);
   });
-  refs.keypadButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      if (button.dataset.keypadValue) {
-        appendEntryAmount(button.dataset.keypadValue);
-        return;
-      }
-      if (button.dataset.keypadAction === "backspace") {
-        trimEntryAmount();
-        return;
-      }
-      if (button.dataset.keypadAction === "clear") {
-        setAmountValue("");
-      }
-    });
-  });
-  refs.quickAmountButtons.forEach((button) => {
-    button.addEventListener("click", () => addQuickAmount(Number(button.dataset.quickAmount)));
+  refs.amountInput.addEventListener("input", () => {
+    setAmountValue(refs.amountInput.value);
   });
   refs.calendarCard.addEventListener("touchstart", onCalendarTouchStart, { passive: true });
   refs.calendarCard.addEventListener("touchend", onCalendarTouchEnd, { passive: true });
@@ -929,21 +911,6 @@ function setEntryAccount(account) {
 function setAmountValue(value) {
   const digits = String(value ?? "").replace(/[^\d]/g, "").replace(/^0+(?=\d)/, "");
   refs.amountInput.value = digits;
-  refs.amountDisplay.textContent = digits ? `${formatCompactCurrency(Number(digits))}원` : "0원";
-}
-
-function appendEntryAmount(value) {
-  const current = refs.amountInput.value || "";
-  setAmountValue(`${current}${value}`);
-}
-
-function trimEntryAmount() {
-  setAmountValue((refs.amountInput.value || "").slice(0, -1));
-}
-
-function addQuickAmount(value) {
-  const current = Number(refs.amountInput.value || 0);
-  setAmountValue(String(current + value));
 }
 
 function resetEntryForm() {
@@ -959,6 +926,7 @@ function openEntryDialog() {
   state.editingId = null;
   refs.entryDeleteButton.classList.add("is-hidden");
   refs.entryDialog.showModal();
+  requestAnimationFrame(() => refs.amountInput.focus());
 }
 
 function startEdit(id) {
