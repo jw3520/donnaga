@@ -3,6 +3,7 @@ const STORAGE_KEY_V4 = "donnaga-state-v4";
 const DB_NAME = "donnaga-db";
 const SYNC_INTERVAL_MS = 60_000;
 const SYNC_PUSH_BATCH_SIZE = 200;
+const CALENDAR_SWIPE_THRESHOLD = 42;
 
 const MEMBERS = [
   { id: "정우", name: "정우" },
@@ -19,27 +20,27 @@ const ACCOUNTS = [
 
 const CATEGORY_META = {
   income: [
-    { id: "월급", label: "월급", color: "#86d2d1", icon: "banknote" },
-    { id: "용돈", label: "용돈", color: "#c7dc73", icon: "wallet" },
-    { id: "환급", label: "환급", color: "#aea3d8", icon: "rotate-ccw" },
-    { id: "기타", label: "기타", color: "#7acfc4", icon: "plus" },
+    { id: "월급", label: "월급", color: "#9adfd7", icon: "banknote" },
+    { id: "용돈", label: "용돈", color: "#c8e58f", icon: "piggy-bank" },
+    { id: "환급", label: "환급", color: "#d0c0f3", icon: "badge-percent" },
+    { id: "기타", label: "기타", color: "#9edcc8", icon: "party-popper" },
   ],
   expense: [
-    { id: "식비", label: "식비", color: "#e7c86a", icon: "utensils-crossed" },
-    { id: "교통비", label: "교통비", color: "#f29aa0", icon: "bus-front" },
-    { id: "문화생활", label: "여가/취미", color: "#d59ac3", icon: "music" },
-    { id: "생필품", label: "생활용품", color: "#e7b27d", icon: "shopping-cart" },
-    { id: "선물", label: "쇼핑", color: "#88c8d6", icon: "shopping-bag" },
-    { id: "의류", label: "미용", color: "#f1a7c0", icon: "sparkles" },
-    { id: "의료/건강", label: "의료/건강", color: "#8cc5a2", icon: "heart-pulse" },
-    { id: "교육", label: "교육", color: "#b4a0d0", icon: "book-open" },
-    { id: "기타", label: "기타", color: "#e48b95", icon: "minus" },
-    { id: "집세", label: "주거/공과금", color: "#dfbc7c", icon: "building-2" },
+    { id: "식비", label: "식비", color: "#ffd89b", icon: "utensils-crossed" },
+    { id: "교통비", label: "교통비", color: "#ffb4bf", icon: "bus-front" },
+    { id: "문화생활", label: "여가/취미", color: "#e6b8ef", icon: "music" },
+    { id: "생필품", label: "생활용품", color: "#f3c6a1", icon: "shopping-basket" },
+    { id: "선물", label: "쇼핑", color: "#a8dff0", icon: "gift" },
+    { id: "의류", label: "미용", color: "#ffc2db", icon: "shirt" },
+    { id: "의료/건강", label: "의료/건강", color: "#b3dec1", icon: "heart-pulse" },
+    { id: "교육", label: "교육", color: "#d0c0f3", icon: "book-open-text" },
+    { id: "기타", label: "기타", color: "#f4b2ba", icon: "sparkles" },
+    { id: "집세", label: "주거/공과금", color: "#f1d7a6", icon: "house" },
   ],
   transfer: [
-    { id: "저축", label: "저축", color: "#e4d07b", icon: "piggy-bank" },
-    { id: "이월", label: "이월", color: "#e0ad86", icon: "corner-up-right" },
-    { id: "계좌이체", label: "이체", color: "#97cbe9", icon: "landmark" },
+    { id: "저축", label: "저축", color: "#f2de96", icon: "piggy-bank" },
+    { id: "이월", label: "이월", color: "#efc2a8", icon: "repeat-2" },
+    { id: "계좌이체", label: "이체", color: "#b9d7fb", icon: "landmark" },
   ],
 };
 
@@ -65,6 +66,7 @@ const refs = {
   manualSyncButton: document.querySelector("#manual-sync-button"),
   clearWebCacheButton: document.querySelector("#clear-web-cache-button"),
   openInstallDialogButton: document.querySelector("#open-install-dialog-button"),
+  calendarCard: document.querySelector("#calendar-card"),
   calendarGrid: document.querySelector("#calendar-grid"),
   selectedDateTitle: document.querySelector("#selected-date-title"),
   recordsList: document.querySelector("#records-list"),
@@ -130,10 +132,16 @@ const refs = {
   typeLabel: document.querySelector("#entry-type-label"),
   typeChips: [...document.querySelectorAll(".type-chip")],
   amountInput: document.querySelector(".amount-input"),
+  amountDisplay: document.querySelector("#amount-display"),
   categoryField: document.querySelector("#category-field"),
   memberField: document.querySelector("#member-field"),
   accountField: document.querySelector("#account-field"),
   dateField: document.querySelector("#date-field"),
+  entryCategoryGrid: document.querySelector("#entry-category-grid"),
+  memberButtons: [...document.querySelectorAll("[data-member-value]")],
+  entryAccountToggle: document.querySelector("#entry-account-toggle"),
+  keypadButtons: [...document.querySelectorAll("[data-keypad-value], [data-keypad-action]")],
+  quickAmountButtons: [...document.querySelectorAll("[data-quick-amount]")],
   recordTemplate: document.querySelector("#record-item-template"),
   screens: [...document.querySelectorAll(".screen")],
   screenButtons: [...document.querySelectorAll("[data-screen-target]")],
@@ -171,6 +179,7 @@ const state = {
 
 let deferredInstallPrompt = null;
 let syncTimerId = null;
+let calendarTouchState = null;
 
 await boot();
 
@@ -196,8 +205,7 @@ async function boot() {
 }
 
 function populateStaticOptions() {
-  populateSelect(refs.memberField, MEMBERS, "id", "name");
-  populateSelect(refs.accountField, ACCOUNTS, "id", "name");
+  renderEntryAccountOptions();
   clearEntrySelections();
 }
 
@@ -208,8 +216,8 @@ function bindEvents() {
   refs.closeMemoButton.addEventListener("click", () => switchScreen("calendar"));
   refs.memoSearchButton.addEventListener("click", () => refs.searchDialog.showModal());
   refs.memoAddButton.addEventListener("click", openEntryDialog);
-  refs.memoPrevMonthButton.addEventListener("click", () => shiftMonth(-1));
-  refs.memoNextMonthButton.addEventListener("click", () => shiftMonth(1));
+  refs.memoPrevMonthButton.addEventListener("click", () => shiftMonth(-1, { animate: true }));
+  refs.memoNextMonthButton.addEventListener("click", () => shiftMonth(1, { animate: true }));
   refs.listSearchButton.addEventListener("click", () => refs.searchDialog.showModal());
 
   refs.openMonthPickerButton.addEventListener("click", () => {
@@ -283,6 +291,39 @@ function bindEvents() {
     await deleteRecord(state.editingId);
   });
   refs.typeChips.forEach((chip) => chip.addEventListener("click", () => setEntryType(chip.dataset.typeValue)));
+  refs.memberButtons.forEach((button) => {
+    button.addEventListener("click", () => setEntryMember(button.dataset.memberValue));
+  });
+  refs.entryAccountToggle.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-account-value]");
+    if (!button) return;
+    setEntryAccount(button.dataset.accountValue);
+  });
+  refs.entryCategoryGrid.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-category-value]");
+    if (!button) return;
+    setEntryCategory(button.dataset.categoryValue);
+  });
+  refs.keypadButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      if (button.dataset.keypadValue) {
+        appendEntryAmount(button.dataset.keypadValue);
+        return;
+      }
+      if (button.dataset.keypadAction === "backspace") {
+        trimEntryAmount();
+        return;
+      }
+      if (button.dataset.keypadAction === "clear") {
+        setAmountValue("");
+      }
+    });
+  });
+  refs.quickAmountButtons.forEach((button) => {
+    button.addEventListener("click", () => addQuickAmount(Number(button.dataset.quickAmount)));
+  });
+  refs.calendarCard.addEventListener("touchstart", onCalendarTouchStart, { passive: true });
+  refs.calendarCard.addEventListener("touchend", onCalendarTouchEnd, { passive: true });
 
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
@@ -696,11 +737,9 @@ function renderMonthPicker() {
   refs.monthGrid.querySelectorAll("[data-month-value]").forEach((button) => {
     button.addEventListener("click", async () => {
       const month = String(button.dataset.monthValue).padStart(2, "0");
-      state.currentMonth = `${refs.yearSelect.value}-${month}`;
-      state.selectedDate = defaultSelectedDateForMonth(state.currentMonth);
-      await persistUiMeta();
+      const nextMonth = `${refs.yearSelect.value}-${month}`;
       refs.monthPickerDialog.close();
-      render();
+      await setCurrentMonth(nextMonth, { animate: true });
     });
   });
 }
@@ -788,16 +827,17 @@ async function onSearchSubmit(event) {
 async function onSubmitEntry(event) {
   event.preventDefault();
   const formData = new FormData(refs.entryForm);
+  const category = String(formData.get("category") || "");
   const transaction = normalizeTransaction(
     {
       id: state.editingId || crypto.randomUUID(),
       type: String(formData.get("type")),
       amount: Number(formData.get("amount")),
-      category: String(formData.get("category")),
+      category,
       member: String(formData.get("member")),
       account: String(formData.get("account")),
       date: String(formData.get("date")),
-      note: String(formData.get("note") || "").trim() || defaultNote(formData.get("category")),
+      note: String(formData.get("note") || "").trim() || defaultNote(category),
     },
     true,
   );
@@ -816,16 +856,94 @@ async function onSubmitEntry(event) {
 
 function setEntryType(type) {
   refs.typeField.value = type;
-  refs.typeLabel.textContent = type ? typeLabel(type) : "유형 선택";
+  refs.typeLabel.textContent = type ? `${typeLabel(type)} 입력` : "내역 추가";
   refs.typeChips.forEach((chip) => {
     chip.classList.toggle("is-active", chip.dataset.typeValue === type);
   });
-  const categories = type ? categoryIdsForType(type) : [];
-  refs.categoryField.innerHTML = [
-    `<option value="">분류 선택</option>`,
-    ...categories.map((item) => `<option value="${item}">${item}</option>`),
-  ].join("");
-  refs.categoryField.value = "";
+  renderEntryCategories(type, refs.categoryField.value);
+  if (!categoryIdsForType(type).includes(refs.categoryField.value)) {
+    setEntryCategory("");
+  } else {
+    syncEntrySelectionUI();
+  }
+}
+
+function renderEntryCategories(type, selectedCategory = "") {
+  const categories = CATEGORY_META[type] || [];
+  refs.entryCategoryGrid.innerHTML = categories.length
+    ? categories.map((item) => {
+      const isActive = item.id === selectedCategory;
+      return `
+        <button
+          class="entry-category-chip ${isActive ? "is-active" : ""}"
+          type="button"
+          data-category-value="${item.id}"
+          style="--category-color:${item.color}; --category-soft:${hexToRgba(item.color, 0.18)}; --category-shadow:${hexToRgba(item.color, 0.34)}"
+        >
+          <span class="entry-category-chip__icon">
+            <i data-lucide="${item.icon}"></i>
+          </span>
+          <span class="entry-category-chip__label">${item.label}</span>
+        </button>
+      `;
+    }).join("")
+    : `<div class="entry-category-empty">수입, 지출, 이체 중 하나를 먼저 선택하세요.</div>`;
+  renderIcons();
+}
+
+function renderEntryAccountOptions() {
+  refs.entryAccountToggle.innerHTML = ACCOUNTS.map((account) => `
+    <button class="entry-mini-chip entry-mini-chip--account" type="button" data-account-value="${account.id}">
+      ${account.name}
+    </button>
+  `).join("");
+}
+
+function syncEntrySelectionUI() {
+  refs.memberButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.memberValue === refs.memberField.value);
+  });
+  refs.entryAccountToggle.querySelectorAll("[data-account-value]").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.accountValue === refs.accountField.value);
+  });
+  refs.entryCategoryGrid.querySelectorAll("[data-category-value]").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.categoryValue === refs.categoryField.value);
+  });
+}
+
+function setEntryCategory(category) {
+  refs.categoryField.value = category || "";
+  syncEntrySelectionUI();
+}
+
+function setEntryMember(member) {
+  refs.memberField.value = member || "";
+  syncEntrySelectionUI();
+}
+
+function setEntryAccount(account) {
+  refs.accountField.value = account || "";
+  syncEntrySelectionUI();
+}
+
+function setAmountValue(value) {
+  const digits = String(value ?? "").replace(/[^\d]/g, "").replace(/^0+(?=\d)/, "");
+  refs.amountInput.value = digits;
+  refs.amountDisplay.textContent = digits ? `${formatCompactCurrency(Number(digits))}원` : "0원";
+}
+
+function appendEntryAmount(value) {
+  const current = refs.amountInput.value || "";
+  setAmountValue(`${current}${value}`);
+}
+
+function trimEntryAmount() {
+  setAmountValue((refs.amountInput.value || "").slice(0, -1));
+}
+
+function addQuickAmount(value) {
+  const current = Number(refs.amountInput.value || 0);
+  setAmountValue(String(current + value));
 }
 
 function resetEntryForm() {
@@ -836,10 +954,11 @@ function resetEntryForm() {
 }
 
 function openEntryDialog() {
+  refs.entryForm.reset();
+  clearEntrySelections();
   state.editingId = null;
   refs.entryDeleteButton.classList.add("is-hidden");
   refs.entryDialog.showModal();
-  refs.amountInput.focus();
 }
 
 function startEdit(id) {
@@ -848,10 +967,10 @@ function startEdit(id) {
   state.editingId = id;
   refs.entryDeleteButton.classList.remove("is-hidden");
   setEntryType(transaction.type);
-  refs.amountInput.value = transaction.amount;
-  refs.categoryField.value = transaction.category;
-  refs.memberField.value = transaction.member;
-  refs.accountField.value = transaction.account;
+  setAmountValue(transaction.amount);
+  setEntryCategory(transaction.category);
+  setEntryMember(transaction.member);
+  setEntryAccount(transaction.account);
   refs.dateField.value = transaction.date;
   refs.entryForm.note.value = transaction.note;
   refs.entryDialog.showModal();
@@ -949,21 +1068,15 @@ function normalizeTransaction(item, markPending) {
 
 function clearEntrySelections() {
   refs.typeField.value = "";
-  refs.typeLabel.textContent = "유형 선택";
-  refs.typeChips.forEach((chip) => chip.classList.remove("is-active"));
-  refs.categoryField.innerHTML = `<option value="">분류 선택</option>`;
-  refs.memberField.innerHTML = [
-    `<option value="">사용자 선택</option>`,
-    ...MEMBERS.map((member) => `<option value="${member.id}">${member.name}</option>`),
-  ].join("");
-  refs.accountField.innerHTML = [
-    `<option value="">지불수단 선택</option>`,
-    ...ACCOUNTS.map((account) => `<option value="${account.id}">${account.name}</option>`),
-  ].join("");
+  refs.categoryField.value = "";
   refs.memberField.value = "";
   refs.accountField.value = "";
-  refs.categoryField.value = "";
+  refs.typeLabel.textContent = "내역 추가";
+  refs.typeChips.forEach((chip) => chip.classList.remove("is-active"));
   refs.dateField.value = "";
+  setAmountValue("");
+  renderEntryCategories("", "");
+  syncEntrySelectionUI();
 }
 
 function normalizeMemberId(value) {
@@ -1101,10 +1214,6 @@ function renderIcons() {
   }
 }
 
-function populateSelect(select, items, valueKey, labelKey) {
-  select.innerHTML = items.map((item) => `<option value="${item[valueKey]}">${item[labelKey]}</option>`).join("");
-}
-
 function openInstallDialog() {
   const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
   const ua = navigator.userAgent || "";
@@ -1186,13 +1295,74 @@ function defaultSelectedDateForMonth(monthKey) {
   return existing || `${monthKey}-01`;
 }
 
-async function shiftMonth(direction) {
-  const [year, month] = state.currentMonth.split("-").map(Number);
-  const next = new Date(year, month - 1 + direction, 1);
-  state.currentMonth = monthKeyFromDate(next);
+async function setCurrentMonth(monthKey, options = {}) {
+  const direction = monthDirection(state.currentMonth, monthKey);
+  if (options.animate && direction !== 0) {
+    await animateCalendarTransition(direction);
+  }
+  state.currentMonth = monthKey;
   state.selectedDate = defaultSelectedDateForMonth(state.currentMonth);
   await persistUiMeta();
   render();
+  if (options.animate && direction !== 0) {
+    await animateCalendarEntrance(direction);
+  }
+}
+
+async function shiftMonth(direction, options = {}) {
+  const [year, month] = state.currentMonth.split("-").map(Number);
+  const next = new Date(year, month - 1 + direction, 1);
+  await setCurrentMonth(monthKeyFromDate(next), options);
+}
+
+function monthDirection(currentMonth, nextMonth) {
+  const current = new Date(`${currentMonth}-01T00:00:00`);
+  const next = new Date(`${nextMonth}-01T00:00:00`);
+  if (next > current) return 1;
+  if (next < current) return -1;
+  return 0;
+}
+
+async function animateCalendarTransition(direction) {
+  if (!refs.calendarGrid.animate) return;
+  const offset = direction > 0 ? -28 : 28;
+  const animation = refs.calendarGrid.animate(
+    [
+      { transform: "translateX(0)", opacity: 1 },
+      { transform: `translateX(${offset}px)`, opacity: 0.3 },
+    ],
+    { duration: 160, easing: "ease-out", fill: "forwards" },
+  );
+  await animation.finished.catch(() => {});
+}
+
+async function animateCalendarEntrance(direction) {
+  if (!refs.calendarGrid.animate) return;
+  const offset = direction > 0 ? 28 : -28;
+  const animation = refs.calendarGrid.animate(
+    [
+      { transform: `translateX(${offset}px)`, opacity: 0.3 },
+      { transform: "translateX(0)", opacity: 1 },
+    ],
+    { duration: 190, easing: "ease-out" },
+  );
+  await animation.finished.catch(() => {});
+}
+
+function onCalendarTouchStart(event) {
+  const touch = event.changedTouches?.[0];
+  if (!touch) return;
+  calendarTouchState = { x: touch.clientX, y: touch.clientY };
+}
+
+function onCalendarTouchEnd(event) {
+  const touch = event.changedTouches?.[0];
+  if (!touch || !calendarTouchState) return;
+  const deltaX = touch.clientX - calendarTouchState.x;
+  const deltaY = touch.clientY - calendarTouchState.y;
+  calendarTouchState = null;
+  if (Math.abs(deltaX) < CALENDAR_SWIPE_THRESHOLD || Math.abs(deltaX) <= Math.abs(deltaY) * 1.2) return;
+  void shiftMonth(deltaX < 0 ? 1 : -1, { animate: true });
 }
 
 function monthLabel(monthKey) {
@@ -1265,6 +1435,17 @@ function renderCategoryIcon(category, type) {
 
 function defaultNote(category) {
   return `${category} 기록`;
+}
+
+function hexToRgba(hex, alpha) {
+  const normalized = hex.replace("#", "");
+  const safe = normalized.length === 3
+    ? normalized.split("").map((value) => `${value}${value}`).join("")
+    : normalized.padEnd(6, "0").slice(0, 6);
+  const red = Number.parseInt(safe.slice(0, 2), 16);
+  const green = Number.parseInt(safe.slice(2, 4), 16);
+  const blue = Number.parseInt(safe.slice(4, 6), 16);
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
 
 function formatCurrency(amount) {

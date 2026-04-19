@@ -75,11 +75,13 @@
             </div>
           </section>
 
-          <section class="calendar-card">
+          <section class="calendar-card" id="calendar-card">
             <div class="weekday-row">
               <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
             </div>
-            <div id="calendar-grid" class="calendar-grid"></div>
+            <div class="calendar-grid-frame">
+              <div id="calendar-grid" class="calendar-grid"></div>
+            </div>
           </section>
 
           <section class="list-panel list-panel--daily">
@@ -412,14 +414,15 @@
         <input type="password" autocomplete="new-password" tabindex="-1" aria-hidden="true" class="autofill-decoy" />
         <div class="entry-sheet__header">
           <button class="sheet-close" id="close-entry-button" type="button">×</button>
-          <p class="entry-sheet__amount-label" id="entry-type-label">유형 선택</p>
+          <p class="entry-sheet__amount-label" id="entry-type-label">내역 추가</p>
+          <div class="entry-sheet__amount-box">
+            <strong class="amount-display" id="amount-display">0원</strong>
+          </div>
           <input
             name="amount"
             class="amount-input"
-            type="number"
-            min="0"
-            step="100"
-            placeholder="0"
+            type="hidden"
+            value=""
             required
             autocomplete="off"
             inputmode="numeric"
@@ -431,49 +434,80 @@
         </div>
 
         <div class="type-picker">
-          <button class="type-chip" type="button" data-type-value="expense">지출</button>
-          <button class="type-chip" type="button" data-type-value="income">수입</button>
-          <button class="type-chip" type="button" data-type-value="transfer">이체</button>
+          <button class="type-chip type-chip--expense" type="button" data-type-value="expense">지출</button>
+          <button class="type-chip type-chip--income" type="button" data-type-value="income">수입</button>
+          <button class="type-chip type-chip--transfer" type="button" data-type-value="transfer">이체</button>
         </div>
 
         <input name="type" id="type-field" type="hidden" value="" />
+        <input name="category" id="category-field" type="hidden" value="" />
+        <input name="member" id="member-field" type="hidden" value="" />
+        <input name="account" id="account-field" type="hidden" value="" />
 
-        <label>
-          <span>내역</span>
-          <input
-            name="note"
-            type="text"
-            maxlength="80"
-            placeholder="예: 점심, 관리비, 선물"
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="off"
-            spellcheck="false"
-            data-lpignore="true"
-          />
-        </label>
+        <section class="entry-panel">
+          <div class="entry-field-group">
+            <span class="entry-panel__label">카테고리</span>
+            <div class="entry-category-grid" id="entry-category-grid"></div>
+          </div>
 
-        <div class="entry-form__row">
-          <label>
-            <span>분류</span>
-            <select name="category" id="category-field" required></select>
-          </label>
-          <label>
-            <span>사용자</span>
-            <select name="member" id="member-field" required></select>
-          </label>
-        </div>
+          <div class="entry-form__row entry-form__row--compact">
+            <div class="entry-field-group">
+              <span class="entry-panel__label">사용자</span>
+              <div class="entry-member-toggle" id="entry-member-toggle">
+                <button class="entry-mini-chip" type="button" data-member-value="정우">정우</button>
+                <button class="entry-mini-chip" type="button" data-member-value="솔이">솔이</button>
+              </div>
+            </div>
+            <div class="entry-field-group">
+              <span class="entry-panel__label">지불수단</span>
+              <div class="entry-account-toggle" id="entry-account-toggle"></div>
+            </div>
+          </div>
 
-        <div class="entry-form__row">
-          <label>
-            <span>지불수단</span>
-            <select name="account" id="account-field" required></select>
-          </label>
-          <label>
-            <span>날짜</span>
-            <input name="date" type="date" id="date-field" required autocomplete="off" />
-          </label>
-        </div>
+          <div class="entry-form__row entry-form__row--meta">
+            <label class="entry-inline-field">
+              <span>메모</span>
+              <input
+                name="note"
+                type="text"
+                maxlength="80"
+                placeholder="예: 점심, 관리비, 선물"
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+                data-lpignore="true"
+              />
+            </label>
+            <label class="entry-inline-field">
+              <span>날짜</span>
+              <input name="date" type="date" id="date-field" required autocomplete="off" />
+            </label>
+          </div>
+        </section>
+
+        <section class="entry-keypad">
+          <div class="entry-keypad__grid">
+            <button class="keypad-key" type="button" data-keypad-value="1">1</button>
+            <button class="keypad-key" type="button" data-keypad-value="2">2</button>
+            <button class="keypad-key" type="button" data-keypad-value="3">3</button>
+            <button class="keypad-key" type="button" data-keypad-value="4">4</button>
+            <button class="keypad-key" type="button" data-keypad-value="5">5</button>
+            <button class="keypad-key" type="button" data-keypad-value="6">6</button>
+            <button class="keypad-key" type="button" data-keypad-value="7">7</button>
+            <button class="keypad-key" type="button" data-keypad-value="8">8</button>
+            <button class="keypad-key" type="button" data-keypad-value="9">9</button>
+            <button class="keypad-key keypad-key--function" type="button" data-keypad-action="clear">C</button>
+            <button class="keypad-key" type="button" data-keypad-value="0">0</button>
+            <button class="keypad-key keypad-key--function" type="button" data-keypad-action="backspace">⌫</button>
+          </div>
+          <div class="entry-keypad__quick">
+            <button class="quick-amount-chip" type="button" data-quick-amount="1000">+1천</button>
+            <button class="quick-amount-chip" type="button" data-quick-amount="5000">+5천</button>
+            <button class="quick-amount-chip" type="button" data-quick-amount="10000">+1만</button>
+            <button class="quick-amount-chip" type="button" data-quick-amount="50000">+5만</button>
+          </div>
+        </section>
 
         <div class="entry-form__actions">
           <button class="ghost-button is-hidden" id="entry-delete-button" type="button">삭제</button>
