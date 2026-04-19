@@ -776,7 +776,7 @@ async function importWepleCsv(file, options = {}) {
   const utf8Text = decodeBuffer(buffer, "utf-8");
   const fallbackText = utf8LooksBroken(utf8Text) ? decodeBuffer(buffer, "euc-kr") : utf8Text;
   const parsed = await parseCsvText(fallbackText);
-  const rows = parsed.data.filter((row) => row["거래일"]);
+  const rows = parsed.data.filter((row) => getCsvValue(row, "거래일"));
   const incoming = rows.map(mapWepleRowToTransaction).filter(Boolean);
   let replaced = 0;
 
@@ -822,6 +822,8 @@ function parseCsvText(text) {
     window.Papa.parse(text, {
       header: true,
       skipEmptyLines: true,
+      transformHeader: (header) => String(header || "").replace(/^\uFEFF/, "").trim(),
+      transform: (value) => (typeof value === "string" ? value.trim() : value),
       complete: resolve,
       error: reject,
     });
@@ -829,18 +831,18 @@ function parseCsvText(text) {
 }
 
 function mapWepleRowToTransaction(row) {
-  const user = (row["사용자"] || "").trim();
-  const date = (row["거래일"] || "").trim();
+  const user = getCsvValue(row, "사용자");
+  const date = getCsvValue(row, "거래일");
   if (!date) return null;
-  const amount = Number(String(row["금액"] || "0").replace(/[^\d.-]/g, ""));
+  const amount = Number(String(getCsvValue(row, "금액", "0")).replace(/[^\d.-]/g, ""));
   if (!amount) return null;
-  const type = mapWepleType((row["수입/지출"] || "").trim());
-  const category = (row["분류"] || "기타").trim() || "기타";
-  const subCategory = (row["하위 분류"] || "").trim();
-  const note = (row["내역"] || row["메모"] || category).trim();
-  const paymentMethod = (row["지불"] || "").trim();
-  const cardName = (row["카드"] || "").trim();
-  const memo = (row["메모"] || "").trim();
+  const type = mapWepleType(getCsvValue(row, "수입/지출"));
+  const category = getCsvValue(row, "분류", "기타") || "기타";
+  const subCategory = getCsvValue(row, "하위 분류");
+  const memo = getCsvValue(row, "메모");
+  const note = getCsvValue(row, "내역", memo || category) || category;
+  const paymentMethod = getCsvValue(row, "지불");
+  const cardName = getCsvValue(row, "카드");
 
   return normalizeTransaction(
     {
@@ -859,6 +861,19 @@ function mapWepleRowToTransaction(row) {
     },
     true,
   );
+}
+
+function getCsvValue(row, key, fallback = "") {
+  const exact = row[key];
+  if (exact != null && exact !== "") return String(exact).trim();
+
+  const normalizedKey = String(key).trim();
+  for (const [candidateKey, candidateValue] of Object.entries(row)) {
+    if (String(candidateKey).trim() === normalizedKey && candidateValue != null && candidateValue !== "") {
+      return String(candidateValue).trim();
+    }
+  }
+  return String(fallback).trim();
 }
 
 function mapWepleType(value) {
