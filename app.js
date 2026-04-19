@@ -38,7 +38,7 @@ const CATEGORY_META = {
     { id: "의료/건강", label: "의료/건강", color: "#b3dec1", icon: "heart-pulse" },
     { id: "교육", label: "교육", color: "#d0c0f3", icon: "book-open-text" },
     { id: "여행", label: "여행", color: "#bde7d9", icon: "plane" },
-    { id: "회비", label: "회비", color: "#f8c8a7", icon: "badge-korean-won" },
+    { id: "회비", label: "회비", color: "#f8c8a7", icon: "krw-note" },
     { id: "자동차유지비", label: "자동차유지비", color: "#b9d7fb", icon: "car-front" },
     { id: "경조사", label: "경조사", color: "#f4b2ba", icon: "hand-heart" },
     { id: "가전", label: "가전", color: "#a8dff0", icon: "smartphone" },
@@ -798,7 +798,7 @@ function renderCategoryChipGroup(container, items, type) {
         <label class="icon-chip">
           <input type="checkbox" data-filter-category="${item.id}" data-filter-type="${type}" />
           <span class="icon-chip__badge" style="background:${item.color}">
-            <i data-lucide="${item.icon || "circle"}"></i>
+            ${renderIconMarkup(item.icon || "circle")}
           </span>
           <span class="icon-chip__label">${item.label}</span>
         </label>
@@ -858,7 +858,7 @@ async function onSearchSubmit(event) {
             <article class="record-card">
               <div class="record-card__leading">
                 <div class="record-card__icon" style="background:${categoryAppearance(item.category, item.type).color}">
-                  <i data-lucide="${categoryAppearance(item.category, item.type).icon}"></i>
+                  ${renderIconMarkup(categoryAppearance(item.category, item.type).icon)}
                 </div>
                 <div class="record-card__content">
                   <p class="record-card__category">${item.category}</p>
@@ -947,7 +947,7 @@ function renderEntryCategories(type, selectedCategory = "", options = {}) {
           style="--category-color:${item.color}; --category-soft:${hexToRgba(item.color, 0.18)}; --category-shadow:${hexToRgba(item.color, 0.34)}"
         >
           <span class="entry-category-chip__icon">
-            <i data-lucide="${item.icon}"></i>
+            ${renderIconMarkup(item.icon)}
           </span>
           <span class="entry-category-chip__label">${item.label}</span>
         </button>
@@ -1613,7 +1613,24 @@ function normalizeCategoryId(category) {
 
 function renderCategoryIcon(category, type) {
   const appearance = categoryAppearance(category, type);
-  return `<i data-lucide="${appearance.icon}"></i>`;
+  return renderIconMarkup(appearance.icon);
+}
+
+function renderIconMarkup(icon) {
+  if (icon === "krw-note") {
+    return `
+      <svg class="custom-icon custom-icon--krw-note" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2.75" y="5.25" width="18.5" height="13.5" rx="2.75"></rect>
+        <path d="M7.2 8.5h9.6"></path>
+        <path d="M7.2 15.5h9.6"></path>
+        <circle cx="12" cy="12" r="2.35"></circle>
+        <path d="M5.6 9.7c.9 0 1.65-.75 1.65-1.65"></path>
+        <path d="M18.4 14.3c-.9 0-1.65.75-1.65 1.65"></path>
+        <path d="M10.9 12h2.2"></path>
+      </svg>
+    `;
+  }
+  return `<i data-lucide="${icon}"></i>`;
 }
 
 function defaultNote(category) {
