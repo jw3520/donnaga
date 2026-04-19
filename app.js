@@ -519,6 +519,9 @@ function renderCalendar() {
       </button>
     `);
   }
+  while (cells.length < 42) {
+    cells.push(`<div class="calendar-day is-empty"></div>`);
+  }
   refs.calendarGrid.innerHTML = cells.join("");
   refs.calendarGrid.querySelectorAll("[data-date]").forEach((button) => {
     button.addEventListener("click", async () => {

@@ -316,6 +316,8 @@ button:active {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
+  min-height: 342px;
+  align-content: start;
 }
 
 .calendar-grid-frame {
@@ -1144,14 +1146,12 @@ select {
 }
 
 .entry-sheet__header {
-  position: sticky;
-  top: 0;
-  z-index: 2;
   padding: 22px 18px 0;
   display: grid;
   gap: 10px;
   justify-items: center;
-  background: linear-gradient(180deg, #ffffff 74%, rgba(255, 255, 255, 0.92) 100%);
+  position: relative;
+  background: #fff;
 }
 
 .sheet-close {
@@ -1188,6 +1188,7 @@ select {
   border: 1px solid rgba(255, 153, 188, 0.16);
   box-shadow: 0 14px 30px rgba(250, 156, 173, 0.08);
   cursor: text;
+  touch-action: manipulation;
 }
 
 .amount-input {
@@ -1231,6 +1232,8 @@ select {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   padding: 0 2px;
+  position: relative;
+  z-index: 1;
 }
 
 .type-chip {
@@ -1245,6 +1248,7 @@ select {
     box-shadow 0.18s ease,
     background 0.22s ease,
     color 0.22s ease;
+  touch-action: manipulation;
 }
 
 .type-chip--expense.is-active {
@@ -1272,6 +1276,8 @@ select {
   display: grid;
   gap: 18px;
   padding: 0 2px;
+  position: relative;
+  z-index: 1;
 }
 
 .entry-field-group {
@@ -1308,6 +1314,7 @@ select {
     border-color 0.18s ease,
     opacity 0.18s ease;
   border: 3px solid transparent;
+  touch-action: manipulation;
 }
 
 .entry-category-chip__icon {
@@ -1324,6 +1331,7 @@ select {
     transform 0.18s ease,
     background 0.18s ease,
     box-shadow 0.18s ease;
+  pointer-events: none;
 }
 
 .entry-category-chip__icon svg {
@@ -1337,6 +1345,7 @@ select {
   line-height: 1.25;
   text-align: center;
   word-break: keep-all;
+  pointer-events: none;
 }
 
 .entry-category-chip.is-active {
@@ -1385,6 +1394,7 @@ select {
     background 0.18s ease,
     color 0.18s ease,
     border-color 0.18s ease;
+  touch-action: manipulation;
 }
 
 .entry-mini-chip--account {
@@ -1431,6 +1441,8 @@ select {
 .entry-form__actions {
   gap: 10px;
   padding-top: 4px;
+  position: relative;
+  z-index: 1;
 }
 
 .entry-form__actions > * {
