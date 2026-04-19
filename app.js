@@ -22,6 +22,7 @@ const ACCOUNTS = [
 const CATEGORY_META = {
   income: [
     { id: "월급", label: "월급", color: "#9adfd7", icon: "banknote" },
+    { id: "당근", label: "당근", color: "#ffb26b", icon: "carrot" },
     { id: "용돈", label: "용돈", color: "#c8e58f", icon: "piggy-bank" },
     { id: "환급", label: "환급", color: "#d0c0f3", icon: "badge-percent" },
     { id: "기타", label: "기타", color: "#9edcc8", icon: "party-popper" },
@@ -37,7 +38,7 @@ const CATEGORY_META = {
     { id: "의료/건강", label: "의료/건강", color: "#b3dec1", icon: "heart-pulse" },
     { id: "교육", label: "교육", color: "#d0c0f3", icon: "book-open-text" },
     { id: "여행", label: "여행", color: "#bde7d9", icon: "plane" },
-    { id: "회비", label: "회비", color: "#f8c8a7", icon: "banknote" },
+    { id: "회비", label: "회비", color: "#f8c8a7", icon: "badge-korean-won" },
     { id: "자동차유지비", label: "자동차유지비", color: "#b9d7fb", icon: "car-front" },
     { id: "경조사", label: "경조사", color: "#f4b2ba", icon: "hand-heart" },
     { id: "가전", label: "가전", color: "#a8dff0", icon: "smartphone" },
