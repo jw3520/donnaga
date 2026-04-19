@@ -5,8 +5,8 @@ const SYNC_INTERVAL_MS = 60_000;
 const SYNC_PUSH_BATCH_SIZE = 200;
 
 const MEMBERS = [
-  { id: "jw", name: "정우" },
-  { id: "partner", name: "솔이" },
+  { id: "정우", name: "정우" },
+  { id: "솔이", name: "솔이" },
 ];
 
 const ACCOUNTS = [
@@ -179,7 +179,7 @@ async function boot() {
   bindEvents();
   updateSyncUI("로컬 데이터베이스 준비 중", "idle");
   await migrateLegacyLocalState();
-  await migrateAllMembersToSoli();
+  await migrateLegacyMemberNames();
   await purgeSeedTransactions();
   await loadUiMeta();
   await loadTransactionsFromDb();
@@ -353,30 +353,36 @@ async function purgeSeedTransactions() {
   state.syncDetailMessage = `기존 더미 데이터 ${seedRows.length}건을 정리했습니다.`;
 }
 
-async function migrateAllMembersToSoli() {
-  const migrated = await getMeta("allMembersMigratedToSoli");
+async function migrateLegacyMemberNames() {
+  const migrated = await getMeta("legacyMemberNamesMigrated");
   if (migrated) return;
 
   const rows = await db.transactions.toArray();
   if (!rows.length) {
-    await setMeta("allMembersMigratedToSoli", true);
+    await setMeta("legacyMemberNamesMigrated", true);
     return;
   }
 
-  const now = Date.now();
-  const rewritten = rows.map((item) =>
-    normalizeTransaction(
-      {
-        ...item,
-        member: "partner",
-        updated_at: now,
-      },
-      true,
-    ),
-  );
-  await db.transactions.bulkPut(rewritten);
-  await setMeta("allMembersMigratedToSoli", true);
-  state.syncDetailMessage = `기존 데이터 ${rewritten.length}건의 사용자를 솔이로 통일했습니다.`;
+  const rewritten = rows
+    .map((item) => {
+      const normalizedMember = normalizeMemberId(item.member);
+      if (normalizedMember === item.member) return null;
+      return normalizeTransaction(
+        {
+          ...item,
+          member: normalizedMember,
+          updated_at: Date.now(),
+        },
+        true,
+      );
+    })
+    .filter(Boolean);
+
+  if (rewritten.length) {
+    await db.transactions.bulkPut(rewritten);
+    state.syncDetailMessage = `기존 데이터 ${rewritten.length}건의 사용자 이름을 정우/솔이로 정리했습니다.`;
+  }
+  await setMeta("legacyMemberNamesMigrated", true);
 }
 
 async function loadUiMeta() {
@@ -933,9 +939,9 @@ function normalizeTransaction(item, markPending) {
 }
 
 function normalizeMemberId(value) {
-  if (value === "partner" || value === "솔이" || value === "예비신부") return "partner";
-  if (value === "jw" || value === "정우" || value === "나" || value === "Default") return "jw";
-  return "jw";
+  if (value === "partner" || value === "솔이" || value === "예비신부") return "솔이";
+  if (value === "jw" || value === "정우" || value === "나" || value === "Default") return "정우";
+  return "정우";
 }
 
 function buildFingerprint(item) {
@@ -952,7 +958,10 @@ async function pushPendingToServer() {
     updateSyncUI("오프라인", "offline");
     return;
   }
-  const pending = await db.transactions.where("sync_status").equals("pending").toArray();
+  const pending = (await db.transactions.where("sync_status").equals("pending").toArray()).map((item) => ({
+    ...item,
+    member: normalizeMemberId(item.member),
+  }));
   if (!pending.length) {
     updateSyncUI("동기화 완료", "success");
     return;
