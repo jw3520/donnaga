@@ -379,8 +379,8 @@
             <div id="expense-category-chips" class="icon-chip-grid"></div>
           </section>
           <section class="filter-section">
-            <label class="check-row"><input type="checkbox" name="type" value="transfer" checked /> 이체</label>
-            <div id="transfer-category-chips" class="icon-chip-grid"></div>
+            <label class="check-row"><input type="checkbox" name="type" value="investment" checked /> 저축/투자</label>
+            <div id="investment-category-chips" class="icon-chip-grid"></div>
           </section>
           <div class="filter-actions">
             <button class="secondary-button" id="reset-filter-button" type="button">초기화</button>
@@ -443,24 +443,23 @@
         <div class="type-picker">
           <button class="type-chip type-chip--expense" type="button" data-type-value="expense">지출</button>
           <button class="type-chip type-chip--income" type="button" data-type-value="income">수입</button>
-          <button class="type-chip type-chip--transfer" type="button" data-type-value="transfer">이체</button>
+          <button class="type-chip type-chip--investment" type="button" data-type-value="investment">저축/투자</button>
         </div>
 
         <input name="type" id="type-field" type="hidden" value="" />
+        <input name="budget_group" id="budget-group-field" type="hidden" value="" />
         <input name="category" id="category-field" type="hidden" value="" />
         <input name="member" id="member-field" type="hidden" value="" />
         <input name="account" id="account-field" type="hidden" value="" />
 
         <section class="entry-panel">
           <div class="entry-field-group">
-            <div class="entry-panel__label-row">
-              <span class="entry-panel__label">카테고리</span>
-              <div class="entry-category-pager">
-                <button class="entry-pager-button" id="entry-category-prev-button" type="button" aria-label="이전 카테고리">‹</button>
-                <span class="entry-category-page-label" id="entry-category-page-label">1 / 1</span>
-                <button class="entry-pager-button" id="entry-category-next-button" type="button" aria-label="다음 카테고리">›</button>
-              </div>
-            </div>
+            <span class="entry-panel__label">예산 그룹</span>
+            <div class="entry-budget-group-grid" id="entry-budget-group-grid"></div>
+          </div>
+
+          <div class="entry-field-group">
+            <span class="entry-panel__label">세부 태그</span>
             <div class="entry-category-grid" id="entry-category-grid"></div>
           </div>
 

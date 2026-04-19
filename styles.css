@@ -249,7 +249,7 @@ button:active {
   color: var(--expense);
 }
 
-.record-card__amount.is-transfer {
+.record-card__amount.is-investment {
   color: #7e8792;
 }
 
@@ -838,12 +838,6 @@ button:active {
   color: #967b67;
 }
 
-.asset-category-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 .asset-category-pill {
   display: inline-flex;
   align-items: center;
@@ -862,6 +856,49 @@ button:active {
   height: 14px;
   stroke-width: 2;
   color: var(--pill-color, #d39b76);
+}
+
+.asset-category-breakdown {
+  display: grid;
+  gap: 8px;
+}
+
+.asset-category-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.asset-category-row strong {
+  font-size: 13px;
+  color: #6a5447;
+}
+
+.asset-budget-form {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.asset-budget-form__label {
+  flex: 1;
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #8f7461;
+}
+
+.asset-budget-form__label input {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid #eadfce;
+  border-radius: 14px;
+  background: #fffdf9;
+  color: #5b483d;
 }
 
 .asset-row__top {
@@ -1409,7 +1446,7 @@ select {
   transform: translateY(-1px);
 }
 
-.type-chip--transfer.is-active {
+.type-chip--investment.is-active {
   background: linear-gradient(180deg, #8ec5ff 0%, #679ff0 100%);
   color: #fff;
   box-shadow: 0 10px 18px rgba(110, 170, 245, 0.28);
@@ -1436,39 +1473,48 @@ select {
   letter-spacing: 0.03em;
 }
 
-.entry-panel__label-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+.entry-budget-group-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
 }
 
-.entry-category-pager {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.entry-budget-group-chip {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  min-height: 64px;
+  padding: 10px 6px 8px;
+  border-radius: 20px;
+  background: #f7f8fa;
+  color: #68707a;
+  border: 2px solid transparent;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
 }
 
-.entry-category-page-label {
-  min-width: 44px;
-  text-align: center;
-  font-size: 11px;
-  font-weight: 800;
-  color: #8a939e;
+.entry-budget-group-chip strong {
+  margin: 0;
+  font-size: 13px;
 }
 
-.entry-pager-button {
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  background: #f3f5f7;
-  color: #5f6772;
-  font-size: 18px;
-  line-height: 1;
+.entry-budget-group-chip span {
+  font-size: 10px;
+  color: #919aa5;
 }
 
-.entry-pager-button:disabled {
-  opacity: 0.35;
+.entry-budget-group-chip.is-active {
+  background: var(--group-soft);
+  border-color: var(--group-color);
+  box-shadow: 0 10px 18px var(--group-shadow);
+  transform: translateY(-1px);
+}
+
+.entry-budget-group-chip.is-active span {
+  color: #6f5b4e;
 }
 
 .entry-category-grid {

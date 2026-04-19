@@ -4,8 +4,6 @@ const DB_NAME = "donnaga-db";
 const SYNC_INTERVAL_MS = 60_000;
 const SYNC_PUSH_BATCH_SIZE = 200;
 const CALENDAR_SWIPE_THRESHOLD = 42;
-const ENTRY_CATEGORY_PAGE_SIZE = 9;
-
 const MEMBERS = [
   { id: "정우", name: "정우" },
   { id: "솔이", name: "솔이" },
@@ -19,47 +17,101 @@ const ACCOUNTS = [
   { id: "other", name: "기타", type: "other" },
 ];
 
-const CATEGORY_META = {
-  income: [
-    { id: "월급", label: "월급", color: "#9adfd7", icon: "banknote" },
-    { id: "당근", label: "당근", color: "#ffb26b", icon: "carrot" },
-    { id: "용돈", label: "용돈", color: "#c8e58f", icon: "piggy-bank" },
-    { id: "환급", label: "환급", color: "#d0c0f3", icon: "badge-percent" },
-    { id: "기타", label: "기타", color: "#9edcc8", icon: "party-popper" },
-  ],
-  expense: [
-    { id: "식비", label: "식비", color: "#ffd89b", icon: "utensils-crossed" },
-    { id: "교통비", label: "교통비", color: "#ffb4bf", icon: "bus-front" },
-    { id: "문화생활", label: "여가/취미", color: "#e6b8ef", icon: "gamepad-2" },
-    { id: "생필품", label: "생활용품", color: "#f3c6a1", icon: "shopping-basket" },
-    { id: "반려동물", label: "반려동물", color: "#c9d7ff", icon: "paw-print" },
-    { id: "선물", label: "쇼핑", color: "#a8dff0", icon: "gift" },
-    { id: "미용", label: "미용", color: "#ffc2db", icon: "shirt" },
-    { id: "의료/건강", label: "의료/건강", color: "#b3dec1", icon: "heart-pulse" },
-    { id: "교육", label: "교육", color: "#d0c0f3", icon: "book-open-text" },
-    { id: "여행", label: "여행", color: "#bde7d9", icon: "plane" },
-    { id: "회비", label: "회비", color: "#f8c8a7", icon: "krw-note" },
-    { id: "자동차유지비", label: "자동차유지비", color: "#b9d7fb", icon: "car-front" },
-    { id: "경조사", label: "경조사", color: "#f4b2ba", icon: "hand-heart" },
-    { id: "가전", label: "가전", color: "#a8dff0", icon: "smartphone" },
-    { id: "기부", label: "기부", color: "#c7e7a5", icon: "heart-handshake" },
-    { id: "기타", label: "기타", color: "#f4b2ba", icon: "sparkles" },
-    { id: "집세", label: "주거/공과금", color: "#f1d7a6", icon: "house" },
-  ],
-  transfer: [
-    { id: "저축", label: "저축", color: "#f2de96", icon: "piggy-bank" },
-    { id: "이월", label: "이월", color: "#efc2a8", icon: "repeat-2" },
-    { id: "계좌이체", label: "이체", color: "#b9d7fb", icon: "landmark" },
-  ],
-};
+const INCOME_CATEGORY_META = [
+  { id: "월급", label: "월급", color: "#9adfd7", icon: "banknote" },
+  { id: "당근", label: "당근", color: "#ffb26b", icon: "carrot" },
+  { id: "용돈", label: "용돈", color: "#c8e58f", icon: "piggy-bank" },
+  { id: "환급", label: "환급", color: "#d0c0f3", icon: "badge-percent" },
+  { id: "기타", label: "기타", color: "#9edcc8", icon: "party-popper" },
+];
 
 const BUDGET_GROUPS = [
-  { category: "생활 지출", items: ["식비", "교통비", "생필품", "반려동물", "카페", "편의점"], limit: 900000 },
-  { category: "고정 지출", items: ["집세", "주거/공과금", "주거비", "회비", "자동차유지비", "자동차"], limit: 700000 },
-  { category: "저축", items: ["저축", "이월"], limit: 600000 },
-  { category: "투자", items: ["투자", "주식", "펀드", "ETF", "코인", "가상자산"], limit: 500000 },
-  { category: "기타", items: ["문화생활", "선물", "미용", "의료/건강", "교육", "여행", "경조사", "가전", "기부", "계좌이체", "기타"], limit: 500000 },
+  {
+    id: "living",
+    label: "생활",
+    fullLabel: "생활 지출",
+    type: "expense",
+    limit: 1_500_000,
+    color: "#ffb586",
+    categories: [
+      { id: "식비", label: "식비", color: "#ffd89b", icon: "utensils-crossed" },
+      { id: "생필품", label: "생필품", color: "#f3c6a1", icon: "shopping-basket" },
+      { id: "교통", label: "교통", color: "#ffb4bf", icon: "bus-front" },
+      { id: "카페", label: "카페", color: "#c7b29b", icon: "coffee" },
+      { id: "편의점", label: "편의점", color: "#c9ddb0", icon: "store" },
+      { id: "반려동물", label: "반려동물", color: "#c9d7ff", icon: "paw-print" },
+      { id: "문화생활", label: "문화생활", color: "#e6b8ef", icon: "gamepad-2" },
+      { id: "취미", label: "취미", color: "#d6c8ff", icon: "palette" },
+    ],
+  },
+  {
+    id: "fixed",
+    label: "고정",
+    fullLabel: "고정 지출",
+    type: "expense",
+    limit: 1_000_000,
+    color: "#f2c78e",
+    categories: [
+      { id: "주거비", label: "주거비", color: "#f1d7a6", icon: "house" },
+      { id: "통신비", label: "통신비", color: "#a8dff0", icon: "smartphone" },
+      { id: "보험", label: "보험", color: "#c7e7a5", icon: "shield-check" },
+      { id: "구독", label: "구독", color: "#f8c8a7", icon: "krw-note" },
+      { id: "교육", label: "교육", color: "#d0c0f3", icon: "book-open-text" },
+    ],
+  },
+  {
+    id: "variable",
+    label: "변동",
+    fullLabel: "변동 지출",
+    type: "expense",
+    limit: 500_000,
+    color: "#f4b2ba",
+    categories: [
+      { id: "의료/건강", label: "의료/건강", color: "#b3dec1", icon: "heart-pulse" },
+      { id: "선물", label: "선물", color: "#a8dff0", icon: "gift" },
+      { id: "경조사", label: "경조사", color: "#f4b2ba", icon: "hand-heart" },
+      { id: "술", label: "술", color: "#f4b2ba", icon: "wine" },
+      { id: "미용", label: "미용", color: "#ffc2db", icon: "sparkles" },
+      { id: "variable-other", label: "기타", color: "#d8c8ff", icon: "sparkles" },
+    ],
+  },
+  {
+    id: "savings",
+    label: "저축",
+    fullLabel: "저축",
+    type: "investment",
+    limit: 3_000_000,
+    color: "#f2de96",
+    categories: [
+      { id: "적금", label: "적금", color: "#f2de96", icon: "piggy-bank" },
+      { id: "청약", label: "청약", color: "#efc2a8", icon: "building-2" },
+      { id: "비상금", label: "비상금", color: "#c8e58f", icon: "wallet" },
+      { id: "savings-other", label: "기타", color: "#d9d4a8", icon: "circle-ellipsis" },
+    ],
+  },
+  {
+    id: "investment",
+    label: "투자",
+    fullLabel: "투자",
+    type: "investment",
+    limit: 1_000_000,
+    color: "#9fc2ff",
+    categories: [
+      { id: "금", label: "금", color: "#f4c95d", icon: "badge-cent" },
+      { id: "국내주식", label: "국내 주식", color: "#8ec5ff", icon: "chart-candlestick" },
+      { id: "해외주식", label: "해외 주식", color: "#74b5ff", icon: "globe" },
+      { id: "ETF", label: "ETF", color: "#9bb6ff", icon: "chart-column-big" },
+      { id: "가상자산", label: "가상자산", color: "#b08cff", icon: "coins" },
+      { id: "investment-other", label: "기타", color: "#b7c2d0", icon: "circle-ellipsis" },
+    ],
+  },
 ];
+
+const CATEGORY_META = {
+  income: INCOME_CATEGORY_META,
+  expense: BUDGET_GROUPS.filter((group) => group.type === "expense").flatMap((group) => group.categories),
+  investment: BUDGET_GROUPS.filter((group) => group.type === "investment").flatMap((group) => group.categories),
+};
 
 const refs = {
   monthTitleLabel: document.querySelector("#month-title-label"),
@@ -138,7 +190,7 @@ const refs = {
   filterForm: document.querySelector("#filter-form"),
   incomeCategoryChips: document.querySelector("#income-category-chips"),
   expenseCategoryChips: document.querySelector("#expense-category-chips"),
-  transferCategoryChips: document.querySelector("#transfer-category-chips"),
+  investmentCategoryChips: document.querySelector("#investment-category-chips"),
   resetFilterButton: document.querySelector("#reset-filter-button"),
   openEntryButton: document.querySelector("#open-entry-button"),
   entryDialog: document.querySelector("#entry-dialog"),
@@ -149,6 +201,7 @@ const refs = {
   entrySubmitButton: document.querySelector("#entry-submit-button"),
   editingIdField: document.querySelector("#editing-id-field"),
   typeField: document.querySelector("#type-field"),
+  budgetGroupField: document.querySelector("#budget-group-field"),
   typeLabel: document.querySelector("#entry-type-label"),
   typeChips: [...document.querySelectorAll(".type-chip")],
   amountInput: document.querySelector(".amount-input"),
@@ -156,10 +209,8 @@ const refs = {
   memberField: document.querySelector("#member-field"),
   accountField: document.querySelector("#account-field"),
   dateField: document.querySelector("#date-field"),
+  entryBudgetGroupGrid: document.querySelector("#entry-budget-group-grid"),
   entryCategoryGrid: document.querySelector("#entry-category-grid"),
-  entryCategoryPrevButton: document.querySelector("#entry-category-prev-button"),
-  entryCategoryNextButton: document.querySelector("#entry-category-next-button"),
-  entryCategoryPageLabel: document.querySelector("#entry-category-page-label"),
   memberButtons: [...document.querySelectorAll("[data-member-value]")],
   entryAccountToggle: document.querySelector("#entry-account-toggle"),
   recordTemplate: document.querySelector("#record-item-template"),
@@ -191,7 +242,8 @@ const state = {
   analysisMode: "expense",
   listSortOrder: "desc",
   searchPeriod: "all",
-  filters: { types: ["income", "expense", "transfer"], categories: [] },
+  filters: { types: ["income", "expense", "investment"], categories: [] },
+  budgetLimits: {},
   editingId: null,
   syncing: false,
   syncMessage: "로컬 준비 중",
@@ -202,8 +254,6 @@ const state = {
 let deferredInstallPrompt = null;
 let syncTimerId = null;
 let calendarTouchState = null;
-let entryCategoryPage = 0;
-
 await boot();
 
 async function boot() {
@@ -213,8 +263,10 @@ async function boot() {
   updateSyncUI("로컬 데이터베이스 준비 중", "idle");
   await migrateLegacyLocalState();
   await migrateLegacyMemberNames();
+  await migrateLegacyBudgetReorg();
   await purgeSeedTransactions();
   await loadUiMeta();
+  await loadBudgetLimits();
   await loadTransactionsFromDb();
   render();
   updateSyncUI(navigator.onLine ? "초기 동기화 중" : "오프라인", navigator.onLine ? "syncing" : "offline");
@@ -277,7 +329,7 @@ function bindEvents() {
     input.addEventListener("change", () => syncFilterTypeGroup(input.value, input.checked));
   });
   refs.resetFilterButton.addEventListener("click", async () => {
-    state.filters = { types: ["income", "expense", "transfer"], categories: [] };
+    state.filters = { types: ["income", "expense", "investment"], categories: [] };
     syncFilterForm();
     await persistUiMeta();
     render();
@@ -328,8 +380,11 @@ function bindEvents() {
   refs.memberButtons.forEach((button) => {
     button.addEventListener("click", () => setEntryMember(button.dataset.memberValue));
   });
-  bindEntryPagerButton(refs.entryCategoryPrevButton, -1);
-  bindEntryPagerButton(refs.entryCategoryNextButton, 1);
+  refs.entryBudgetGroupGrid.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-budget-group-value]");
+    if (!button) return;
+    setEntryBudgetGroup(button.dataset.budgetGroupValue);
+  });
   refs.entryAccountToggle.addEventListener("click", (event) => {
     const button = event.target.closest("[data-account-value]");
     if (!button) return;
@@ -342,6 +397,8 @@ function bindEvents() {
     event.preventDefault();
     setEntryCategory(button.dataset.categoryValue);
   });
+  refs.assetList.addEventListener("submit", onBudgetLimitSubmit);
+  refs.budgetList.addEventListener("submit", onBudgetLimitSubmit);
   refs.amountInput.addEventListener("input", () => {
     setAmountValue(refs.amountInput.value);
   });
@@ -418,6 +475,7 @@ async function migrateLegacyLocalState() {
       if (typeof parsed.selectedDateByUser === "boolean") state.selectedDateByUser = parsed.selectedDateByUser;
       if (parsed.analysisTab) state.analysisTab = parsed.analysisTab;
       if (parsed.listSortOrder === "asc" || parsed.listSortOrder === "desc") state.listSortOrder = parsed.listSortOrder;
+      if (parsed.filters) state.filters = normalizeFilterState(parsed.filters);
       localStorage.removeItem(key);
     } catch {
       // Ignore malformed legacy state.
@@ -486,9 +544,23 @@ async function loadUiMeta() {
   state.selectedDateByUser = savedUi.selectedDateByUser || false;
   state.analysisTab = savedUi.analysisTab || state.analysisTab;
   state.analysisMode = savedUi.analysisMode || state.analysisMode;
-  state.filters = savedUi.filters || state.filters;
+  state.filters = normalizeFilterState(savedUi.filters || state.filters);
   state.listSortOrder = savedUi.listSortOrder === "asc" ? "asc" : "desc";
   state.lastSyncedAt = (await getMeta("lastSyncedAt")) || null;
+}
+
+function defaultBudgetLimits() {
+  return Object.fromEntries(BUDGET_GROUPS.map((group) => [group.id, group.limit]));
+}
+
+async function loadBudgetLimits() {
+  const saved = (await getMeta("budgetLimits")) || {};
+  state.budgetLimits = {
+    ...defaultBudgetLimits(),
+    ...Object.fromEntries(
+      Object.entries(saved).map(([key, value]) => [key, Math.max(0, Number(value || 0))]),
+    ),
+  };
 }
 
 async function persistUiMeta() {
@@ -502,6 +574,10 @@ async function persistUiMeta() {
     filters: state.filters,
     listSortOrder: state.listSortOrder,
   });
+}
+
+async function persistBudgetLimits() {
+  await setMeta("budgetLimits", state.budgetLimits);
 }
 
 async function loadTransactionsFromDb() {
@@ -541,6 +617,7 @@ function renderSummary() {
   const transactions = getFilteredMonthTransactions();
   const income = sumByType(transactions, "income");
   const expense = sumByType(transactions, "expense");
+  const investment = sumByType(transactions, "investment");
   const cashExpense = transactions
     .filter((item) => item.type === "expense" && item.account === "cash")
     .reduce((sum, item) => sum + item.amount, 0);
@@ -549,7 +626,7 @@ function renderSummary() {
     .reduce((sum, item) => sum + item.amount, 0);
   refs.incomeTotal.textContent = formatCurrency(income);
   refs.expenseTotal.textContent = formatCurrency(expense);
-  refs.balanceTotal.textContent = formatCurrency(income - expense);
+  refs.balanceTotal.textContent = formatCurrency(income - expense - investment);
   refs.cashExpenseTotal.textContent = formatCompactCurrency(cashExpense);
   refs.cardExpenseTotal.textContent = formatCompactCurrency(cardExpense);
 }
@@ -629,7 +706,7 @@ function renderMemo() {
       (item) => `
         <article class="memo-row">
           <strong>${item.note}</strong>
-          <p>${item.date} · ${item.category}</p>
+          <p>${item.date} · ${categoryAppearance(item.category, item.type).label}</p>
         </article>
       `,
     )
@@ -639,6 +716,7 @@ function renderMemo() {
 function renderAssets() {
   const items = getFilteredMonthTransactions();
   refs.assetList.innerHTML = renderBudgetGroupCards(items, { variant: "asset" });
+  renderIcons();
 }
 
 function renderAnalysis() {
@@ -652,16 +730,18 @@ function renderAnalysis() {
     refs.analysisTransferTotal.textContent = `${sourceItems.length}건`;
   } else {
     refs.analysisPrimaryLabel.textContent = `${Number(state.currentMonth.slice(5, 7))}월 지출`;
-    refs.analysisSecondaryLabel.textContent = "저축";
+    refs.analysisSecondaryLabel.textContent = "저축/투자";
     refs.analysisExpenseTotal.textContent = formatCurrency(sumByType(sourceItems, "expense"));
-    refs.analysisTransferTotal.textContent = formatCurrency(sumByType(sourceItems, "transfer"));
+    refs.analysisTransferTotal.textContent = formatCurrency(sumByType(items, "investment"));
   }
   refs.analysisEmptyText.textContent = sourceItems.length ? "기록이 있습니다." : "내역이 없습니다.";
   renderAnalysisDonut(sourceItems, state.analysisMode);
 
   const budgetExpense = sumByType(items, "expense");
   refs.budgetExpenseTotal.textContent = formatCurrency(budgetExpense);
-  refs.budgetLimitTotal.textContent = formatCurrency(BUDGET_GROUPS.reduce((sum, item) => sum + item.limit, 0));
+  refs.budgetLimitTotal.textContent = formatCurrency(
+    BUDGET_GROUPS.reduce((sum, item) => sum + (state.budgetLimits[item.id] || item.limit), 0),
+  );
   refs.budgetList.innerHTML = renderBudgetGroupCards(items, { variant: "budget" });
 
   const creditTotal = items
@@ -704,6 +784,7 @@ function renderAnalysis() {
   refs.analysisTabButtons.forEach((button) => {
     button.classList.toggle("is-active", button.dataset.analysisTabTarget === state.analysisTab);
   });
+  renderIcons();
 }
 
 function renderBudgetGroupCards(items, options = {}) {
@@ -711,14 +792,19 @@ function renderBudgetGroupCards(items, options = {}) {
   return budgetGroupsForItems(items)
     .map((group) => {
       const progress = Math.min(100, Math.round((group.spent / group.limit) * 100) || 0);
-      const categories = group.categories
+      const categoryRows = group.categories
         .map((category) => {
-          const appearance = categoryAppearance(category, categoryTypeForBudget(category));
+          const appearance = categoryAppearance(category.id, group.type);
           return `
-            <span class="asset-category-pill" style="--pill-color:${appearance.color}">
-              ${renderIconMarkup(appearance.icon)}
-              <span>${appearance.label || category}</span>
-            </span>
+            <div class="asset-category-row">
+              <div class="asset-category-row__label">
+                <span class="asset-category-pill" style="--pill-color:${appearance.color}">
+                  ${renderIconMarkup(appearance.icon)}
+                  <span>${appearance.label}</span>
+                </span>
+              </div>
+              <strong>${formatCurrency(category.amount)}</strong>
+            </div>
           `;
         })
         .join("");
@@ -727,7 +813,7 @@ function renderBudgetGroupCards(items, options = {}) {
           <summary class="asset-row__summary">
             <div class="asset-row__top">
               <div class="asset-row__text">
-                <strong>${group.category}</strong>
+                <strong>${group.fullLabel}</strong>
                 <p>${formatCurrency(group.spent)} / ${formatCurrency(group.limit)}</p>
               </div>
               <strong>${progress}%</strong>
@@ -737,10 +823,17 @@ function renderBudgetGroupCards(items, options = {}) {
             </div>
           </summary>
           <div class="asset-row__details">
-            <p class="asset-row__caption">포함 카테고리</p>
-            <div class="asset-category-list">
-              ${categories}
+            <p class="asset-row__caption">세부 태그별 사용금액</p>
+            <div class="asset-category-breakdown">
+              ${categoryRows}
             </div>
+            <form class="asset-budget-form" data-budget-group-form="${group.id}">
+              <label class="asset-budget-form__label">
+                <span>예산 수정</span>
+                <input name="limit" type="number" min="0" step="10000" value="${group.limit}" inputmode="numeric" />
+              </label>
+              <button class="secondary-button" type="submit">저장</button>
+            </form>
           </div>
         </details>
       `;
@@ -781,10 +874,10 @@ function createRecordElement(item) {
   const appearance = categoryAppearance(item.category, item.type);
   categoryIcon.style.background = appearance.color;
   categoryIcon.innerHTML = renderCategoryIcon(item.category, item.type);
-  fragment.querySelector(".record-card__category").textContent = `${memberName(item.member)} · ${item.category}`;
+  fragment.querySelector(".record-card__category").textContent = `${memberName(item.member)} · ${categoryAppearance(item.category, item.type).label}`;
   fragment.querySelector(".record-card__note").textContent = item.note;
   const amount = fragment.querySelector(".record-card__amount");
-  amount.textContent = `${item.type === "expense" ? "-" : "+"}${formatCurrency(item.amount)}`;
+  amount.textContent = `${item.type === "income" ? "+" : "-"}${formatCurrency(item.amount)}`;
   amount.classList.add(`is-${item.type}`);
   fragment.querySelector(".record-card__meta").textContent = `${item.date} · ${accountName(item.account)}`;
   card.addEventListener("click", () => startEdit(item.id));
@@ -820,7 +913,7 @@ function renderMonthPicker() {
 function renderFilterChips() {
   renderCategoryChipGroup(refs.incomeCategoryChips, categoryOptionsForType("income"), "income");
   renderCategoryChipGroup(refs.expenseCategoryChips, categoryOptionsForType("expense"), "expense");
-  renderCategoryChipGroup(refs.transferCategoryChips, categoryOptionsForType("transfer"), "transfer");
+  renderCategoryChipGroup(refs.investmentCategoryChips, categoryOptionsForType("investment"), "investment");
 }
 
 function renderCategoryChipGroup(container, items, type) {
@@ -877,7 +970,9 @@ async function onSearchSubmit(event) {
   event.preventDefault();
   const query = refs.searchQuery.value.trim().toLowerCase();
   const filtered = filterBySearchPeriod(
-    state.transactions.filter((item) => `${item.note} ${item.category} ${item.memo || ""}`.toLowerCase().includes(query)),
+    state.transactions.filter((item) =>
+      `${item.note} ${categoryAppearance(item.category, item.type).label} ${item.memo || ""}`.toLowerCase().includes(query)
+    ),
     state.searchPeriod,
   );
   refs.searchIncomeTotal.textContent = formatCompactCurrency(sumByType(filtered, "income"));
@@ -893,11 +988,11 @@ async function onSearchSubmit(event) {
                   ${renderIconMarkup(categoryAppearance(item.category, item.type).icon)}
                 </div>
                 <div class="record-card__content">
-                  <p class="record-card__category">${item.category}</p>
+                  <p class="record-card__category">${categoryAppearance(item.category, item.type).label}</p>
                   <h3 class="record-card__note">${item.note}</h3>
                   <div class="record-card__meta">${item.date} · ${accountName(item.account)}</div>
                 </div>
-                <strong class="record-card__amount is-${item.type}">${item.type === "expense" ? "-" : "+"}${formatCurrency(item.amount)}</strong>
+                <strong class="record-card__amount is-${item.type}">${item.type === "income" ? "+" : "-"}${formatCurrency(item.amount)}</strong>
               </div>
             </article>
           `,
@@ -948,27 +1043,47 @@ function setEntryType(type) {
   refs.typeChips.forEach((chip) => {
     chip.classList.toggle("is-active", chip.dataset.typeValue === type);
   });
-  renderEntryCategories(type, refs.categoryField.value, { alignToSelected: true });
-  if (!categoryOptionsForType(type).some((item) => item.id === refs.categoryField.value)) {
+  const currentGroup = refs.budgetGroupField.value;
+  const budgetGroup = type === "income"
+    ? ""
+    : (budgetGroupsForType(type).some((group) => group.id === currentGroup) ? currentGroup : defaultBudgetGroupForType(type));
+  refs.budgetGroupField.value = budgetGroup;
+  renderEntryBudgetGroups(type, budgetGroup);
+  renderEntryCategories(type, refs.categoryField.value, budgetGroup);
+  if (!categoryOptionsForEntry(type, budgetGroup).some((item) => item.id === refs.categoryField.value)) {
     setEntryCategory("");
   } else {
     syncEntrySelectionUI();
   }
 }
 
-function renderEntryCategories(type, selectedCategory = "", options = {}) {
-  const categories = categoryOptionsForType(type);
-  const selectedIndex = categories.findIndex((item) => item.id === selectedCategory);
-  const totalPages = Math.max(1, Math.ceil(categories.length / ENTRY_CATEGORY_PAGE_SIZE));
-  if (options.alignToSelected && selectedIndex >= 0) {
-    entryCategoryPage = Math.floor(selectedIndex / ENTRY_CATEGORY_PAGE_SIZE);
-  } else {
-    entryCategoryPage = Math.min(entryCategoryPage, totalPages - 1);
+function renderEntryBudgetGroups(type, selectedGroup = "") {
+  if (!type) {
+    refs.entryBudgetGroupGrid.innerHTML = `<div class="entry-category-empty">먼저 수입, 지출, 저축/투자 중 하나를 선택하세요.</div>`;
+    return;
   }
-  const pageStart = entryCategoryPage * ENTRY_CATEGORY_PAGE_SIZE;
-  const visibleCategories = categories.slice(pageStart, pageStart + ENTRY_CATEGORY_PAGE_SIZE);
+  if (type === "income") {
+    refs.entryBudgetGroupGrid.innerHTML = `<div class="entry-category-empty">수입은 세부 태그만 바로 선택하면 됩니다.</div>`;
+    return;
+  }
+  const groups = budgetGroupsForType(type);
+  refs.entryBudgetGroupGrid.innerHTML = groups.map((group) => `
+    <button
+      class="entry-budget-group-chip ${group.id === selectedGroup ? "is-active" : ""}"
+      type="button"
+      data-budget-group-value="${group.id}"
+      style="--group-color:${group.color}; --group-soft:${hexToRgba(group.color, 0.18)}; --group-shadow:${hexToRgba(group.color, 0.26)}"
+    >
+      <strong>${group.label}</strong>
+      <span>${group.fullLabel}</span>
+    </button>
+  `).join("");
+}
+
+function renderEntryCategories(type, selectedCategory = "", budgetGroup = "") {
+  const categories = categoryOptionsForEntry(type, budgetGroup);
   refs.entryCategoryGrid.innerHTML = categories.length
-    ? visibleCategories.map((item) => {
+    ? categories.map((item) => {
       const isActive = item.id === selectedCategory;
       return `
         <button
@@ -985,27 +1100,8 @@ function renderEntryCategories(type, selectedCategory = "", options = {}) {
         </button>
       `;
     }).join("")
-    : `<div class="entry-category-empty">수입, 지출, 이체 중 하나를 먼저 선택하세요.</div>`;
-  refs.entryCategoryPageLabel.textContent = `${totalPages ? entryCategoryPage + 1 : 0} / ${totalPages}`;
-  refs.entryCategoryPrevButton.disabled = entryCategoryPage <= 0;
-  refs.entryCategoryNextButton.disabled = entryCategoryPage >= totalPages - 1;
+    : `<div class="entry-category-empty">${type ? "먼저 예산 그룹을 선택하세요." : "먼저 타입을 선택하세요."}</div>`;
   renderIcons();
-}
-
-function shiftEntryCategoryPage(direction) {
-  const categories = categoryOptionsForType(refs.typeField.value);
-  const totalPages = Math.max(1, Math.ceil(categories.length / ENTRY_CATEGORY_PAGE_SIZE));
-  entryCategoryPage = Math.max(0, Math.min(totalPages - 1, entryCategoryPage + direction));
-  renderEntryCategories(refs.typeField.value, refs.categoryField.value, { alignToSelected: false });
-}
-
-function bindEntryPagerButton(button, direction) {
-  button.addEventListener("pointerdown", () => refs.amountInput.blur());
-  button.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    shiftEntryCategoryPage(direction);
-  });
 }
 
 function renderEntryAccountOptions() {
@@ -1023,6 +1119,9 @@ function syncEntrySelectionUI() {
   refs.entryAccountToggle.querySelectorAll("[data-account-value]").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.accountValue === refs.accountField.value);
   });
+  refs.entryBudgetGroupGrid.querySelectorAll("[data-budget-group-value]").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.budgetGroupValue === refs.budgetGroupField.value);
+  });
   refs.entryCategoryGrid.querySelectorAll("[data-category-value]").forEach((button) => {
     const isActive = button.dataset.categoryValue === refs.categoryField.value;
     button.classList.toggle("is-active", isActive);
@@ -1032,6 +1131,19 @@ function syncEntrySelectionUI() {
 
 function setEntryCategory(category) {
   refs.categoryField.value = category || "";
+  if (category) {
+    refs.budgetGroupField.value = budgetGroupForCategory(category, refs.typeField.value)?.id || refs.budgetGroupField.value;
+  }
+  syncEntrySelectionUI();
+}
+
+function setEntryBudgetGroup(groupId) {
+  refs.budgetGroupField.value = groupId || "";
+  renderEntryBudgetGroups(refs.typeField.value, refs.budgetGroupField.value);
+  renderEntryCategories(refs.typeField.value, refs.categoryField.value, refs.budgetGroupField.value);
+  if (!categoryOptionsForEntry(refs.typeField.value, refs.budgetGroupField.value).some((item) => item.id === refs.categoryField.value)) {
+    refs.categoryField.value = "";
+  }
   syncEntrySelectionUI();
 }
 
@@ -1052,7 +1164,6 @@ function setAmountValue(value) {
 
 function resetEntryForm() {
   state.editingId = null;
-  entryCategoryPage = 0;
   refs.editingIdField.value = "";
   refs.entryDeleteButton.classList.add("is-hidden");
   refs.entrySubmitButton.textContent = "저장";
@@ -1076,6 +1187,7 @@ function startEdit(id) {
   refs.entrySubmitButton.textContent = "수정 완료";
   refs.typeLabel.textContent = "내역 수정";
   setEntryType(transaction.type);
+  setEntryBudgetGroup(budgetGroupForCategory(transaction.category, transaction.type)?.id || defaultBudgetGroupForType(transaction.type));
   setAmountValue(transaction.amount);
   setEntryCategory(transaction.category);
   setEntryMember(transaction.member);
@@ -1145,43 +1257,51 @@ function groupTransactions(items, mode) {
 function budgetGroupsForItems(items) {
   const groups = BUDGET_GROUPS.map((group) => ({
     ...group,
-    categories: [...new Set(group.items.map((item) => normalizeCategoryId(item)))],
+    categories: group.categories.map((category) => ({ ...category, amount: 0 })),
+    limit: state.budgetLimits[group.id] || group.limit,
     spent: 0,
   }));
 
   items.forEach((item) => {
     if (!item.category || item.deleted) return;
     const normalizedCategory = normalizeCategoryId(item.category);
-    const groupIndex = groups.findIndex((group) => budgetGroupMatchesCategory(group.category, normalizedCategory));
-    const target = groups[groupIndex >= 0 ? groupIndex : groups.length - 1];
-    if (!target.categories.includes(normalizedCategory)) {
-      target.categories.push(normalizedCategory);
-    }
-    if (item.type === "expense" || item.type === "transfer") {
+    const target = groups.find((group) => budgetGroupMatchesCategory(group.id, normalizedCategory)) || groups[0];
+    const categoryRow = target.categories.find((category) => category.id === normalizedCategory);
+    if (!categoryRow) return;
+    if (item.type === "expense" || item.type === "investment") {
       target.spent += item.amount;
+      categoryRow.amount += item.amount;
     }
   });
 
   return groups;
 }
 
-function budgetGroupMatchesCategory(groupCategory, category) {
+function budgetGroupMatchesCategory(groupId, category) {
   const normalizedCategory = normalizeCategoryId(category);
-  const group = BUDGET_GROUPS.find((item) => item.category === groupCategory);
-  if (!group) return false;
-  if (group.category === "기타") {
-    return !BUDGET_GROUPS
-      .filter((item) => item.category !== "기타")
-      .some((item) => item.items.map((entry) => normalizeCategoryId(entry)).includes(normalizedCategory));
-  }
-  return group.items.map((item) => normalizeCategoryId(item)).includes(normalizedCategory);
+  const group = BUDGET_GROUPS.find((item) => item.id === groupId);
+  return Boolean(group?.categories.some((item) => item.id === normalizedCategory));
 }
 
 function categoryTypeForBudget(category) {
   const normalizedCategory = normalizeCategoryId(category);
-  if (CATEGORY_META.transfer.some((item) => item.id === normalizedCategory)) return "transfer";
+  if (CATEGORY_META.investment.some((item) => item.id === normalizedCategory)) return "investment";
   if (CATEGORY_META.income.some((item) => item.id === normalizedCategory)) return "income";
   return "expense";
+}
+
+async function onBudgetLimitSubmit(event) {
+  event.preventDefault();
+  const form = event.target.closest("[data-budget-group-form]");
+  if (!form) return;
+  const groupId = form.dataset.budgetGroupForm;
+  const limit = Math.max(0, Number(form.elements.limit.value || 0));
+  state.budgetLimits[groupId] = limit;
+  await persistBudgetLimits();
+  renderAssets();
+  if (state.currentScreen === "analysis" && state.analysisTab === "budget") {
+    renderAnalysis();
+  }
 }
 
 function getMonthTransactions() {
@@ -1194,9 +1314,10 @@ function getFilteredMonthTransactions() {
 
 function applyFilters(items) {
   return items.filter((item) => {
-    const categoryAllowed = state.filters.categories.length === 0 || state.filters.categories.includes(item.category);
+    const normalizedCategory = normalizeCategoryId(item.category);
+    const categoryAllowed = state.filters.categories.length === 0 || state.filters.categories.includes(normalizedCategory);
     const typeAllowed = state.filters.types.includes(item.type) || (
-      state.filters.categories.length > 0 && state.filters.categories.includes(item.category)
+      state.filters.categories.length > 0 && state.filters.categories.includes(normalizedCategory)
     );
     return typeAllowed && categoryAllowed;
   });
@@ -1212,10 +1333,11 @@ function filterBySearchPeriod(items, period) {
 }
 
 function normalizeTransaction(item, markPending) {
-  const normalizedCategory = normalizeCategoryId(item.category || "");
+  const normalizedType = normalizeTypeId(item.type || "");
+  const normalizedCategory = normalizeCategoryId(item.category || "", normalizedType);
   const normalized = {
     id: item.id || crypto.randomUUID(),
-    type: item.type || "",
+    type: normalizedType,
     amount: Number(item.amount || 0),
     category: normalizedCategory,
     sub_category: item.sub_category || "",
@@ -1236,6 +1358,7 @@ function normalizeTransaction(item, markPending) {
 
 function clearEntrySelections() {
   refs.typeField.value = "";
+  refs.budgetGroupField.value = "";
   refs.categoryField.value = "";
   refs.memberField.value = "";
   refs.accountField.value = "";
@@ -1243,8 +1366,23 @@ function clearEntrySelections() {
   refs.typeChips.forEach((chip) => chip.classList.remove("is-active"));
   refs.dateField.value = "";
   setAmountValue("");
+  renderEntryBudgetGroups("");
   renderEntryCategories("", "");
   syncEntrySelectionUI();
+}
+
+function normalizeTypeId(type) {
+  if (!type) return "";
+  if (type === "transfer") return "investment";
+  return type;
+}
+
+function normalizeFilterState(filters) {
+  const normalizedTypes = [...new Set((filters?.types || ["income", "expense", "investment"]).map((type) => normalizeTypeId(type)))];
+  return {
+    types: normalizedTypes.length ? normalizedTypes : ["income", "expense", "investment"],
+    categories: (filters?.categories || []).map((category) => normalizeCategoryId(category)).filter(Boolean),
+  };
 }
 
 function normalizeMemberId(value) {
@@ -1252,6 +1390,35 @@ function normalizeMemberId(value) {
   if (value === "partner" || value === "솔이" || value === "예비신부") return "솔이";
   if (value === "jw" || value === "정우" || value === "나" || value === "Default") return "정우";
   return "정우";
+}
+
+async function migrateLegacyBudgetReorg() {
+  const migrated = await getMeta("legacyBudgetReorgMigrated");
+  if (migrated) return;
+
+  const rows = await db.transactions.toArray();
+  const rewritten = rows
+    .map((item) => {
+      const normalizedType = normalizeTypeId(item.type || "");
+      const normalizedCategory = normalizeCategoryId(item.category || "", normalizedType);
+      if (normalizedType === item.type && normalizedCategory === item.category) return null;
+      return normalizeTransaction(
+        {
+          ...item,
+          type: normalizedType,
+          category: normalizedCategory,
+          updated_at: Date.now(),
+        },
+        true,
+      );
+    })
+    .filter(Boolean);
+
+  if (rewritten.length) {
+    await db.transactions.bulkPut(rewritten);
+    state.syncDetailMessage = `기존 데이터 ${rewritten.length}건을 5대 예산 체계로 변환했습니다.`;
+  }
+  await setMeta("legacyBudgetReorgMigrated", true);
 }
 
 function buildFingerprint(item) {
@@ -1545,7 +1712,8 @@ function renderAnalysisDonut(items, mode = "expense") {
 
   const grouped = Object.entries(
     chartItems.reduce((acc, item) => {
-      acc[item.category] = (acc[item.category] || 0) + item.amount;
+      const normalizedCategory = normalizeCategoryId(item.category);
+      acc[normalizedCategory] = (acc[normalizedCategory] || 0) + item.amount;
       return acc;
     }, {}),
   )
@@ -1576,7 +1744,7 @@ function renderAnalysisDonut(items, mode = "expense") {
       <article class="analysis-category-row">
         <div class="analysis-category-row__label">
           <span class="analysis-category-row__dot" style="background:${item.appearance.color}"></span>
-          <strong>${item.category}</strong>
+          <strong>${item.appearance.label}</strong>
         </div>
         <div class="analysis-category-row__meta">
           <span>${item.percent.toFixed(1)}%</span>
@@ -1633,12 +1801,34 @@ function categoryOptionsForType(type) {
     .map(({ _order, _count, ...item }) => item);
 }
 
+function budgetGroupsForType(type) {
+  return BUDGET_GROUPS.filter((group) => group.type === type);
+}
+
+function defaultBudgetGroupForType(type) {
+  return budgetGroupsForType(type)[0]?.id || "";
+}
+
+function budgetGroupForCategory(category, type = "") {
+  const normalizedCategory = normalizeCategoryId(category);
+  if (!normalizedCategory) return null;
+  return BUDGET_GROUPS.find((group) =>
+    (!type || group.type === normalizeTypeId(type)) && group.categories.some((item) => item.id === normalizedCategory)
+  ) || null;
+}
+
+function categoryOptionsForEntry(type, budgetGroupId = "") {
+  if (type === "income") return categoryOptionsForType("income");
+  const group = BUDGET_GROUPS.find((item) => item.id === budgetGroupId && item.type === type);
+  return group?.categories || [];
+}
+
 function groupNetAmount(items) {
-  return items.reduce((total, item) => total + (item.type === "expense" ? -item.amount : item.amount), 0);
+  return items.reduce((total, item) => total + (item.type === "income" ? item.amount : -item.amount), 0);
 }
 
 function typeLabel(type) {
-  return { expense: "지출", income: "수입", transfer: "이체" }[type] || type;
+  return { expense: "지출", income: "수입", investment: "저축/투자" }[type] || type;
 }
 
 function categoryIdsForType(type) {
@@ -1664,7 +1854,7 @@ function categoryAppearance(category, type) {
   return CATEGORY_META[type]?.find((item) => item.id === normalizedCategory)
     || CATEGORY_META.expense.find((item) => item.id === normalizedCategory)
     || CATEGORY_META.income.find((item) => item.id === normalizedCategory)
-    || CATEGORY_META.transfer.find((item) => item.id === normalizedCategory)
+    || CATEGORY_META.investment.find((item) => item.id === normalizedCategory)
     || inferredCategoryMeta(normalizedCategory, type)
     || { color: "#b8c1cc", icon: "circle", label: normalizedCategory };
 }
@@ -1677,31 +1867,49 @@ function inferredCategoryMeta(category, type) {
       "교통": { color: "#ffb4bf", icon: "bus-front", label: "교통" },
       "미용": { color: "#ffc2db", icon: "sparkles", label: "미용" },
       "문화": { color: "#e6b8ef", icon: "clapperboard", label: "문화" },
-      "문화생활": { color: "#e6b8ef", icon: "gamepad-2", label: "여가/취미" },
+      "문화생활": { color: "#e6b8ef", icon: "gamepad-2", label: "문화생활" },
       "술": { color: "#f4b2ba", icon: "wine", label: "술" },
       "오락": { color: "#d8c8ff", icon: "ticket", label: "오락" },
       "자동차": { color: "#b9d7fb", icon: "car-front", label: "자동차" },
       "자동차유지비": { color: "#b9d7fb", icon: "car-front", label: "자동차유지비" },
       "경조사": { color: "#f4b2ba", icon: "hand-heart", label: "경조사" },
       "주거비": { color: "#f1d7a6", icon: "house", label: "주거비" },
-      "생활용품": { color: "#f3c6a1", icon: "shopping-basket", label: "생활용품" },
-      "쇼핑": { color: "#a8dff0", icon: "gift", label: "쇼핑" },
+      "생활용품": { color: "#f3c6a1", icon: "shopping-basket", label: "생필품" },
+      "쇼핑": { color: "#a8dff0", icon: "gift", label: "선물" },
       "취미": { color: "#d6c8ff", icon: "palette", label: "취미" },
-      "여가/취미": { color: "#e6b8ef", icon: "gamepad-2", label: "여가/취미" },
+      "여가/취미": { color: "#e6b8ef", icon: "gamepad-2", label: "취미" },
       "카페": { color: "#c7b29b", icon: "coffee", label: "카페" },
       "편의점": { color: "#c9ddb0", icon: "store", label: "편의점" },
-      "주거/공과금": { color: "#f1d7a6", icon: "house", label: "주거/공과금" },
+      "주거/공과금": { color: "#f1d7a6", icon: "house", label: "주거비" },
     },
     income: {},
-    transfer: {},
+    investment: {},
   };
   return inferred[type]?.[category] || inferred.expense[category] || null;
 }
 
-function normalizeCategoryId(category) {
+function normalizeCategoryId(category, type = "") {
   if (!category) return "";
   if (category === "레이") return "반려동물";
   if (category === "의류") return "미용";
+  if (category === "교통비") return "교통";
+  if (category === "주거/공과금" || category === "집세") return "주거비";
+  if (category === "생활용품") return "생필품";
+  if (category === "여가/취미" || category === "오락" || category === "문화") return "취미";
+  if (category === "쇼핑") return "선물";
+  if (category === "회비") return "구독";
+  if (category === "저축") return "적금";
+  if (category === "이월") return "savings-other";
+  if (category === "계좌이체") return "investment-other";
+  if (category === "투자" || category === "주식" || category === "국내 주식") return "국내주식";
+  if (category === "해외 주식") return "해외주식";
+  if (category === "코인" || category === "가상 화폐") return "가상자산";
+  if (category === "기타") {
+    if (type === "investment") return "investment-other";
+    if (type === "expense") return "variable-other";
+    return "기타";
+  }
+  if (["가전", "기부", "여행", "자동차유지비", "자동차"].includes(category)) return "variable-other";
   return category;
 }
 
@@ -1728,7 +1936,7 @@ function renderIconMarkup(icon) {
 }
 
 function defaultNote(category) {
-  return `${category} 기록`;
+  return `${categoryAppearance(category, categoryTypeForBudget(category)).label} 기록`;
 }
 
 function hexToRgba(hex, alpha) {
