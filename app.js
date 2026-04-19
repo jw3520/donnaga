@@ -1172,10 +1172,14 @@ async function setMeta(key, value) {
 }
 
 async function registerServiceWorker() {
-  if (!("serviceWorker" in navigator)) return;
+  if (!("serviceWorker" in navigator)) {
+    console.warn("[PWA] serviceWorker not supported in this browser.");
+    return;
+  }
   try {
-    await navigator.serviceWorker.register("./sw.js");
-  } catch {
-    // Ignore registration failures.
+    const registration = await navigator.serviceWorker.register("./sw.js");
+    console.info("[PWA] service worker registered:", registration.scope);
+  } catch (error) {
+    console.error("[PWA] service worker registration failed:", error);
   }
 }

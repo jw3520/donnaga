@@ -2,10 +2,12 @@
   "name": "DonnaGa",
   "short_name": "DonnaGa",
   "description": "둘이 함께 쓰는 생활형 PWA 가계부",
+  "id": "./",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#f6f1e8",
-  "theme_color": "#f6f1e8",
+  "background_color": "#4DB6AC",
+  "theme_color": "#4DB6AC",
   "lang": "ko-KR",
   "icons": [
     {
