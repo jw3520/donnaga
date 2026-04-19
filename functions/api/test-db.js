@@ -17,9 +17,29 @@ const TABLE_SQL = `
     deleted INTEGER DEFAULT 0
   )
 `;
+const REQUIRED_COLUMNS = [
+  ["category", "TEXT"],
+  ["sub_category", "TEXT"],
+  ["member", "TEXT"],
+  ["account", "TEXT"],
+  ["payment_method", "TEXT"],
+  ["card_name", "TEXT"],
+  ["memo", "TEXT"],
+  ["note", "TEXT"],
+  ["date", "TEXT NOT NULL DEFAULT ''"],
+  ["updated_at", "INTEGER NOT NULL DEFAULT 0"],
+  ["fingerprint", "TEXT"],
+  ["deleted", "INTEGER DEFAULT 0"],
+];
 
 async function ensureSchema(db) {
   await db.prepare(TABLE_SQL).run();
+  const tableInfo = await db.prepare("PRAGMA table_info(transactions)").all();
+  const existingColumns = new Set((tableInfo.results || []).map((row) => row.name));
+  for (const [name, definition] of REQUIRED_COLUMNS) {
+    if (existingColumns.has(name)) continue;
+    await db.prepare(`ALTER TABLE transactions ADD COLUMN ${name} ${definition}`).run();
+  }
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_transactions_updated_at ON transactions(updated_at)").run();
 }
 
