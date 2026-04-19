@@ -400,45 +400,71 @@
     </dialog>
 
     <dialog class="entry-dialog" id="entry-dialog">
-      <form method="dialog" class="entry-sheet" id="entry-form">
+      <form method="dialog" class="entry-sheet" id="entry-form" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <input type="text" autocomplete="username" tabindex="-1" aria-hidden="true" class="autofill-decoy" />
+        <input type="password" autocomplete="new-password" tabindex="-1" aria-hidden="true" class="autofill-decoy" />
         <div class="entry-sheet__header">
           <button class="sheet-close" id="close-entry-button" type="button">×</button>
-          <p class="entry-sheet__amount-label" id="entry-type-label">지출</p>
-          <input name="amount" class="amount-input" type="number" min="0" step="100" placeholder="0" required />
+          <p class="entry-sheet__amount-label" id="entry-type-label">유형 선택</p>
+          <input
+            name="amount"
+            class="amount-input"
+            type="number"
+            min="0"
+            step="100"
+            placeholder="0"
+            required
+            autocomplete="off"
+            inputmode="numeric"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            data-lpignore="true"
+          />
         </div>
 
         <div class="type-picker">
-          <button class="type-chip is-active" type="button" data-type-value="expense">지출</button>
+          <button class="type-chip" type="button" data-type-value="expense">지출</button>
           <button class="type-chip" type="button" data-type-value="income">수입</button>
           <button class="type-chip" type="button" data-type-value="transfer">이체</button>
         </div>
 
-        <input name="type" id="type-field" type="hidden" value="expense" />
+        <input name="type" id="type-field" type="hidden" value="" />
 
         <label>
           <span>내역</span>
-          <input name="note" type="text" maxlength="80" placeholder="예: 점심, 관리비, 선물" />
+          <input
+            name="note"
+            type="text"
+            maxlength="80"
+            placeholder="예: 점심, 관리비, 선물"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            data-lpignore="true"
+          />
         </label>
 
         <div class="entry-form__row">
           <label>
             <span>분류</span>
-            <select name="category" id="category-field"></select>
+            <select name="category" id="category-field" required></select>
           </label>
           <label>
             <span>사용자</span>
-            <select name="member" id="member-field"></select>
+            <select name="member" id="member-field" required></select>
           </label>
         </div>
 
         <div class="entry-form__row">
           <label>
             <span>지불수단</span>
-            <select name="account" id="account-field"></select>
+            <select name="account" id="account-field" required></select>
           </label>
           <label>
             <span>날짜</span>
-            <input name="date" type="date" id="date-field" required />
+            <input name="date" type="date" id="date-field" required autocomplete="off" />
           </label>
         </div>
 

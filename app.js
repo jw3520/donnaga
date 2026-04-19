@@ -197,8 +197,7 @@ async function boot() {
 function populateStaticOptions() {
   populateSelect(refs.memberField, MEMBERS, "id", "name");
   populateSelect(refs.accountField, ACCOUNTS, "id", "name");
-  refs.dateField.value = todayISO();
-  setEntryType("expense");
+  clearEntrySelections();
 }
 
 function bindEvents() {
@@ -798,7 +797,7 @@ async function onSubmitEntry(event) {
     },
     true,
   );
-  if (!transaction.amount || !transaction.date) return;
+  if (!transaction.amount || !transaction.date || !transaction.type || !transaction.category || !transaction.member || !transaction.account) return;
   await db.transactions.put(transaction);
   state.currentMonth = transaction.date.slice(0, 7);
   state.selectedDate = transaction.date;
@@ -813,19 +812,23 @@ async function onSubmitEntry(event) {
 
 function setEntryType(type) {
   refs.typeField.value = type;
-  refs.typeLabel.textContent = typeLabel(type);
+  refs.typeLabel.textContent = type ? typeLabel(type) : "유형 선택";
   refs.typeChips.forEach((chip) => {
     chip.classList.toggle("is-active", chip.dataset.typeValue === type);
   });
-  refs.categoryField.innerHTML = categoryIdsForType(type).map((item) => `<option value="${item}">${item}</option>`).join("");
+  const categories = type ? categoryIdsForType(type) : [];
+  refs.categoryField.innerHTML = [
+    `<option value="">분류 선택</option>`,
+    ...categories.map((item) => `<option value="${item}">${item}</option>`),
+  ].join("");
+  refs.categoryField.value = "";
 }
 
 function resetEntryForm() {
   refs.entryForm.reset();
-  refs.dateField.value = todayISO();
   state.editingId = null;
   refs.entryDeleteButton.classList.add("is-hidden");
-  setEntryType("expense");
+  clearEntrySelections();
 }
 
 function openEntryDialog() {
@@ -880,6 +883,8 @@ function syncScreens() {
   refs.screenButtons.forEach((button) => {
     button.classList.toggle("is-active", button.dataset.screenTarget === state.currentScreen);
   });
+  refs.openEntryButton.classList.toggle("is-hidden", state.currentScreen === "memo" || state.currentScreen === "analysis");
+  refs.memoAddButton.classList.toggle("is-hidden", state.currentScreen !== "memo");
 }
 
 function groupTransactions(items, mode) {
@@ -919,12 +924,12 @@ function filterBySearchPeriod(items, period) {
 function normalizeTransaction(item, markPending) {
   const normalized = {
     id: item.id || crypto.randomUUID(),
-    type: item.type || "expense",
+    type: item.type || "",
     amount: Number(item.amount || 0),
-    category: item.category || "기타",
+    category: item.category || "",
     sub_category: item.sub_category || "",
     member: normalizeMemberId(item.member),
-    account: item.account || "other",
+    account: item.account || "",
     payment_method: item.payment_method || "",
     card_name: item.card_name || "",
     date: item.date || todayISO(),
@@ -938,7 +943,27 @@ function normalizeTransaction(item, markPending) {
   return normalized;
 }
 
+function clearEntrySelections() {
+  refs.typeField.value = "";
+  refs.typeLabel.textContent = "유형 선택";
+  refs.typeChips.forEach((chip) => chip.classList.remove("is-active"));
+  refs.categoryField.innerHTML = `<option value="">분류 선택</option>`;
+  refs.memberField.innerHTML = [
+    `<option value="">사용자 선택</option>`,
+    ...MEMBERS.map((member) => `<option value="${member.id}">${member.name}</option>`),
+  ].join("");
+  refs.accountField.innerHTML = [
+    `<option value="">지불수단 선택</option>`,
+    ...ACCOUNTS.map((account) => `<option value="${account.id}">${account.name}</option>`),
+  ].join("");
+  refs.memberField.value = "";
+  refs.accountField.value = "";
+  refs.categoryField.value = "";
+  refs.dateField.value = "";
+}
+
 function normalizeMemberId(value) {
+  if (value == null || value === "") return "";
   if (value === "partner" || value === "솔이" || value === "예비신부") return "솔이";
   if (value === "jw" || value === "정우" || value === "나" || value === "Default") return "정우";
   return "정우";
