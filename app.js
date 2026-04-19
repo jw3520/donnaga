@@ -82,6 +82,7 @@ const refs = {
   recordsCaption: document.querySelector("#records-caption"),
   listRecordsList: document.querySelector("#list-records-list"),
   listRecordsCaption: document.querySelector("#list-records-caption"),
+  listSortButton: document.querySelector("#list-sort-button"),
   listSearchButton: document.querySelector("#list-search-button"),
   memoList: document.querySelector("#memo-list"),
   memoMonthLabel: document.querySelector("#memo-month-label"),
@@ -100,6 +101,7 @@ const refs = {
   analysisDonutInner: document.querySelector("#analysis-donut-inner"),
   analysisCategoryBreakdown: document.querySelector("#analysis-category-breakdown"),
   analysisEmptyText: document.querySelector("#analysis-empty-text"),
+  analysisBody: document.querySelector(".analysis-body"),
   budgetExpenseTotal: document.querySelector("#budget-expense-total"),
   budgetLimitTotal: document.querySelector("#budget-limit-total"),
   budgetList: document.querySelector("#budget-list"),
@@ -186,6 +188,7 @@ const state = {
   selectedDateByUser: false,
   analysisTab: "stats",
   analysisMode: "expense",
+  listSortOrder: "desc",
   searchPeriod: "all",
   filters: { types: ["income", "expense", "transfer"], categories: [] },
   editingId: null,
@@ -237,6 +240,13 @@ function bindEvents() {
   refs.memoAddButton.addEventListener("click", openEntryDialog);
   refs.memoPrevMonthButton.addEventListener("click", () => shiftMonth(-1, { animate: true }));
   refs.memoNextMonthButton.addEventListener("click", () => shiftMonth(1, { animate: true }));
+  refs.listSortButton.addEventListener("click", async () => {
+    state.listSortOrder = state.listSortOrder === "desc" ? "asc" : "desc";
+    await persistUiMeta();
+    renderListRecords();
+    syncListSortButton();
+    renderIcons();
+  });
   refs.listSearchButton.addEventListener("click", openSearchDialog);
 
   refs.openMonthPickerButton.addEventListener("click", () => {
@@ -336,6 +346,8 @@ function bindEvents() {
   });
   refs.calendarCard.addEventListener("touchstart", onCalendarTouchStart, { passive: true });
   refs.calendarCard.addEventListener("touchend", onCalendarTouchEnd, { passive: true });
+  refs.analysisBody.addEventListener("touchstart", onAnalysisTouchStart, { passive: true });
+  refs.analysisBody.addEventListener("touchend", onAnalysisTouchEnd, { passive: true });
   [refs.monthPickerDialog, refs.searchDialog, refs.filterDialog, refs.installDialog, refs.entryDialog].forEach(
     bindBackdropClose,
   );
@@ -400,10 +412,11 @@ async function migrateLegacyLocalState() {
         migratedCount += normalized.length;
       }
       if (parsed.currentMonth) state.currentMonth = parsed.currentMonth;
-      if (parsed.currentScreen) state.currentScreen = parsed.currentScreen;
+      if (parsed.currentScreen) state.currentScreen = parsed.currentScreen === "memo" ? "list" : parsed.currentScreen;
       if (parsed.selectedDate) state.selectedDate = parsed.selectedDate;
       if (typeof parsed.selectedDateByUser === "boolean") state.selectedDateByUser = parsed.selectedDateByUser;
       if (parsed.analysisTab) state.analysisTab = parsed.analysisTab;
+      if (parsed.listSortOrder === "asc" || parsed.listSortOrder === "desc") state.listSortOrder = parsed.listSortOrder;
       localStorage.removeItem(key);
     } catch {
       // Ignore malformed legacy state.
@@ -467,12 +480,13 @@ async function migrateLegacyMemberNames() {
 async function loadUiMeta() {
   const savedUi = (await getMeta("uiState")) || {};
   state.currentMonth = savedUi.currentMonth || state.currentMonth;
-  state.currentScreen = savedUi.currentScreen || state.currentScreen;
+  state.currentScreen = savedUi.currentScreen === "memo" ? "list" : (savedUi.currentScreen || state.currentScreen);
   state.selectedDate = savedUi.selectedDate || state.selectedDate;
   state.selectedDateByUser = savedUi.selectedDateByUser || false;
   state.analysisTab = savedUi.analysisTab || state.analysisTab;
   state.analysisMode = savedUi.analysisMode || state.analysisMode;
   state.filters = savedUi.filters || state.filters;
+  state.listSortOrder = savedUi.listSortOrder === "asc" ? "asc" : "desc";
   state.lastSyncedAt = (await getMeta("lastSyncedAt")) || null;
 }
 
@@ -485,6 +499,7 @@ async function persistUiMeta() {
     analysisTab: state.analysisTab,
     analysisMode: state.analysisMode,
     filters: state.filters,
+    listSortOrder: state.listSortOrder,
   });
 }
 
@@ -592,7 +607,8 @@ function renderDailyRecords() {
 }
 
 function renderListRecords() {
-  renderRecordCollection(refs.listRecordsList, getFilteredMonthTransactions(), "daily");
+  renderRecordCollection(refs.listRecordsList, getFilteredMonthTransactions(), "daily", state.listSortOrder);
+  syncListSortButton();
 }
 
 function renderMemo() {
@@ -723,7 +739,7 @@ function renderAnalysis() {
   });
 }
 
-function renderRecordCollection(container, items, mode) {
+function renderRecordCollection(container, items, mode, sortOrder = "desc") {
   if (!items.length) {
     container.innerHTML = emptyState("내역이 없어요.", "표시할 데이터가 없습니다.");
     return;
@@ -731,19 +747,19 @@ function renderRecordCollection(container, items, mode) {
   const groups = groupTransactions(items, mode);
   container.innerHTML = "";
   Object.entries(groups)
-    .sort(([left], [right]) => (left < right ? 1 : -1))
+    .sort(([left], [right]) => (sortOrder === "asc" ? left.localeCompare(right) : right.localeCompare(left)))
     .forEach(([groupKey, groupItems]) => {
       const wrapper = document.createElement("section");
       wrapper.className = "records-group";
       wrapper.innerHTML = `
         <div class="records-group__header">
-          <h3>${groupKey}</h3>
+          <h3>${mode === "daily" ? displaySelectedDate(groupKey) : groupKey}</h3>
           <p class="muted">${formatCurrency(groupNetAmount(groupItems))}</p>
         </div>
       `;
       groupItems
         .slice()
-        .sort((left, right) => right.date.localeCompare(left.date))
+        .sort((left, right) => (sortOrder === "asc" ? left.date.localeCompare(right.date) : right.date.localeCompare(left.date)))
         .forEach((item) => wrapper.append(createRecordElement(item)));
       container.append(wrapper);
     });
@@ -1081,7 +1097,7 @@ async function deleteRecord(id) {
 }
 
 async function switchScreen(screen) {
-  state.currentScreen = screen;
+  state.currentScreen = screen === "memo" ? "list" : screen;
   await persistUiMeta();
   syncScreens();
   renderIcons();
@@ -1098,9 +1114,19 @@ function syncScreens() {
   refs.memoAddButton.classList.toggle("is-hidden", state.currentScreen !== "memo");
 }
 
+function syncListSortButton() {
+  if (!refs.listSortButton) return;
+  const isAsc = state.listSortOrder === "asc";
+  refs.listSortButton.setAttribute("aria-label", isAsc ? "날짜 오름차순 정렬" : "날짜 내림차순 정렬");
+  refs.listSortButton.dataset.sortOrder = state.listSortOrder;
+  refs.listSortButton.innerHTML = isAsc
+    ? '<span>과거순</span><i data-lucide="arrow-up-narrow-wide"></i>'
+    : '<span>최신순</span><i data-lucide="arrow-down-wide-narrow"></i>';
+}
+
 function groupTransactions(items, mode) {
   return items.reduce((acc, item) => {
-    const key = mode === "daily" ? displaySelectedDate(item.date) : item.date.slice(0, 7);
+    const key = mode === "daily" ? item.date : item.date.slice(0, 7);
     acc[key] ??= [];
     acc[key].push(item);
     return acc;
@@ -1423,6 +1449,16 @@ function onCalendarTouchEnd(event) {
   calendarTouchState = null;
   if (Math.abs(deltaX) < CALENDAR_SWIPE_THRESHOLD || Math.abs(deltaX) <= Math.abs(deltaY) * 1.2) return;
   void shiftMonth(deltaX < 0 ? 1 : -1, { animate: true });
+}
+
+function onAnalysisTouchStart(event) {
+  if (state.currentScreen !== "analysis") return;
+  onCalendarTouchStart(event);
+}
+
+function onAnalysisTouchEnd(event) {
+  if (state.currentScreen !== "analysis") return;
+  onCalendarTouchEnd(event);
 }
 
 function monthLabel(monthKey) {

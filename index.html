@@ -99,9 +99,15 @@
               <h2>가계부</h2>
               <p id="list-records-caption">4월 전체 내역</p>
             </div>
-            <button class="header-icon-button" id="list-search-button" type="button" aria-label="검색">
-              <i data-lucide="search"></i>
-            </button>
+            <div class="subscreen-header__actions">
+              <button class="header-sort-button" id="list-sort-button" type="button" aria-label="날짜 내림차순 정렬">
+                <span>최신순</span>
+                <i data-lucide="arrow-down-wide-narrow"></i>
+              </button>
+              <button class="header-icon-button" id="list-search-button" type="button" aria-label="검색">
+                <i data-lucide="search"></i>
+              </button>
+            </div>
           </header>
           <section class="panel panel--ledger">
             <div id="list-records-list" class="records-list"></div>
@@ -292,9 +298,6 @@
           </button>
           <button class="tabbar-button" type="button" data-screen-target="list" aria-label="월간">
             <i data-lucide="calendar-range"></i>
-          </button>
-          <button class="tabbar-button" type="button" data-screen-target="memo" aria-label="메모">
-            <i data-lucide="notepad-text"></i>
           </button>
           <button class="tabbar-button" type="button" data-screen-target="assets" aria-label="자산">
             <i data-lucide="piggy-bank"></i>

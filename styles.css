@@ -530,6 +530,12 @@ button:active {
   justify-content: space-between;
 }
 
+.subscreen-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .subscreen-header h2 {
   font-size: 24px;
   font-weight: 800;
@@ -538,6 +544,30 @@ button:active {
 .subscreen-header__title p {
   margin: 2px 0 0;
   font-size: 13px;
+}
+
+.header-sort-button {
+  min-width: 82px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(214, 196, 173, 0.95);
+  border-radius: 999px;
+  background: #fffaf5;
+  color: #7d6252;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  box-shadow: 0 6px 18px rgba(150, 120, 92, 0.08);
+}
+
+.header-sort-button svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2;
 }
 
 .panel--ledger,
