@@ -898,10 +898,11 @@ function renderEntryCategories(type, selectedCategory = "") {
     const applySelection = (event) => {
       event.preventDefault();
       event.stopPropagation();
+      refs.amountInput.blur();
       setEntryCategory(button.dataset.categoryValue);
     };
-    button.addEventListener("pointerup", applySelection);
-    button.addEventListener("click", applySelection);
+    button.addEventListener("pointerdown", applySelection);
+    button.addEventListener("touchstart", applySelection, { passive: false });
   });
 }
 
