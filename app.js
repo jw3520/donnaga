@@ -35,6 +35,13 @@ const CATEGORY_META = {
     { id: "의류", label: "미용", color: "#ffc2db", icon: "shirt" },
     { id: "의료/건강", label: "의료/건강", color: "#b3dec1", icon: "heart-pulse" },
     { id: "교육", label: "교육", color: "#d0c0f3", icon: "book-open-text" },
+    { id: "여행", label: "여행", color: "#bde7d9", icon: "plane" },
+    { id: "회비", label: "회비", color: "#f8c8a7", icon: "badge-korean-won" },
+    { id: "자동차유지비", label: "자동차유지비", color: "#b9d7fb", icon: "car-front" },
+    { id: "경조사", label: "경조사", color: "#f4b2ba", icon: "hand-heart" },
+    { id: "가전", label: "가전", color: "#a8dff0", icon: "smartphone" },
+    { id: "기부", label: "기부", color: "#c7e7a5", icon: "heart-handshake" },
+    { id: "레이", label: "레이", color: "#d6d2ff", icon: "car-taxi-front" },
     { id: "기타", label: "기타", color: "#f4b2ba", icon: "sparkles" },
     { id: "집세", label: "주거/공과금", color: "#f1d7a6", icon: "house" },
   ],
@@ -1432,10 +1439,13 @@ function categoryOptionsForType(type) {
   const dynamic = state.transactions
     .filter((item) => !item.deleted && item.type === type && item.category)
     .map((item) => item.category)
-    .filter((category) => !seen.has(category))
+    .filter((category) => {
+      if (seen.has(category)) return false;
+      seen.add(category);
+      return true;
+    })
     .sort((left, right) => left.localeCompare(right, "ko-KR"))
     .map((category) => {
-      seen.add(category);
       const appearance = inferredCategoryMeta(category, type) || {
         label: category,
         color: "#b8c1cc",
