@@ -258,6 +258,9 @@ function bindEvents() {
   refs.openFilterButton.addEventListener("click", () => refs.filterDialog.showModal());
   refs.closeFilterButton.addEventListener("click", () => refs.filterDialog.close());
   refs.filterForm.addEventListener("submit", onFilterSubmit);
+  refs.filterForm.querySelectorAll("input[name='type']").forEach((input) => {
+    input.addEventListener("change", () => syncFilterTypeGroup(input.value, input.checked));
+  });
   refs.resetFilterButton.addEventListener("click", async () => {
     state.filters = { types: ["income", "expense", "transfer"], categories: [] };
     syncFilterForm();
@@ -802,11 +805,20 @@ function syncFilterForm() {
     input.checked = state.filters.types.includes(input.value);
   });
   refs.filterForm.querySelectorAll("[data-filter-category]").forEach((input) => {
-    input.checked = state.filters.categories.length === 0 || state.filters.categories.includes(input.dataset.filterCategory);
+    const typeChecked = refs.filterForm.querySelector(`input[name='type'][value='${input.dataset.filterType}']`)?.checked;
+    input.checked = Boolean(typeChecked) && (
+      state.filters.categories.length === 0 || state.filters.categories.includes(input.dataset.filterCategory)
+    );
   });
   refs.searchCategorySummary.textContent =
     state.filters.categories.length === 0 ? "전체 카테고리" : `${state.filters.categories.length}개 선택`;
   refs.searchAccountSummary.textContent = "전체";
+}
+
+function syncFilterTypeGroup(type, checked) {
+  refs.filterForm.querySelectorAll(`[data-filter-type='${type}']`).forEach((input) => {
+    input.checked = checked;
+  });
 }
 
 async function onFilterSubmit(event) {
@@ -815,7 +827,7 @@ async function onFilterSubmit(event) {
   const categories = [...refs.filterForm.querySelectorAll("[data-filter-category]:checked")].map(
     (input) => input.dataset.filterCategory,
   );
-  const allCategories = allCategoryIds();
+  const allCategories = state.filters.types.flatMap((type) => categoryIdsForType(type));
   state.filters.categories = categories.length === allCategories.length ? [] : categories;
   await persistUiMeta();
   refs.filterDialog.close();
