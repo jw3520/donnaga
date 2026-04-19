@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f6f1e8" />
-    <meta name="description" content="둘이 함께 쓰는 PWA 가계부" />
+    <meta name="theme-color" content="#52c4b9" />
+    <meta name="description" content="둘이 함께 쓰는 생활형 PWA 가계부" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./icons/icon-192.svg" />
@@ -18,23 +18,25 @@
         <section class="screen screen--active" data-screen="calendar">
           <header class="topbar">
             <div class="topbar__icons">
-              <button class="top-icon top-icon--plain" type="button" data-screen-target="stats" aria-label="통계">
+              <button class="top-icon" id="open-analysis-button" type="button" aria-label="통계">
                 <i data-lucide="chart-column"></i>
               </button>
-              <button class="top-icon top-icon--plain" type="button" data-screen-target="list" aria-label="내역">
+              <button class="top-icon" id="open-memo-button" type="button" aria-label="메모">
                 <i data-lucide="file-text"></i>
               </button>
             </div>
-            <button class="month-pill" id="month-title" type="button">
+
+            <button class="month-pill" id="open-month-picker-button" type="button" aria-label="월 선택">
               <span id="month-title-label">4월</span>
               <i data-lucide="chevron-down"></i>
             </button>
+
             <div class="topbar__icons">
-              <button class="top-icon top-icon--plain" id="export-button" type="button" aria-label="검색">
+              <button class="top-icon" id="open-search-button" type="button" aria-label="검색">
                 <i data-lucide="search"></i>
               </button>
-              <button class="top-icon top-icon--plain" id="seed-data-button" type="button" aria-label="설정">
-                <i data-lucide="settings-2"></i>
+              <button class="top-icon" id="open-filter-button" type="button" aria-label="필터">
+                <i data-lucide="sliders-horizontal"></i>
               </button>
             </div>
           </header>
@@ -63,27 +65,16 @@
           </section>
 
           <section class="calendar-card">
-            <div class="month-switcher">
-              <button class="icon-button" id="prev-month-button" type="button" aria-label="이전 달">‹</button>
-              <div class="weekday-row">
-                <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
-              </div>
-              <button class="icon-button" id="next-month-button" type="button" aria-label="다음 달">›</button>
+            <div class="weekday-row">
+              <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
             </div>
             <div id="calendar-grid" class="calendar-grid"></div>
           </section>
 
           <section class="list-panel list-panel--daily">
-            <div class="list-panel__header">
-              <div class="selected-date-box">
-                <strong id="selected-date-title">4월 18일</strong>
-                <p id="records-caption" class="muted"></p>
-              </div>
-              <div class="segmented-control" id="view-tabs">
-                <button class="tab-button is-active" type="button" data-view="daily">일</button>
-                <button class="tab-button" type="button" data-view="weekly">주</button>
-                <button class="tab-button" type="button" data-view="monthly">월</button>
-              </div>
+            <div class="selected-date-box">
+              <strong id="selected-date-title">4월 18일</strong>
+              <p id="records-caption" class="muted"></p>
             </div>
             <div id="records-list" class="records-list"></div>
           </section>
@@ -91,46 +82,44 @@
 
         <section class="screen" data-screen="list">
           <header class="screen-header">
-            <h2>가계부</h2>
-            <p>월간 전체 내역을 시간순으로 확인합니다.</p>
+            <h2>월간 내역</h2>
+            <p id="list-records-caption">4월 전체 내역</p>
           </header>
-          <section class="panel">
-            <div class="list-panel__header">
-              <div class="selected-date-box">
-                <strong>전체 내역</strong>
-                <p id="list-records-caption" class="muted"></p>
-              </div>
-            </div>
+          <section class="panel panel--flat">
             <div id="list-records-list" class="records-list"></div>
           </section>
         </section>
 
-        <section class="screen" data-screen="stats">
-          <header class="screen-header">
-            <h2>통계</h2>
-            <p>이번 달 소비 흐름을 카테고리별로 확인합니다.</p>
+        <section class="screen" data-screen="memo">
+          <header class="sheet-header">
+            <button class="header-icon-button" id="close-memo-button" type="button" aria-label="뒤로">
+              <i data-lucide="chevron-left"></i>
+            </button>
+            <strong>메모</strong>
+            <button class="header-icon-button" id="memo-search-button" type="button" aria-label="검색">
+              <i data-lucide="search"></i>
+            </button>
           </header>
-          <section class="panel">
-            <div id="category-stats" class="stats-list"></div>
-          </section>
-        </section>
-
-        <section class="screen" data-screen="budget">
-          <header class="screen-header">
-            <h2>예산</h2>
-            <p>카테고리별 예산 사용량을 확인합니다.</p>
-          </header>
-          <section class="panel">
-            <div id="budget-list" class="budget-list"></div>
+          <div class="month-nav-inline">
+            <button class="header-icon-button" id="memo-prev-month-button" type="button" aria-label="이전 달">
+              <i data-lucide="chevron-left"></i>
+            </button>
+            <strong id="memo-month-label">4월</strong>
+            <button class="header-icon-button" id="memo-next-month-button" type="button" aria-label="다음 달">
+              <i data-lucide="chevron-right"></i>
+            </button>
+          </div>
+          <section class="panel panel--flat panel--memo">
+            <div id="memo-list" class="memo-list"></div>
           </section>
         </section>
 
         <section class="screen" data-screen="assets">
           <header class="screen-header">
             <h2>자산</h2>
-            <p>결제수단별 이번 달 흐름을 카드처럼 확인합니다.</p>
+            <p>결제수단별 이번 달 흐름</p>
           </header>
-          <section class="panel panel--asset">
+          <section class="panel">
             <div id="asset-list" class="asset-list"></div>
           </section>
         </section>
@@ -138,7 +127,7 @@
         <section class="screen" data-screen="settings">
           <header class="screen-header">
             <h2>설정</h2>
-            <p>공유 사용을 위한 현재 상태와 데이터 관리 기능입니다.</p>
+            <p>공유 사용을 위한 데이터 상태</p>
           </header>
           <section class="panel">
             <div class="settings-list">
@@ -151,16 +140,88 @@
               <article class="settings-row">
                 <div class="stack">
                   <strong>공유 DB</strong>
-                  <p>추후 Cloudflare/Supabase 같은 공용 저장소 연결 권장</p>
+                  <p>추후 Cloudflare 또는 Supabase 연결 권장</p>
                 </div>
               </article>
             </div>
           </section>
         </section>
 
-        <button class="mini-fab" id="quick-action-button" type="button" aria-label="빠른 작업">
-          <i data-lucide="list-filter"></i>
-        </button>
+        <section class="screen" data-screen="analysis">
+          <header class="sheet-header">
+            <button class="header-icon-button" id="close-analysis-button" type="button" aria-label="닫기">
+              <i data-lucide="x"></i>
+            </button>
+            <div class="sheet-header__center">
+              <strong id="analysis-month-label">4월</strong>
+              <p id="analysis-range-label">4.1 - 4.30</p>
+            </div>
+            <span class="sheet-header__spacer"></span>
+          </header>
+
+          <section class="analysis-body">
+            <div class="analysis-panel" data-analysis-tab="stats">
+              <div class="analysis-summary">
+                <article>
+                  <span>4월 지출</span>
+                  <strong id="analysis-expense-total">0원</strong>
+                </article>
+                <article>
+                  <span>저축</span>
+                  <strong id="analysis-transfer-total">0원</strong>
+                </article>
+              </div>
+              <div class="donut-placeholder">
+                <div class="donut-placeholder__inner">100%</div>
+              </div>
+              <p class="analysis-empty-text" id="analysis-empty-text">내역이 없습니다.</p>
+            </div>
+
+            <div class="analysis-panel is-hidden" data-analysis-tab="budget">
+              <div class="analysis-summary">
+                <article>
+                  <span>지출</span>
+                  <strong id="budget-expense-total">0원</strong>
+                </article>
+                <article>
+                  <span>예산</span>
+                  <strong id="budget-limit-total">0원</strong>
+                </article>
+              </div>
+              <div id="budget-list" class="budget-list"></div>
+            </div>
+
+            <div class="analysis-panel is-hidden" data-analysis-tab="card">
+              <div class="analysis-summary">
+                <article>
+                  <span>카드 사용금액</span>
+                  <strong id="card-total-amount">0원</strong>
+                </article>
+                <article>
+                  <span>체크카드</span>
+                  <strong id="debit-total-amount">0원</strong>
+                </article>
+              </div>
+              <div id="card-summary-list" class="card-summary-list"></div>
+            </div>
+          </section>
+
+          <nav class="analysis-tabbar">
+            <button class="analysis-tab-button is-active" type="button" data-analysis-tab-target="stats">
+              <i data-lucide="pie-chart"></i>
+              <span>통계</span>
+            </button>
+            <button class="analysis-tab-button" type="button" data-analysis-tab-target="budget">
+              <i data-lucide="folder"></i>
+              <span>예산</span>
+            </button>
+            <button class="analysis-tab-button" type="button" data-analysis-tab-target="card">
+              <i data-lucide="credit-card"></i>
+              <span>카드</span>
+            </button>
+          </nav>
+        </section>
+
         <button class="fab" id="open-entry-button" type="button" aria-label="내역 추가">
           <i data-lucide="plus"></i>
         </button>
@@ -168,36 +229,111 @@
         <nav class="tabbar">
           <button class="tabbar-button is-active" type="button" data-screen-target="calendar" aria-label="달력">
             <i data-lucide="calendar-days"></i>
-            <span>달력</span>
           </button>
-          <button class="tabbar-button" type="button" data-screen-target="list" aria-label="가계부">
-            <i data-lucide="file-text"></i>
-            <span>가계부</span>
+          <button class="tabbar-button" type="button" data-screen-target="list" aria-label="월간">
+            <i data-lucide="calendar-range"></i>
           </button>
-          <button class="tabbar-button" type="button" data-screen-target="stats" aria-label="차트">
-            <i data-lucide="pie-chart"></i>
-            <span>차트</span>
+          <button class="tabbar-button" type="button" data-screen-target="memo" aria-label="메모">
+            <i data-lucide="notepad-text"></i>
           </button>
-          <button class="tabbar-button" type="button" data-screen-target="budget" aria-label="예산">
+          <button class="tabbar-button" type="button" data-screen-target="assets" aria-label="자산">
             <i data-lucide="piggy-bank"></i>
-            <span>예산</span>
           </button>
           <button class="tabbar-button" type="button" data-screen-target="settings" aria-label="설정">
             <i data-lucide="settings"></i>
-            <span>설정</span>
           </button>
         </nav>
       </main>
     </div>
 
+    <dialog class="sheet-dialog" id="month-picker-dialog">
+      <div class="sheet-content">
+        <header class="sheet-header">
+          <button class="header-icon-button" id="close-month-picker-button" type="button" aria-label="닫기">
+            <i data-lucide="x"></i>
+          </button>
+          <strong>월 선택</strong>
+          <span class="sheet-header__spacer"></span>
+        </header>
+        <div class="month-picker">
+          <label class="picker-label">
+            <span>연도</span>
+            <select id="year-select"></select>
+          </label>
+          <div id="month-grid" class="month-grid"></div>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="sheet-dialog" id="search-dialog">
+      <div class="sheet-content">
+        <header class="sheet-header">
+          <strong>검색</strong>
+          <button class="header-icon-button" id="close-search-button" type="button" aria-label="닫기">
+            <i data-lucide="x"></i>
+          </button>
+        </header>
+        <form id="search-form" class="search-form">
+          <input id="search-query" type="search" placeholder="내역, 카테고리, 메모 검색" />
+          <div class="chip-row">
+            <button class="chip-button is-active" type="button" data-search-period="all">전체</button>
+            <button class="chip-button" type="button" data-search-period="week">이번 주</button>
+            <button class="chip-button" type="button" data-search-period="month">이번 달</button>
+          </div>
+          <div class="search-form__meta">
+            <p><span>카테고리</span><strong id="search-category-summary">전체 카테고리</strong></p>
+            <p><span>지불방식</span><strong id="search-account-summary">전체</strong></p>
+          </div>
+          <button class="search-submit" type="submit">
+            <i data-lucide="search"></i>
+            <span>검색</span>
+          </button>
+        </form>
+        <div class="search-totals">
+          <article><span>수입</span><strong id="search-income-total">0</strong></article>
+          <article><span>지출</span><strong id="search-expense-total">0</strong></article>
+        </div>
+        <div id="search-results" class="search-results"></div>
+      </div>
+    </dialog>
+
+    <dialog class="sheet-dialog" id="filter-dialog">
+      <div class="sheet-content">
+        <header class="sheet-header">
+          <strong>필터</strong>
+          <button class="header-icon-button" id="close-filter-button" type="button" aria-label="닫기">
+            <i data-lucide="x"></i>
+          </button>
+        </header>
+        <form id="filter-form" class="filter-form">
+          <section class="filter-section">
+            <label class="check-row"><input type="checkbox" name="type" value="income" checked /> 수입</label>
+            <div id="income-category-chips" class="icon-chip-grid"></div>
+          </section>
+          <section class="filter-section">
+            <label class="check-row"><input type="checkbox" name="type" value="expense" checked /> 지출</label>
+            <div id="expense-category-chips" class="icon-chip-grid"></div>
+          </section>
+          <section class="filter-section">
+            <label class="check-row"><input type="checkbox" name="type" value="transfer" checked /> 이체</label>
+            <div id="transfer-category-chips" class="icon-chip-grid"></div>
+          </section>
+          <div class="filter-actions">
+            <button class="secondary-button" id="reset-filter-button" type="button">초기화</button>
+            <button class="apply-button" type="submit">
+              <i data-lucide="funnel"></i>
+              <span>적용</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </dialog>
+
     <dialog class="install-dialog" id="install-dialog">
       <form method="dialog" class="install-dialog__content">
         <p class="section-label">Install</p>
         <h2>홈 화면에 추가</h2>
-        <p>
-          모바일 브라우저에서 이 앱을 홈 화면에 추가하면 둘이 함께 쓰는 PWA처럼
-          앱 아이콘으로 바로 열 수 있습니다.
-        </p>
+        <p>모바일 브라우저에서 이 앱을 홈 화면에 추가하면 설치형 PWA처럼 바로 열 수 있습니다.</p>
         <div class="entry-form__actions">
           <button class="secondary-button" value="cancel">닫기</button>
           <button class="primary-button" id="install-button" value="default">설치</button>
