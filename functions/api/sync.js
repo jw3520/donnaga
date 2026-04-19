@@ -18,6 +18,25 @@ const TABLE_SQL = `
   )
 `;
 const DB_BATCH_SIZE = 100;
+const UPSERT_SQL = `INSERT INTO transactions (
+  id, type, amount, category, sub_category, member, account, payment_method, card_name, memo, note, date, updated_at, fingerprint, deleted
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+  type = excluded.type,
+  amount = excluded.amount,
+  category = excluded.category,
+  sub_category = excluded.sub_category,
+  member = excluded.member,
+  account = excluded.account,
+  payment_method = excluded.payment_method,
+  card_name = excluded.card_name,
+  memo = excluded.memo,
+  note = excluded.note,
+  date = excluded.date,
+  updated_at = excluded.updated_at,
+  fingerprint = excluded.fingerprint,
+  deleted = excluded.deleted
+WHERE excluded.updated_at >= updated_at`;
 
 function json(body, init = {}) {
   return new Response(JSON.stringify(body), {
@@ -33,20 +52,32 @@ async function ensureSchema(db) {
 
 export async function onRequestGet(context) {
   const { env } = context;
-  await ensureSchema(env.DB);
-  const result = await env.DB.prepare(
-    `SELECT id, type, amount, category, sub_category, member, account, payment_method, card_name, memo, note, date, updated_at, fingerprint, deleted
-     FROM transactions
-     ORDER BY updated_at DESC`,
-  ).all();
-  return json({ transactions: result.results || [] });
+  try {
+    if (!env.DB) {
+      return json({ ok: false, error: "DB binding not found" }, { status: 500 });
+    }
+    await ensureSchema(env.DB);
+    const result = await env.DB.prepare(
+      `SELECT id, type, amount, category, sub_category, member, account, payment_method, card_name, memo, note, date, updated_at, fingerprint, deleted
+       FROM transactions
+       ORDER BY updated_at DESC`,
+    ).all();
+    return json({ ok: true, transactions: result.results || [] });
+  } catch (error) {
+    return json(
+      { ok: false, error: error instanceof Error ? error.message : "Failed to load transactions" },
+      { status: 500 },
+    );
+  }
 }
 
 export async function onRequestPost(context) {
   const { env, request } = context;
-  await ensureSchema(env.DB);
-
   try {
+    if (!env.DB) {
+      return json({ ok: false, error: "DB binding not found" }, { status: 500 });
+    }
+    await ensureSchema(env.DB);
     const payload = await request.json();
     const transactions = Array.isArray(payload.transactions) ? payload.transactions : [];
     if (!transactions.length) {
@@ -56,46 +87,38 @@ export async function onRequestPost(context) {
     let upserted = 0;
     for (let index = 0; index < transactions.length; index += DB_BATCH_SIZE) {
       const chunk = transactions.slice(index, index + DB_BATCH_SIZE);
-      const statements = chunk.map((item) =>
-        env.DB.prepare(
-          `INSERT INTO transactions (
-            id, type, amount, category, sub_category, member, account, payment_method, card_name, memo, note, date, updated_at, fingerprint, deleted
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          ON CONFLICT(id) DO UPDATE SET
-            type = excluded.type,
-            amount = excluded.amount,
-            category = excluded.category,
-            sub_category = excluded.sub_category,
-            member = excluded.member,
-            account = excluded.account,
-            payment_method = excluded.payment_method,
-            card_name = excluded.card_name,
-            memo = excluded.memo,
-            note = excluded.note,
-            date = excluded.date,
-            updated_at = excluded.updated_at,
-            fingerprint = excluded.fingerprint,
-            deleted = excluded.deleted
-          WHERE excluded.updated_at >= transactions.updated_at`,
-        ).bind(
-          item.id,
-          item.type,
-          item.amount,
-          item.category || "",
-          item.sub_category || "",
-          item.member || "",
-          item.account || "",
-          item.payment_method || "",
-          item.card_name || "",
-          item.memo || "",
-          item.note || "",
-          item.date,
-          Number(item.updated_at || Date.now()),
-          item.fingerprint || "",
-          Number(item.deleted || 0),
-        ),
-      );
-      await env.DB.batch(statements);
+      for (let chunkIndex = 0; chunkIndex < chunk.length; chunkIndex += 1) {
+        const item = chunk[chunkIndex];
+        try {
+          await env.DB.prepare(UPSERT_SQL).bind(
+            item.id,
+            item.type,
+            Number(item.amount || 0),
+            item.category || "",
+            item.sub_category || "",
+            item.member || "",
+            item.account || "",
+            item.payment_method || "",
+            item.card_name || "",
+            item.memo || "",
+            item.note || "",
+            item.date,
+            Number(item.updated_at || Date.now()),
+            item.fingerprint || "",
+            Number(item.deleted || 0),
+          ).run();
+        } catch (error) {
+          return json(
+            {
+              ok: false,
+              error: error instanceof Error ? error.message : "Failed to upsert transaction",
+              failedIndex: index + chunkIndex,
+              failedId: item?.id || null,
+            },
+            { status: 500 },
+          );
+        }
+      }
       upserted += chunk.length;
     }
 

@@ -163,6 +163,7 @@ const state = {
   syncing: false,
   syncMessage: "로컬 준비 중",
   lastSyncedAt: null,
+  syncDetailMessage: "",
   importSummary: "아직 가져온 파일이 없습니다.",
 };
 
@@ -1092,7 +1093,7 @@ async function pushPendingToServer() {
     updateSyncUI("동기화 완료", "success");
   } catch (error) {
     const message = error instanceof Error ? error.message : "알 수 없는 오류";
-    refs.syncDetailLabel.textContent = `동기화 실패: ${message}`;
+    state.syncDetailMessage = `동기화 실패: ${message}`;
     updateSyncUI("동기화 실패", "error");
   }
 }
@@ -1134,6 +1135,11 @@ function updateSyncUI(message, status) {
   refs.syncDot.dataset.status = status;
   refs.remoteStatusLabel.textContent =
     status === "offline" ? "Cloudflare D1 연결 대기" : "Cloudflare D1 동기화 활성";
+  if (status === "error" && state.syncDetailMessage) {
+    refs.syncDetailLabel.textContent = state.syncDetailMessage;
+    return;
+  }
+  state.syncDetailMessage = "";
   refs.syncDetailLabel.textContent = state.lastSyncedAt
     ? `마지막 동기화 ${formatDateTime(state.lastSyncedAt)}`
     : "마지막 동기화 기록 없음";
