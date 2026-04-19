@@ -1328,8 +1328,8 @@ async function animateCalendarTransition(direction) {
   const offset = direction > 0 ? -28 : 28;
   const animation = refs.calendarGrid.animate(
     [
-      { transform: "translateX(0)", opacity: 1 },
-      { transform: `translateX(${offset}px)`, opacity: 0.3 },
+      { transform: "translateX(0)" },
+      { transform: `translateX(${offset}px)` },
     ],
     { duration: 160, easing: "ease-out", fill: "forwards" },
   );
@@ -1341,8 +1341,8 @@ async function animateCalendarEntrance(direction) {
   const offset = direction > 0 ? 28 : -28;
   const animation = refs.calendarGrid.animate(
     [
-      { transform: `translateX(${offset}px)`, opacity: 0.3 },
-      { transform: "translateX(0)", opacity: 1 },
+      { transform: `translateX(${offset}px)` },
+      { transform: "translateX(0)" },
     ],
     { duration: 190, easing: "ease-out" },
   );
