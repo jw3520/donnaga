@@ -949,7 +949,7 @@ function resetEntryForm() {
 
 function openEntryDialog() {
   resetEntryForm();
-  refs.entryDialog.showModal();
+  requestAnimationFrame(() => refs.entryDialog.showModal());
 }
 
 function startEdit(id) {
@@ -967,7 +967,7 @@ function startEdit(id) {
   setEntryAccount(transaction.account);
   refs.dateField.value = transaction.date;
   refs.entryForm.elements.note.value = transaction.note || "";
-  refs.entryDialog.showModal();
+  requestAnimationFrame(() => refs.entryDialog.showModal());
 }
 
 async function deleteRecord(id) {
