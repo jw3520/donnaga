@@ -1274,16 +1274,10 @@ function defaultSelectedDateForMonth(monthKey) {
 
 async function setCurrentMonth(monthKey, options = {}) {
   const direction = monthDirection(state.currentMonth, monthKey);
-  if (options.animate && direction !== 0) {
-    await animateCalendarTransition(direction);
-  }
   state.currentMonth = monthKey;
   state.selectedDate = defaultSelectedDateForMonth(state.currentMonth);
   await persistUiMeta();
   render();
-  if (options.animate && direction !== 0) {
-    await animateCalendarEntrance(direction);
-  }
 }
 
 async function shiftMonth(direction, options = {}) {
@@ -1298,32 +1292,6 @@ function monthDirection(currentMonth, nextMonth) {
   if (next > current) return 1;
   if (next < current) return -1;
   return 0;
-}
-
-async function animateCalendarTransition(direction) {
-  if (!refs.calendarGrid.animate) return;
-  const offset = direction > 0 ? -28 : 28;
-  const animation = refs.calendarGrid.animate(
-    [
-      { transform: "translateX(0)" },
-      { transform: `translateX(${offset}px)` },
-    ],
-    { duration: 160, easing: "ease-out", fill: "forwards" },
-  );
-  await animation.finished.catch(() => {});
-}
-
-async function animateCalendarEntrance(direction) {
-  if (!refs.calendarGrid.animate) return;
-  const offset = direction > 0 ? 28 : -28;
-  const animation = refs.calendarGrid.animate(
-    [
-      { transform: `translateX(${offset}px)` },
-      { transform: "translateX(0)" },
-    ],
-    { duration: 190, easing: "ease-out" },
-  );
-  await animation.finished.catch(() => {});
 }
 
 function onCalendarTouchStart(event) {
