@@ -1436,7 +1436,11 @@ function categoryOptionsForType(type) {
     .sort((left, right) => left.localeCompare(right, "ko-KR"))
     .map((category) => {
       seen.add(category);
-      const appearance = inferredCategoryMeta(category, type);
+      const appearance = inferredCategoryMeta(category, type) || {
+        label: category,
+        color: "#b8c1cc",
+        icon: "circle",
+      };
       return { id: category, label: appearance.label, color: appearance.color, icon: appearance.icon };
     });
   return [...base, ...dynamic];
