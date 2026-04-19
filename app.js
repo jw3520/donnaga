@@ -314,6 +314,9 @@ function bindEvents() {
   });
   refs.calendarCard.addEventListener("touchstart", onCalendarTouchStart, { passive: true });
   refs.calendarCard.addEventListener("touchend", onCalendarTouchEnd, { passive: true });
+  [refs.monthPickerDialog, refs.searchDialog, refs.filterDialog, refs.installDialog, refs.entryDialog].forEach(
+    bindBackdropClose,
+  );
 
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
@@ -337,6 +340,14 @@ function bindEvents() {
     refs.installDialog.close();
   });
   refs.installLaterButton.addEventListener("click", () => refs.installDialog.close());
+}
+
+function bindBackdropClose(dialog) {
+  if (!dialog) return;
+  dialog.addEventListener("click", (event) => {
+    if (event.target !== dialog) return;
+    dialog.close();
+  });
 }
 
 async function migrateLegacyLocalState() {
@@ -934,27 +945,26 @@ function resetEntryForm() {
 }
 
 function openEntryDialog() {
-  refs.entryForm.reset();
-  clearEntrySelections();
-  state.editingId = null;
-  refs.editingIdField.value = "";
-  refs.entryDeleteButton.classList.add("is-hidden");
+  resetEntryForm();
   refs.entryDialog.showModal();
 }
 
 function startEdit(id) {
   const transaction = state.transactions.find((item) => item.id === id);
   if (!transaction) return;
+  refs.entryForm.reset();
+  clearEntrySelections();
   state.editingId = id;
   refs.editingIdField.value = id;
   refs.entryDeleteButton.classList.remove("is-hidden");
+  refs.typeLabel.textContent = "내역 수정";
   setEntryType(transaction.type);
   setAmountValue(transaction.amount);
   setEntryCategory(transaction.category);
   setEntryMember(transaction.member);
   setEntryAccount(transaction.account);
   refs.dateField.value = transaction.date;
-  refs.entryForm.note.value = transaction.note;
+  refs.entryForm.elements.note.value = transaction.note || "";
   refs.entryDialog.showModal();
 }
 
