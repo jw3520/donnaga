@@ -1280,8 +1280,8 @@ function formatCompactCurrency(amount) {
 }
 
 function shortCurrency(amount) {
-  if (amount >= 10000) return `${Math.round(amount / 10000)}만`;
-  return `${Math.max(1, Math.round(amount / 1000))}천`;
+  if (amount >= 10000) return `${(amount / 10000).toFixed(1).replace(/\.0$/, "")}만`;
+  return `${Math.max(0.1, amount / 1000).toFixed(1).replace(/\.0$/, "")}천`;
 }
 
 function emptyState(title, description) {
