@@ -19,27 +19,27 @@ const ACCOUNTS = [
 
 const CATEGORY_META = {
   income: [
-    { id: "월급", label: "월급", color: "#6ec9df" },
-    { id: "용돈", label: "용돈", color: "#b9dc4f" },
-    { id: "환급", label: "환급", color: "#8f86d4" },
-    { id: "기타", label: "기타", color: "#58c3b7" },
+    { id: "월급", label: "월급", color: "#86d2d1", icon: "banknote" },
+    { id: "용돈", label: "용돈", color: "#c7dc73", icon: "wallet" },
+    { id: "환급", label: "환급", color: "#aea3d8", icon: "rotate-ccw" },
+    { id: "기타", label: "기타", color: "#7acfc4", icon: "plus" },
   ],
   expense: [
-    { id: "식비", label: "식비", color: "#6ed0b8" },
-    { id: "교통비", label: "교통비", color: "#ff7f87" },
-    { id: "문화생활", label: "여가", color: "#e27ab6" },
-    { id: "생필품", label: "생활", color: "#f3a45d" },
-    { id: "선물", label: "선물", color: "#6bc6db" },
-    { id: "의류", label: "의류", color: "#ff8cb2" },
-    { id: "의료/건강", label: "건강", color: "#72bf94" },
-    { id: "교육", label: "교육", color: "#a893cb" },
-    { id: "기타", label: "기타", color: "#f06d7c" },
-    { id: "집세", label: "주거", color: "#f3b55d" },
+    { id: "식비", label: "식비", color: "#e7c86a", icon: "utensils-crossed" },
+    { id: "교통비", label: "교통비", color: "#f29aa0", icon: "bus-front" },
+    { id: "문화생활", label: "여가/취미", color: "#d59ac3", icon: "music" },
+    { id: "생필품", label: "생활용품", color: "#e7b27d", icon: "shopping-cart" },
+    { id: "선물", label: "쇼핑", color: "#88c8d6", icon: "shopping-bag" },
+    { id: "의류", label: "미용", color: "#f1a7c0", icon: "sparkles" },
+    { id: "의료/건강", label: "의료/건강", color: "#8cc5a2", icon: "heart-pulse" },
+    { id: "교육", label: "교육", color: "#b4a0d0", icon: "book-open" },
+    { id: "기타", label: "기타", color: "#e48b95", icon: "minus" },
+    { id: "집세", label: "주거/공과금", color: "#dfbc7c", icon: "building-2" },
   ],
   transfer: [
-    { id: "저축", label: "저축", color: "#f3d45d" },
-    { id: "이월", label: "이월", color: "#f09d6d" },
-    { id: "계좌이체", label: "이체", color: "#7dc6ff" },
+    { id: "저축", label: "저축", color: "#e4d07b", icon: "piggy-bank" },
+    { id: "이월", label: "이월", color: "#e0ad86", icon: "corner-up-right" },
+    { id: "계좌이체", label: "이체", color: "#97cbe9", icon: "landmark" },
   ],
 };
 
@@ -62,17 +62,14 @@ const refs = {
   storageStatusLabel: document.querySelector("#storage-status-label"),
   remoteStatusLabel: document.querySelector("#remote-status-label"),
   syncDetailLabel: document.querySelector("#sync-detail-label"),
-  importStatusLabel: document.querySelector("#import-status-label"),
   manualSyncButton: document.querySelector("#manual-sync-button"),
-  importDefaultCsvButton: document.querySelector("#import-default-csv-button"),
-  openCsvImportButton: document.querySelector("#open-csv-import-button"),
-  wepleCsvInput: document.querySelector("#weple-csv-input"),
   calendarGrid: document.querySelector("#calendar-grid"),
   selectedDateTitle: document.querySelector("#selected-date-title"),
   recordsList: document.querySelector("#records-list"),
   recordsCaption: document.querySelector("#records-caption"),
   listRecordsList: document.querySelector("#list-records-list"),
   listRecordsCaption: document.querySelector("#list-records-caption"),
+  listSearchButton: document.querySelector("#list-search-button"),
   memoList: document.querySelector("#memo-list"),
   memoMonthLabel: document.querySelector("#memo-month-label"),
   memoAddButton: document.querySelector("#memo-add-button"),
@@ -126,6 +123,7 @@ const refs = {
   entryDialog: document.querySelector("#entry-dialog"),
   closeEntryButton: document.querySelector("#close-entry-button"),
   entryForm: document.querySelector("#entry-form"),
+  entryDeleteButton: document.querySelector("#entry-delete-button"),
   typeField: document.querySelector("#type-field"),
   typeLabel: document.querySelector("#entry-type-label"),
   typeChips: [...document.querySelectorAll(".type-chip")],
@@ -164,7 +162,6 @@ const state = {
   syncMessage: "로컬 준비 중",
   lastSyncedAt: null,
   syncDetailMessage: "",
-  importSummary: "아직 가져온 파일이 없습니다.",
 };
 
 let deferredInstallPrompt = null;
@@ -179,7 +176,6 @@ async function boot() {
   updateSyncUI("로컬 데이터베이스 준비 중", "idle");
   await migrateLegacyLocalState();
   await purgeSeedTransactions();
-  await autoImportDefaultCsvIfEmpty();
   await loadUiMeta();
   await loadTransactionsFromDb();
   render();
@@ -203,12 +199,13 @@ function populateStaticOptions() {
 function bindEvents() {
   refs.openAnalysisButton.addEventListener("click", () => switchScreen("analysis"));
   refs.closeAnalysisButton.addEventListener("click", () => switchScreen("calendar"));
-  refs.openMemoButton.addEventListener("click", () => switchScreen("memo"));
+  refs.openMemoButton.addEventListener("click", () => switchScreen("list"));
   refs.closeMemoButton.addEventListener("click", () => switchScreen("calendar"));
   refs.memoSearchButton.addEventListener("click", () => refs.searchDialog.showModal());
   refs.memoAddButton.addEventListener("click", openEntryDialog);
   refs.memoPrevMonthButton.addEventListener("click", () => shiftMonth(-1));
   refs.memoNextMonthButton.addEventListener("click", () => shiftMonth(1));
+  refs.listSearchButton.addEventListener("click", () => refs.searchDialog.showModal());
 
   refs.openMonthPickerButton.addEventListener("click", () => {
     renderMonthPicker();
@@ -243,10 +240,6 @@ function bindEvents() {
     await fullSyncCycle();
   });
 
-  refs.openCsvImportButton.addEventListener("click", () => refs.wepleCsvInput.click());
-  refs.wepleCsvInput.addEventListener("change", onCsvSelected);
-  refs.importDefaultCsvButton.addEventListener("click", onImportDefaultCsv);
-
   refs.screenButtons.forEach((button) => {
     button.addEventListener("click", () => switchScreen(button.dataset.screenTarget));
   });
@@ -273,6 +266,11 @@ function bindEvents() {
   refs.closeEntryButton.addEventListener("click", () => refs.entryDialog.close());
   refs.entryForm.addEventListener("submit", onSubmitEntry);
   refs.entryForm.addEventListener("reset", () => requestAnimationFrame(resetEntryForm));
+  refs.entryDeleteButton.addEventListener("click", async () => {
+    if (!state.editingId) return;
+    refs.entryDialog.close();
+    await deleteRecord(state.editingId);
+  });
   refs.typeChips.forEach((chip) => chip.addEventListener("click", () => setEntryType(chip.dataset.typeValue)));
 
   window.addEventListener("beforeinstallprompt", (event) => {
@@ -321,7 +319,7 @@ async function migrateLegacyLocalState() {
   }
   await setMeta("legacyMigrated", true);
   if (migratedCount) {
-    state.importSummary = `기존 localStorage 데이터 ${migratedCount}건을 IndexedDB로 이전했습니다.`;
+    state.syncDetailMessage = `기존 localStorage 데이터 ${migratedCount}건을 IndexedDB로 이전했습니다.`;
   }
 }
 
@@ -339,23 +337,7 @@ async function purgeSeedTransactions() {
     ),
   );
   await db.transactions.bulkPut(tombstones);
-  state.importSummary = `기존 더미 데이터 ${seedRows.length}건을 정리했습니다.`;
-}
-
-async function autoImportDefaultCsvIfEmpty() {
-  const activeCount = await db.transactions.filter((item) => !item.deleted).count();
-  if (activeCount > 0) return;
-  try {
-    const response = await fetch("./origin_data/weple_2026-04-19.csv");
-    if (!response.ok) return;
-    const blob = await response.blob();
-    const file = new File([blob], "weple_2026-04-19.csv", { type: "text/csv" });
-    const imported = await importWepleCsv(file, { replaceExisting: true });
-    state.importSummary = `기본 CSV에서 ${imported.inserted}건을 자동 가져왔습니다.`;
-    await setMeta("importSummary", state.importSummary);
-  } catch {
-    // Ignore when the local origin_data file is unavailable.
-  }
+  state.syncDetailMessage = `기존 더미 데이터 ${seedRows.length}건을 정리했습니다.`;
 }
 
 async function loadUiMeta() {
@@ -367,7 +349,6 @@ async function loadUiMeta() {
   state.analysisMode = savedUi.analysisMode || state.analysisMode;
   state.filters = savedUi.filters || state.filters;
   state.lastSyncedAt = (await getMeta("lastSyncedAt")) || null;
-  state.importSummary = (await getMeta("importSummary")) || state.importSummary;
 }
 
 async function persistUiMeta() {
@@ -385,7 +366,6 @@ async function loadTransactionsFromDb() {
   state.transactions = await db.transactions.orderBy("date").reverse().toArray();
   refs.storageStatusLabel.textContent = `IndexedDB에 ${state.transactions.filter((item) => !item.deleted).length}건 저장됨`;
   refs.remoteStatusLabel.textContent = navigator.onLine ? "Cloudflare D1 동기화 가능" : "오프라인";
-  refs.importStatusLabel.textContent = state.importSummary;
   refs.syncDetailLabel.textContent = state.lastSyncedAt
     ? `마지막 동기화 ${formatDateTime(state.lastSyncedAt)}`
     : "마지막 동기화 기록 없음";
@@ -407,7 +387,7 @@ function render() {
 
 function renderMonthLabels() {
   refs.monthTitleLabel.textContent = shortMonthLabel(state.currentMonth);
-  refs.memoMonthLabel.textContent = shortMonthLabel(state.currentMonth);
+  if (refs.memoMonthLabel) refs.memoMonthLabel.textContent = shortMonthLabel(state.currentMonth);
   refs.analysisMonthLabel.textContent = shortMonthLabel(state.currentMonth);
   refs.analysisRangeLabel.textContent = monthRangeLabel(state.currentMonth);
   refs.listRecordsCaption.textContent = `${monthLabel(state.currentMonth)} 전체 내역`;
@@ -451,6 +431,7 @@ function renderCalendar() {
     const dateObj = new Date(`${date}T00:00:00`);
     const classes = ["calendar-day"];
     if (date === state.selectedDate) classes.push("is-selected");
+    if (date === todayISO()) classes.push("is-today");
     if (dateObj.getDay() === 0) classes.push("is-sunday");
     if (dateObj.getDay() === 6) classes.push("is-saturday");
     cells.push(`
@@ -486,7 +467,12 @@ function renderListRecords() {
 function renderMemo() {
   const items = getMonthTransactions().filter((item) => item.note && item.note.trim());
   if (!items.length) {
-    refs.memoList.innerHTML = emptyState("메모가 없습니다.", "메모가 있는 내역이 여기에 표시됩니다.");
+    refs.memoList.innerHTML = `
+      <div class="memo-empty-state">
+        <div class="memo-empty-state__icon"></div>
+        <p>메모가 없습니다.</p>
+      </div>
+    `;
     return;
   }
   refs.memoList.innerHTML = items
@@ -504,19 +490,20 @@ function renderMemo() {
 
 function renderAssets() {
   const items = getFilteredMonthTransactions();
-  refs.assetList.innerHTML = ACCOUNTS.map((account) => {
-    const delta = items
-      .filter((item) => item.account === account.id)
-      .reduce((total, item) => total + (item.type === "expense" ? -item.amount : item.amount), 0);
+  refs.assetList.innerHTML = BUDGETS.map((budget) => {
+    const spent = items.filter((item) => budget.items.includes(item.category)).reduce((sum, item) => sum + item.amount, 0);
+    const progress = Math.min(100, Math.round((spent / budget.limit) * 100) || 0);
     return `
       <article class="asset-row">
-        <div class="stack">
-          <strong>${account.name}</strong>
-          <p>${account.type}</p>
+        <div class="asset-row__top">
+          <div class="asset-row__text">
+            <strong>${budget.category}</strong>
+            <p>${formatCurrency(spent)} / ${formatCurrency(budget.limit)}</p>
+          </div>
+          <strong>${progress}%</strong>
         </div>
-        <div class="stack">
-          <strong>${formatCurrency(delta)}</strong>
-          <p>${items.filter((item) => item.account === account.id).length}건</p>
+        <div class="asset-row__progress">
+          <div class="asset-row__progress-bar" style="width:${progress}%"></div>
         </div>
       </article>
     `;
@@ -540,11 +527,18 @@ function renderAnalysis() {
   refs.budgetLimitTotal.textContent = formatCurrency(BUDGETS.reduce((sum, item) => sum + item.limit, 0));
   refs.budgetList.innerHTML = BUDGETS.map((budget) => {
     const spent = items.filter((item) => budget.items.includes(item.category)).reduce((sum, item) => sum + item.amount, 0);
+    const progress = Math.min(100, Math.round((spent / budget.limit) * 100) || 0);
     return `
       <article class="budget-row">
-        <div class="stack">
-          <strong>${budget.category}</strong>
-          <p>${formatCurrency(spent)} / ${formatCurrency(budget.limit)}</p>
+        <div class="asset-row__top">
+          <div class="asset-row__text">
+            <strong>${budget.category}</strong>
+            <p>${formatCurrency(spent)} / ${formatCurrency(budget.limit)}</p>
+          </div>
+          <strong>${progress}%</strong>
+        </div>
+        <div class="budget-row__progress">
+          <div class="budget-row__progress-bar ${spent > budget.limit ? "is-over" : ""}" style="width:${progress}%"></div>
         </div>
       </article>
     `;
@@ -620,14 +614,22 @@ function renderRecordCollection(container, items, mode) {
 
 function createRecordElement(item) {
   const fragment = refs.recordTemplate.content.cloneNode(true);
+  const card = fragment.querySelector(".record-card");
+  const categoryIcon = fragment.querySelector("[data-category-icon]");
+  const appearance = categoryAppearance(item.category, item.type);
+  categoryIcon.style.background = appearance.color;
+  categoryIcon.innerHTML = renderCategoryIcon(item.category, item.type);
   fragment.querySelector(".record-card__category").textContent = `${memberName(item.member)} · ${item.category}`;
   fragment.querySelector(".record-card__note").textContent = item.note;
   const amount = fragment.querySelector(".record-card__amount");
   amount.textContent = `${item.type === "expense" ? "-" : "+"}${formatCurrency(item.amount)}`;
   amount.classList.add(`is-${item.type}`);
   fragment.querySelector(".record-card__meta").textContent = `${item.date} · ${accountName(item.account)}`;
-  fragment.querySelector(".record-edit-button").addEventListener("click", () => startEdit(item.id));
-  fragment.querySelector(".record-delete-button").addEventListener("click", () => deleteRecord(item.id));
+  card.addEventListener("click", () => startEdit(item.id));
+  fragment.querySelector(".record-delete-button").addEventListener("click", (event) => {
+    event.stopPropagation();
+    void deleteRecord(item.id);
+  });
   return fragment;
 }
 
@@ -667,7 +669,9 @@ function renderCategoryChipGroup(container, items, type) {
       (item) => `
         <label class="icon-chip">
           <input type="checkbox" data-filter-category="${item.id}" data-filter-type="${type}" />
-          <span class="icon-chip__badge" style="background:${item.color}">${item.label.slice(0, 2)}</span>
+          <span class="icon-chip__badge" style="background:${item.color}">
+            <i data-lucide="${item.icon || "circle"}"></i>
+          </span>
           <span class="icon-chip__label">${item.label}</span>
         </label>
       `,
@@ -715,186 +719,22 @@ async function onSearchSubmit(event) {
         .map(
           (item) => `
             <article class="record-card">
-              <div class="record-card__top">
-                <div>
+              <div class="record-card__leading">
+                <div class="record-card__icon" style="background:${categoryAppearance(item.category, item.type).color}">
+                  <i data-lucide="${categoryAppearance(item.category, item.type).icon}"></i>
+                </div>
+                <div class="record-card__content">
                   <p class="record-card__category">${item.category}</p>
                   <h3 class="record-card__note">${item.note}</h3>
+                  <div class="record-card__meta">${item.date} · ${accountName(item.account)}</div>
                 </div>
-                <strong class="record-card__amount is-${item.type}">${formatCurrency(item.amount)}</strong>
+                <strong class="record-card__amount is-${item.type}">${item.type === "expense" ? "-" : "+"}${formatCurrency(item.amount)}</strong>
               </div>
-              <div class="record-card__meta">${item.date} · ${accountName(item.account)}</div>
             </article>
           `,
         )
         .join("")
     : emptyState("검색 결과가 없습니다.", "조건을 바꿔 다시 검색해 보세요.");
-}
-
-async function onCsvSelected(event) {
-  const file = event.target.files?.[0];
-  if (!file) return;
-  try {
-    updateSyncUI("CSV 파싱 중", "syncing");
-    const imported = await importWepleCsv(file, { replaceExisting: true });
-    state.importSummary = `${file.name}에서 ${imported.inserted}건 가져오고 ${imported.replaced}건을 교체했습니다.`;
-    await setMeta("importSummary", state.importSummary);
-    refs.importStatusLabel.textContent = state.importSummary;
-    await loadTransactionsFromDb();
-    render();
-    await pushPendingToServer();
-  } catch (error) {
-    state.importSummary = `가져오기 실패: ${error.message}`;
-    refs.importStatusLabel.textContent = state.importSummary;
-    updateSyncUI("CSV 가져오기 실패", "error");
-  } finally {
-    refs.wepleCsvInput.value = "";
-  }
-}
-
-async function onImportDefaultCsv() {
-  try {
-    updateSyncUI("기본 CSV 불러오는 중", "syncing");
-    const response = await fetch("./origin_data/weple_2026-04-19.csv");
-    if (!response.ok) {
-      throw new Error("origin_data/weple_2026-04-19.csv 파일을 찾지 못했습니다.");
-    }
-    const blob = await response.blob();
-    const file = new File([blob], "weple_2026-04-19.csv", { type: "text/csv" });
-    const imported = await importWepleCsv(file, { replaceExisting: true });
-    state.importSummary = `origin_data/weple_2026-04-19.csv에서 ${imported.inserted}건 가져오고 ${imported.replaced}건을 교체했습니다.`;
-    await setMeta("importSummary", state.importSummary);
-    await loadTransactionsFromDb();
-    render();
-    await pushPendingToServer();
-  } catch (error) {
-    state.importSummary = `기본 CSV 불러오기 실패: ${error.message}`;
-    refs.importStatusLabel.textContent = state.importSummary;
-    updateSyncUI("기본 CSV 불러오기 실패", "error");
-  }
-}
-
-async function importWepleCsv(file, options = {}) {
-  const buffer = await file.arrayBuffer();
-  const utf8Text = decodeBuffer(buffer, "utf-8");
-  const fallbackText = utf8LooksBroken(utf8Text) ? decodeBuffer(buffer, "euc-kr") : utf8Text;
-  const parsed = await parseCsvText(fallbackText);
-  const rows = parsed.data.filter((row) => getCsvValue(row, "거래일"));
-  const incoming = rows.map(mapWepleRowToTransaction).filter(Boolean);
-  let replaced = 0;
-
-  if (options.replaceExisting) {
-    const current = await db.transactions.filter((item) => !item.deleted).toArray();
-    replaced = current.length;
-    if (current.length) {
-      const tombstones = current.map((item) =>
-        normalizeTransaction(
-          {
-            ...item,
-            deleted: 1,
-            updated_at: Date.now(),
-          },
-          true,
-        ),
-      );
-      await db.transactions.bulkPut(tombstones);
-      await pushPendingToServer();
-    }
-  }
-
-  const existingFingerprints = new Set(
-    (await db.transactions.filter((item) => !item.deleted).toArray()).map((item) => item.fingerprint),
-  );
-  const deduped = incoming.filter((item) => !existingFingerprints.has(item.fingerprint));
-  if (deduped.length) {
-    await db.transactions.bulkPut(deduped);
-  }
-  return { inserted: deduped.length, duplicates: incoming.length - deduped.length, replaced };
-}
-
-function decodeBuffer(buffer, encoding) {
-  return new TextDecoder(encoding, { fatal: false }).decode(buffer).replace(/^\uFEFF/, "");
-}
-
-function utf8LooksBroken(text) {
-  return text.includes("�") || text.includes("\u0000");
-}
-
-function parseCsvText(text) {
-  return new Promise((resolve, reject) => {
-    window.Papa.parse(text, {
-      header: true,
-      skipEmptyLines: true,
-      transformHeader: (header) => String(header || "").replace(/^\uFEFF/, "").trim(),
-      transform: (value) => (typeof value === "string" ? value.trim() : value),
-      complete: resolve,
-      error: reject,
-    });
-  });
-}
-
-function mapWepleRowToTransaction(row) {
-  const user = getCsvValue(row, "사용자");
-  const date = getCsvValue(row, "거래일");
-  if (!date) return null;
-  const amount = Number(String(getCsvValue(row, "금액", "0")).replace(/[^\d.-]/g, ""));
-  if (!amount) return null;
-  const type = mapWepleType(getCsvValue(row, "수입/지출"));
-  const category = getCsvValue(row, "분류", "기타") || "기타";
-  const subCategory = getCsvValue(row, "하위 분류");
-  const memo = getCsvValue(row, "메모");
-  const note = getCsvValue(row, "내역", memo || category) || category;
-  const paymentMethod = getCsvValue(row, "지불");
-  const cardName = getCsvValue(row, "카드");
-
-  return normalizeTransaction(
-    {
-      id: crypto.randomUUID(),
-      member: mapWepleMember(user),
-      date,
-      type,
-      amount,
-      category,
-      sub_category: subCategory,
-      note,
-      payment_method: paymentMethod,
-      card_name: cardName,
-      memo,
-      account: mapPaymentToAccount(paymentMethod, cardName),
-    },
-    true,
-  );
-}
-
-function getCsvValue(row, key, fallback = "") {
-  const exact = row[key];
-  if (exact != null && exact !== "") return String(exact).trim();
-
-  const normalizedKey = String(key).trim();
-  for (const [candidateKey, candidateValue] of Object.entries(row)) {
-    if (String(candidateKey).trim() === normalizedKey && candidateValue != null && candidateValue !== "") {
-      return String(candidateValue).trim();
-    }
-  }
-  return String(fallback).trim();
-}
-
-function mapWepleType(value) {
-  if (value === "수입") return "income";
-  if (value === "이체") return "transfer";
-  return "expense";
-}
-
-function mapWepleMember(value) {
-  return value === "Default" || value === "나" ? "jw" : "partner";
-}
-
-function mapPaymentToAccount(paymentMethod, cardName) {
-  const label = paymentMethod || cardName;
-  if (label.includes("현금")) return "cash";
-  if (label.includes("체크")) return "debit-card";
-  if (label.includes("카드")) return "credit-card";
-  if (label.includes("이체")) return "bank-transfer";
-  return "other";
 }
 
 async function onSubmitEntry(event) {
@@ -938,10 +778,14 @@ function setEntryType(type) {
 function resetEntryForm() {
   refs.entryForm.reset();
   refs.dateField.value = todayISO();
+  state.editingId = null;
+  refs.entryDeleteButton.classList.add("is-hidden");
   setEntryType("expense");
 }
 
 function openEntryDialog() {
+  state.editingId = null;
+  refs.entryDeleteButton.classList.add("is-hidden");
   refs.entryDialog.showModal();
   refs.amountInput.focus();
 }
@@ -950,6 +794,7 @@ function startEdit(id) {
   const transaction = state.transactions.find((item) => item.id === id);
   if (!transaction) return;
   state.editingId = id;
+  refs.entryDeleteButton.classList.remove("is-hidden");
   setEntryType(transaction.type);
   refs.amountInput.value = transaction.amount;
   refs.categoryField.value = transaction.category;
@@ -963,6 +808,10 @@ function startEdit(id) {
 async function deleteRecord(id) {
   const transaction = state.transactions.find((item) => item.id === id);
   if (!transaction) return;
+  if (state.editingId === id) {
+    state.editingId = null;
+    refs.entryDeleteButton.classList.add("is-hidden");
+  }
   await db.transactions.delete(id);
   state.transactions = state.transactions.filter((item) => item.id !== id);
   render();
@@ -1252,6 +1101,19 @@ function memberName(id) {
 
 function accountName(id) {
   return ACCOUNTS.find((account) => account.id === id)?.name || id;
+}
+
+function categoryAppearance(category, type) {
+  return CATEGORY_META[type]?.find((item) => item.id === category)
+    || CATEGORY_META.expense.find((item) => item.id === category)
+    || CATEGORY_META.income.find((item) => item.id === category)
+    || CATEGORY_META.transfer.find((item) => item.id === category)
+    || { color: "#b8c1cc", icon: "circle", label: category };
+}
+
+function renderCategoryIcon(category, type) {
+  const appearance = categoryAppearance(category, type);
+  return `<i data-lucide="${appearance.icon}"></i>`;
 }
 
 function defaultNote(category) {

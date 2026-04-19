@@ -6,12 +6,17 @@
     <meta name="theme-color" content="#52c4b9" />
     <meta name="color-scheme" content="light" />
     <meta name="description" content="둘이 함께 쓰는 생활형 PWA 가계부" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./icons/icon-192.svg" />
     <link rel="stylesheet" href="./styles.css" />
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
-    <script src="https://unpkg.com/papaparse/papaparse.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <title>DonnaGa</title>
   </head>
@@ -24,8 +29,8 @@
               <button class="top-icon" id="open-analysis-button" type="button" aria-label="통계">
                 <i data-lucide="chart-column"></i>
               </button>
-              <button class="top-icon" id="open-memo-button" type="button" aria-label="메모">
-                <i data-lucide="file-text"></i>
+              <button class="top-icon" id="open-memo-button" type="button" aria-label="가계부">
+                <i data-lucide="list"></i>
               </button>
             </div>
 
@@ -43,10 +48,6 @@
               </button>
             </div>
           </header>
-          <div class="sync-strip">
-            <span class="sync-strip__dot" id="sync-dot"></span>
-            <span id="sync-status-label">로컬 준비 중</span>
-          </div>
 
           <section class="hero-summary">
             <div class="hero-summary__topline">
@@ -88,11 +89,16 @@
         </section>
 
         <section class="screen" data-screen="list">
-          <header class="screen-header">
-            <h2>월간 내역</h2>
-            <p id="list-records-caption">4월 전체 내역</p>
+          <header class="subscreen-header">
+            <div class="subscreen-header__title">
+              <h2>가계부</h2>
+              <p id="list-records-caption">4월 전체 내역</p>
+            </div>
+            <button class="header-icon-button" id="list-search-button" type="button" aria-label="검색">
+              <i data-lucide="search"></i>
+            </button>
           </header>
-          <section class="panel panel--flat">
+          <section class="panel panel--ledger">
             <div id="list-records-list" class="records-list"></div>
           </section>
         </section>
@@ -125,22 +131,29 @@
         </section>
 
         <section class="screen" data-screen="assets">
-          <header class="screen-header">
-            <h2>자산</h2>
-            <p>결제수단별 이번 달 흐름</p>
+          <header class="subscreen-header">
+            <div class="subscreen-header__title">
+              <h2>예산</h2>
+              <p>카테고리별 이번 달 사용 현황</p>
+            </div>
           </header>
-          <section class="panel">
+          <section class="panel panel--budget-home">
             <div id="asset-list" class="asset-list"></div>
           </section>
         </section>
 
         <section class="screen" data-screen="settings">
-          <header class="screen-header">
+          <header class="subscreen-header">
             <h2>설정</h2>
-            <p>공유 사용을 위한 데이터 상태</p>
           </header>
-          <section class="panel">
+          <section class="panel panel--settings">
             <div class="settings-list">
+              <article class="settings-row settings-row--status">
+                <div class="stack">
+                  <strong>동기화 상태</strong>
+                  <p class="settings-inline-status"><span class="sync-strip__dot" id="sync-dot"></span><span id="sync-status-label">로컬 준비 중</span></p>
+                </div>
+              </article>
               <article class="settings-row">
                 <div class="stack">
                   <strong>데이터 저장</strong>
@@ -155,27 +168,10 @@
               </article>
               <article class="settings-row">
                 <div class="stack">
-                  <strong>동기화 상태</strong>
+                  <strong>최근 동기화</strong>
                   <p id="sync-detail-label">마지막 동기화 기록 없음</p>
                 </div>
                 <button class="secondary-button" id="manual-sync-button" type="button">지금 동기화</button>
-              </article>
-              <article class="settings-row settings-row--import">
-                <div class="stack">
-                  <strong>위플 CSV 가져오기</strong>
-                  <p>CSV를 업로드하거나 로컬 `origin_data/weple_2026-04-19.csv`를 불러와 로컬 DB와 D1에 반영합니다.</p>
-                </div>
-                <div class="settings-import-actions">
-                  <input id="weple-csv-input" type="file" accept=".csv" hidden />
-                  <button class="secondary-button" id="import-default-csv-button" type="button">기본 CSV 불러오기</button>
-                  <button class="primary-button" id="open-csv-import-button" type="button">CSV 선택</button>
-                </div>
-              </article>
-              <article class="settings-row">
-                <div class="stack">
-                  <strong>가져오기 결과</strong>
-                  <p id="import-status-label">아직 가져온 파일이 없습니다.</p>
-                </div>
               </article>
             </div>
           </section>
@@ -430,6 +426,7 @@
         </div>
 
         <div class="entry-form__actions">
+          <button class="ghost-button is-hidden" id="entry-delete-button" type="button">삭제</button>
           <button class="secondary-button" id="reset-form-button" type="reset">초기화</button>
           <button class="primary-button" type="submit">저장</button>
         </div>
@@ -438,17 +435,19 @@
 
     <template id="record-item-template">
       <article class="record-card">
-        <div class="record-card__top">
-          <div>
+        <div class="record-card__leading">
+          <div class="record-card__icon" data-category-icon></div>
+          <div class="record-card__content">
             <p class="record-card__category"></p>
             <h3 class="record-card__note"></h3>
+            <div class="record-card__meta"></div>
           </div>
           <strong class="record-card__amount"></strong>
         </div>
-        <div class="record-card__meta"></div>
         <div class="record-card__actions">
-          <button class="ghost-button ghost-button--small record-edit-button" type="button">수정</button>
-          <button class="ghost-button ghost-button--small record-delete-button" type="button">삭제</button>
+          <button class="ghost-button ghost-button--icon record-delete-button" type="button" aria-label="삭제">
+            <i data-lucide="minus"></i>
+          </button>
         </div>
       </article>
     </template>
