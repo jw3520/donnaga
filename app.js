@@ -973,6 +973,10 @@ function startEdit(id) {
 async function deleteRecord(id) {
   const transaction = state.transactions.find((item) => item.id === id);
   if (!transaction) return;
+  const confirmed = window.confirm(
+    `'${transaction.note || transaction.category}' 내역을 삭제할까요?\n삭제 후 동기화되면 되돌리기 어렵습니다.`,
+  );
+  if (!confirmed) return;
   if (state.editingId === id) {
     state.editingId = null;
     refs.entryDeleteButton.classList.add("is-hidden");
