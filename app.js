@@ -29,7 +29,7 @@ const CATEGORY_META = {
   expense: [
     { id: "식비", label: "식비", color: "#ffd89b", icon: "utensils-crossed" },
     { id: "교통비", label: "교통비", color: "#ffb4bf", icon: "bus-front" },
-    { id: "문화생활", label: "여가/취미", color: "#e6b8ef", icon: "music" },
+    { id: "문화생활", label: "여가/취미", color: "#e6b8ef", icon: "gamepad-2" },
     { id: "생필품", label: "생활용품", color: "#f3c6a1", icon: "shopping-basket" },
     { id: "반려동물", label: "반려동물", color: "#c9d7ff", icon: "paw-print" },
     { id: "선물", label: "쇼핑", color: "#a8dff0", icon: "gift" },
@@ -1538,7 +1538,7 @@ function inferredCategoryMeta(category, type) {
       "경조사": { color: "#f4b2ba", icon: "hand-heart", label: "경조사" },
       "생활용품": { color: "#f3c6a1", icon: "shopping-basket", label: "생활용품" },
       "쇼핑": { color: "#a8dff0", icon: "gift", label: "쇼핑" },
-      "여가/취미": { color: "#e6b8ef", icon: "music", label: "여가/취미" },
+      "여가/취미": { color: "#e6b8ef", icon: "gamepad-2", label: "여가/취미" },
       "주거/공과금": { color: "#f1d7a6", icon: "house", label: "주거/공과금" },
     },
     income: {},
