@@ -824,19 +824,24 @@ async function onSearchSubmit(event) {
 
 async function onSubmitEntry(event) {
   event.preventDefault();
-  const formData = new FormData(refs.entryForm);
-  const category = String(formData.get("category") || "");
-  const editingId = String(formData.get("editing_id") || state.editingId || "");
+  const category = String(refs.categoryField.value || "");
+  const editingId = String(refs.editingIdField.value || state.editingId || "");
+  const type = String(refs.typeField.value || "");
+  const member = String(refs.memberField.value || "");
+  const account = String(refs.accountField.value || "");
+  const date = String(refs.dateField.value || "");
+  const amount = Number(refs.amountInput.value || 0);
+  const note = String(refs.entryForm.elements.note.value || "").trim();
   const transaction = normalizeTransaction(
     {
       id: editingId || crypto.randomUUID(),
-      type: String(formData.get("type")),
-      amount: Number(formData.get("amount")),
+      type,
+      amount,
       category,
-      member: String(formData.get("member")),
-      account: String(formData.get("account")),
-      date: String(formData.get("date")),
-      note: String(formData.get("note") || "").trim() || defaultNote(category),
+      member,
+      account,
+      date,
+      note: note || defaultNote(category),
     },
     true,
   );
@@ -931,11 +936,11 @@ function setAmountValue(value) {
 }
 
 function resetEntryForm() {
-  refs.entryForm.reset();
   state.editingId = null;
   refs.editingIdField.value = "";
   refs.entryDeleteButton.classList.add("is-hidden");
   clearEntrySelections();
+  refs.entryForm.elements.note.value = "";
 }
 
 function openEntryDialog() {
@@ -946,8 +951,7 @@ function openEntryDialog() {
 function startEdit(id) {
   const transaction = state.transactions.find((item) => item.id === id);
   if (!transaction) return;
-  refs.entryForm.reset();
-  clearEntrySelections();
+  resetEntryForm();
   state.editingId = id;
   refs.editingIdField.value = id;
   refs.entryDeleteButton.classList.remove("is-hidden");
