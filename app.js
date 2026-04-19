@@ -1103,8 +1103,10 @@ function getFilteredMonthTransactions() {
 
 function applyFilters(items) {
   return items.filter((item) => {
-    const typeAllowed = state.filters.types.includes(item.type);
     const categoryAllowed = state.filters.categories.length === 0 || state.filters.categories.includes(item.category);
+    const typeAllowed = state.filters.types.includes(item.type) || (
+      state.filters.categories.length > 0 && state.filters.categories.includes(item.category)
+    );
     return typeAllowed && categoryAllowed;
   });
 }
