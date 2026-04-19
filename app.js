@@ -128,11 +128,11 @@ const refs = {
   closeEntryButton: document.querySelector("#close-entry-button"),
   entryForm: document.querySelector("#entry-form"),
   entryDeleteButton: document.querySelector("#entry-delete-button"),
+  resetFormButton: document.querySelector("#reset-form-button"),
   editingIdField: document.querySelector("#editing-id-field"),
   typeField: document.querySelector("#type-field"),
   typeLabel: document.querySelector("#entry-type-label"),
   typeChips: [...document.querySelectorAll(".type-chip")],
-  amountBox: document.querySelector("#entry-amount-box"),
   amountInput: document.querySelector(".amount-input"),
   categoryField: document.querySelector("#category-field"),
   memberField: document.querySelector("#member-field"),
@@ -283,7 +283,7 @@ function bindEvents() {
   refs.openEntryButton.addEventListener("click", openEntryDialog);
   refs.closeEntryButton.addEventListener("click", () => refs.entryDialog.close());
   refs.entryForm.addEventListener("submit", onSubmitEntry);
-  refs.entryForm.addEventListener("reset", () => requestAnimationFrame(resetEntryForm));
+  refs.resetFormButton.addEventListener("click", resetEntryForm);
   refs.entryDeleteButton.addEventListener("click", async () => {
     if (!state.editingId) return;
     refs.entryDialog.close();
@@ -305,12 +305,6 @@ function bindEvents() {
   });
   refs.amountInput.addEventListener("input", () => {
     setAmountValue(refs.amountInput.value);
-  });
-  refs.amountBox.addEventListener("click", () => refs.amountInput.focus());
-  refs.amountBox.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    event.preventDefault();
-    refs.amountInput.focus();
   });
   refs.calendarCard.addEventListener("touchstart", onCalendarTouchStart, { passive: true });
   refs.calendarCard.addEventListener("touchend", onCalendarTouchEnd, { passive: true });
