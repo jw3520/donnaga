@@ -1444,7 +1444,6 @@ function renderAnalysisDonut(items) {
   `;
   refs.analysisDonutInner.textContent = `${grouped[0].percent.toFixed(1)}%`;
   refs.analysisCategoryBreakdown.innerHTML = grouped
-    .slice(0, 6)
     .map((item) => `
       <article class="analysis-category-row">
         <div class="analysis-category-row__label">
