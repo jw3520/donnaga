@@ -90,6 +90,8 @@ const refs = {
   analysisMonthLabel: document.querySelector("#analysis-month-label"),
   analysisRangeLabel: document.querySelector("#analysis-range-label"),
   analysisModeSwitch: document.querySelector("#analysis-mode-switch"),
+  analysisPrimaryLabel: document.querySelector("#analysis-primary-label"),
+  analysisSecondaryLabel: document.querySelector("#analysis-secondary-label"),
   analysisCopyButton: document.querySelector("#analysis-copy-button"),
   analysisCardSwitch: document.querySelector("#analysis-card-switch"),
   analysisExpenseTotal: document.querySelector("#analysis-expense-total"),
@@ -643,14 +645,19 @@ function renderAnalysis() {
   const items = getFilteredMonthTransactions();
   const sourceItems =
     state.analysisMode === "income" ? items.filter((item) => item.type === "income") : items.filter((item) => item.type !== "income");
-  refs.analysisExpenseTotal.textContent = formatCurrency(
-    sourceItems.filter((item) => item.type === "expense").reduce((sum, item) => sum + item.amount, 0),
-  );
-  refs.analysisTransferTotal.textContent = formatCurrency(
-    sourceItems.filter((item) => item.type === "transfer").reduce((sum, item) => sum + item.amount, 0),
-  );
+  if (state.analysisMode === "income") {
+    refs.analysisPrimaryLabel.textContent = `${Number(state.currentMonth.slice(5, 7))}월 수입`;
+    refs.analysisSecondaryLabel.textContent = "건수";
+    refs.analysisExpenseTotal.textContent = formatCurrency(sumByType(sourceItems, "income"));
+    refs.analysisTransferTotal.textContent = `${sourceItems.length}건`;
+  } else {
+    refs.analysisPrimaryLabel.textContent = `${Number(state.currentMonth.slice(5, 7))}월 지출`;
+    refs.analysisSecondaryLabel.textContent = "저축";
+    refs.analysisExpenseTotal.textContent = formatCurrency(sumByType(sourceItems, "expense"));
+    refs.analysisTransferTotal.textContent = formatCurrency(sumByType(sourceItems, "transfer"));
+  }
   refs.analysisEmptyText.textContent = sourceItems.length ? "기록이 있습니다." : "내역이 없습니다.";
-  renderAnalysisDonut(items);
+  renderAnalysisDonut(sourceItems, state.analysisMode);
 
   const budgetExpense = sumByType(items, "expense");
   refs.budgetExpenseTotal.textContent = formatCurrency(budgetExpense);
@@ -1438,9 +1445,9 @@ function monthKeyFromDate(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function renderAnalysisDonut(items) {
-  const expenseItems = items.filter((item) => item.type === "expense");
-  const total = expenseItems.reduce((sum, item) => sum + item.amount, 0);
+function renderAnalysisDonut(items, mode = "expense") {
+  const chartItems = items.filter((item) => item.type === mode);
+  const total = chartItems.reduce((sum, item) => sum + item.amount, 0);
   if (!total) {
     refs.analysisDonutChart.style.background = "radial-gradient(circle at center, #fff 0 26%, transparent 27%), #f6f6f6";
     refs.analysisDonutInner.textContent = "0.0%";
@@ -1450,7 +1457,7 @@ function renderAnalysisDonut(items) {
   }
 
   const grouped = Object.entries(
-    expenseItems.reduce((acc, item) => {
+    chartItems.reduce((acc, item) => {
       acc[item.category] = (acc[item.category] || 0) + item.amount;
       return acc;
     }, {}),
@@ -1459,7 +1466,7 @@ function renderAnalysisDonut(items) {
       category,
       amount,
       percent: (amount / total) * 100,
-      appearance: categoryAppearance(category, "expense"),
+      appearance: categoryAppearance(category, mode),
     }))
     .sort((left, right) => right.amount - left.amount);
 
