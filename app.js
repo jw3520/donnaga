@@ -131,6 +131,7 @@ const refs = {
   typeField: document.querySelector("#type-field"),
   typeLabel: document.querySelector("#entry-type-label"),
   typeChips: [...document.querySelectorAll(".type-chip")],
+  amountBox: document.querySelector("#entry-amount-box"),
   amountInput: document.querySelector(".amount-input"),
   categoryField: document.querySelector("#category-field"),
   memberField: document.querySelector("#member-field"),
@@ -303,6 +304,12 @@ function bindEvents() {
   });
   refs.amountInput.addEventListener("input", () => {
     setAmountValue(refs.amountInput.value);
+  });
+  refs.amountBox.addEventListener("click", () => refs.amountInput.focus());
+  refs.amountBox.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    refs.amountInput.focus();
   });
   refs.calendarCard.addEventListener("touchstart", onCalendarTouchStart, { passive: true });
   refs.calendarCard.addEventListener("touchend", onCalendarTouchEnd, { passive: true });
@@ -926,7 +933,6 @@ function openEntryDialog() {
   state.editingId = null;
   refs.entryDeleteButton.classList.add("is-hidden");
   refs.entryDialog.showModal();
-  requestAnimationFrame(() => refs.amountInput.focus());
 }
 
 function startEdit(id) {
