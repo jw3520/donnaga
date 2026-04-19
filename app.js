@@ -229,11 +229,11 @@ function bindEvents() {
   refs.closeAnalysisButton.addEventListener("click", () => switchScreen("calendar"));
   refs.openMemoButton.addEventListener("click", () => switchScreen("list"));
   refs.closeMemoButton.addEventListener("click", () => switchScreen("calendar"));
-  refs.memoSearchButton.addEventListener("click", () => refs.searchDialog.showModal());
+  refs.memoSearchButton.addEventListener("click", openSearchDialog);
   refs.memoAddButton.addEventListener("click", openEntryDialog);
   refs.memoPrevMonthButton.addEventListener("click", () => shiftMonth(-1, { animate: true }));
   refs.memoNextMonthButton.addEventListener("click", () => shiftMonth(1, { animate: true }));
-  refs.listSearchButton.addEventListener("click", () => refs.searchDialog.showModal());
+  refs.listSearchButton.addEventListener("click", openSearchDialog);
 
   refs.openMonthPickerButton.addEventListener("click", () => {
     renderMonthPicker();
@@ -242,7 +242,7 @@ function bindEvents() {
   refs.closeMonthPickerButton.addEventListener("click", () => refs.monthPickerDialog.close());
   refs.yearSelect.addEventListener("change", renderMonthPicker);
 
-  refs.openSearchButton.addEventListener("click", () => refs.searchDialog.showModal());
+  refs.openSearchButton.addEventListener("click", openSearchDialog);
   refs.closeSearchButton.addEventListener("click", () => refs.searchDialog.close());
   refs.searchForm.addEventListener("submit", onSearchSubmit);
   refs.searchDialog.addEventListener("click", (event) => {
@@ -253,6 +253,7 @@ function bindEvents() {
       item.classList.toggle("is-active", item === button);
     });
   });
+  refs.searchDialog.addEventListener("close", syncSearchPeriodChips);
 
   refs.openFilterButton.addEventListener("click", () => refs.filterDialog.showModal());
   refs.closeFilterButton.addEventListener("click", () => refs.filterDialog.close());
@@ -361,6 +362,17 @@ function bindBackdropClose(dialog) {
   dialog.addEventListener("click", (event) => {
     if (event.target !== dialog) return;
     dialog.close();
+  });
+}
+
+function openSearchDialog() {
+  syncSearchPeriodChips();
+  refs.searchDialog.showModal();
+}
+
+function syncSearchPeriodChips() {
+  refs.searchDialog.querySelectorAll("[data-search-period]").forEach((item) => {
+    item.classList.toggle("is-active", item.dataset.searchPeriod === state.searchPeriod);
   });
 }
 
@@ -1089,9 +1101,9 @@ function filterBySearchPeriod(items, period) {
   if (period === "all") return items;
   if (period === "month") return items.filter((item) => item.date.startsWith(state.currentMonth));
   const today = new Date(`${todayISO()}T00:00:00`);
-  const weekAgo = new Date(today);
-  weekAgo.setDate(today.getDate() - 7);
-  return items.filter((item) => new Date(`${item.date}T00:00:00`) >= weekAgo);
+  const weekStart = new Date(today);
+  weekStart.setDate(today.getDate() - today.getDay());
+  return items.filter((item) => new Date(`${item.date}T00:00:00`) >= weekStart);
 }
 
 function normalizeTransaction(item, markPending) {
