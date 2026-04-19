@@ -302,11 +302,6 @@ function bindEvents() {
     if (!button) return;
     setEntryAccount(button.dataset.accountValue);
   });
-  refs.entryCategoryGrid.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-category-value]");
-    if (!button) return;
-    setEntryCategory(button.dataset.categoryValue);
-  });
   refs.amountInput.addEventListener("input", () => {
     setAmountValue(refs.amountInput.value);
   });
@@ -900,9 +895,13 @@ function renderEntryCategories(type, selectedCategory = "") {
     : `<div class="entry-category-empty">수입, 지출, 이체 중 하나를 먼저 선택하세요.</div>`;
   renderIcons();
   refs.entryCategoryGrid.querySelectorAll("[data-category-value]").forEach((button) => {
-    button.addEventListener("click", () => {
+    const applySelection = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
       setEntryCategory(button.dataset.categoryValue);
-    });
+    };
+    button.addEventListener("pointerup", applySelection);
+    button.addEventListener("click", applySelection);
   });
 }
 
