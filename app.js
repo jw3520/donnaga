@@ -65,9 +65,13 @@ const refs = {
   listRecordsCaption: document.querySelector("#list-records-caption"),
   memoList: document.querySelector("#memo-list"),
   memoMonthLabel: document.querySelector("#memo-month-label"),
+  memoAddButton: document.querySelector("#memo-add-button"),
   assetList: document.querySelector("#asset-list"),
   analysisMonthLabel: document.querySelector("#analysis-month-label"),
   analysisRangeLabel: document.querySelector("#analysis-range-label"),
+  analysisModeSwitch: document.querySelector("#analysis-mode-switch"),
+  analysisCopyButton: document.querySelector("#analysis-copy-button"),
+  analysisCardSwitch: document.querySelector("#analysis-card-switch"),
   analysisExpenseTotal: document.querySelector("#analysis-expense-total"),
   analysisTransferTotal: document.querySelector("#analysis-transfer-total"),
   analysisEmptyText: document.querySelector("#analysis-empty-text"),
@@ -94,6 +98,7 @@ const refs = {
   closeSearchButton: document.querySelector("#close-search-button"),
   searchForm: document.querySelector("#search-form"),
   searchQuery: document.querySelector("#search-query"),
+  searchDateLabel: document.querySelector("#search-date-label"),
   searchIncomeTotal: document.querySelector("#search-income-total"),
   searchExpenseTotal: document.querySelector("#search-expense-total"),
   searchResults: document.querySelector("#search-results"),
@@ -189,6 +194,7 @@ function bindEvents() {
   refs.openMemoButton.addEventListener("click", () => switchScreen("memo"));
   refs.closeMemoButton.addEventListener("click", () => switchScreen("calendar"));
   refs.memoSearchButton.addEventListener("click", () => refs.searchDialog.showModal());
+  refs.memoAddButton.addEventListener("click", openEntryDialog);
   refs.memoPrevMonthButton.addEventListener("click", () => shiftMonth(-1));
   refs.memoNextMonthButton.addEventListener("click", () => shiftMonth(1));
 
@@ -285,6 +291,7 @@ function renderMonthLabels() {
   refs.analysisMonthLabel.textContent = shortMonthLabel(state.currentMonth);
   refs.analysisRangeLabel.textContent = monthRangeLabel(state.currentMonth);
   refs.listRecordsCaption.textContent = `${monthLabel(state.currentMonth)} 전체 내역`;
+  refs.searchDateLabel.textContent = `- ${todayISO().replaceAll("-", ".")}`;
 }
 
 function renderSummary() {
@@ -448,6 +455,10 @@ function renderAnalysis() {
       `,
     )
     .join("");
+
+  refs.analysisModeSwitch.classList.toggle("is-hidden", state.analysisTab !== "stats");
+  refs.analysisCopyButton.classList.toggle("is-hidden", state.analysisTab !== "budget");
+  refs.analysisCardSwitch.classList.toggle("is-hidden", state.analysisTab !== "card");
 
   refs.analysisPanels.forEach((panel) => {
     panel.classList.toggle("is-hidden", panel.dataset.analysisTab !== state.analysisTab);

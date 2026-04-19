@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#52c4b9" />
+    <meta name="color-scheme" content="light" />
     <meta name="description" content="둘이 함께 쓰는 생활형 PWA 가계부" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
@@ -112,6 +113,9 @@
           <section class="panel panel--flat panel--memo">
             <div id="memo-list" class="memo-list"></div>
           </section>
+          <button class="memo-fab" id="memo-add-button" type="button" aria-label="메모 추가">
+            <i data-lucide="file-pen-line"></i>
+          </button>
         </section>
 
         <section class="screen" data-screen="assets">
@@ -156,7 +160,17 @@
               <strong id="analysis-month-label">4월</strong>
               <p id="analysis-range-label">4.1 - 4.30</p>
             </div>
-            <span class="sheet-header__spacer"></span>
+            <div class="analysis-header-right">
+              <div class="analysis-mode-switch" id="analysis-mode-switch">
+                <button class="analysis-mode-button is-active" type="button" data-analysis-mode="expense">지출</button>
+                <button class="analysis-mode-button" type="button" data-analysis-mode="income">수입</button>
+              </div>
+              <button class="analysis-copy-button is-hidden" id="analysis-copy-button" type="button">예산 복사</button>
+              <div class="analysis-card-switch is-hidden" id="analysis-card-switch">
+                <button class="analysis-card-button is-active" type="button">카드 사용일 기준</button>
+                <button class="analysis-card-button" type="button">계좌 출금일 기준</button>
+              </div>
+            </div>
           </header>
 
           <section class="analysis-body">
@@ -280,6 +294,7 @@
             <button class="chip-button" type="button" data-search-period="week">이번 주</button>
             <button class="chip-button" type="button" data-search-period="month">이번 달</button>
           </div>
+          <p class="search-date-label" id="search-date-label">- 2026.04.19</p>
           <div class="search-form__meta">
             <p><span>카테고리</span><strong id="search-category-summary">전체 카테고리</strong></p>
             <p><span>지불방식</span><strong id="search-account-summary">전체</strong></p>
