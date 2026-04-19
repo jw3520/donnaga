@@ -85,6 +85,9 @@ const refs = {
   analysisCardSwitch: document.querySelector("#analysis-card-switch"),
   analysisExpenseTotal: document.querySelector("#analysis-expense-total"),
   analysisTransferTotal: document.querySelector("#analysis-transfer-total"),
+  analysisDonutChart: document.querySelector("#analysis-donut-chart"),
+  analysisDonutInner: document.querySelector("#analysis-donut-inner"),
+  analysisCategoryBreakdown: document.querySelector("#analysis-category-breakdown"),
   analysisEmptyText: document.querySelector("#analysis-empty-text"),
   budgetExpenseTotal: document.querySelector("#budget-expense-total"),
   budgetLimitTotal: document.querySelector("#budget-limit-total"),
@@ -608,6 +611,7 @@ function renderAnalysis() {
     sourceItems.filter((item) => item.type === "transfer").reduce((sum, item) => sum + item.amount, 0),
   );
   refs.analysisEmptyText.textContent = sourceItems.length ? "기록이 있습니다." : "내역이 없습니다.";
+  renderAnalysisDonut(items);
 
   const budgetExpense = sumByType(items, "expense");
   refs.budgetExpenseTotal.textContent = formatCurrency(budgetExpense);
@@ -865,7 +869,7 @@ function setEntryType(type) {
     chip.classList.toggle("is-active", chip.dataset.typeValue === type);
   });
   renderEntryCategories(type, refs.categoryField.value);
-  if (!categoryIdsForType(type).includes(refs.categoryField.value)) {
+  if (!categoryOptionsForType(type).some((item) => item.id === refs.categoryField.value)) {
     setEntryCategory("");
   } else {
     syncEntrySelectionUI();
@@ -873,7 +877,7 @@ function setEntryType(type) {
 }
 
 function renderEntryCategories(type, selectedCategory = "") {
-  const categories = CATEGORY_META[type] || [];
+  const categories = categoryOptionsForType(type);
   refs.entryCategoryGrid.innerHTML = categories.length
     ? categories.map((item) => {
       const isActive = item.id === selectedCategory;
@@ -1343,6 +1347,63 @@ function monthKeyFromDate(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function renderAnalysisDonut(items) {
+  const expenseItems = items.filter((item) => item.type === "expense");
+  const total = expenseItems.reduce((sum, item) => sum + item.amount, 0);
+  if (!total) {
+    refs.analysisDonutChart.style.background = "radial-gradient(circle at center, #fff 0 26%, transparent 27%), #f6f6f6";
+    refs.analysisDonutInner.textContent = "0.0%";
+    refs.analysisCategoryBreakdown.innerHTML = "";
+    refs.analysisEmptyText.textContent = "내역이 없습니다.";
+    return;
+  }
+
+  const grouped = Object.entries(
+    expenseItems.reduce((acc, item) => {
+      acc[item.category] = (acc[item.category] || 0) + item.amount;
+      return acc;
+    }, {}),
+  )
+    .map(([category, amount]) => ({
+      category,
+      amount,
+      percent: (amount / total) * 100,
+      appearance: categoryAppearance(category, "expense"),
+    }))
+    .sort((left, right) => right.amount - left.amount);
+
+  let angle = 0;
+  const gradient = grouped
+    .map((item) => {
+      const start = angle;
+      angle += item.percent * 3.6;
+      return `${item.appearance.color} ${start.toFixed(1)}deg ${angle.toFixed(1)}deg`;
+    })
+    .join(", ");
+
+  refs.analysisDonutChart.style.background = `
+    radial-gradient(circle at center, #fff 0 26%, transparent 27%),
+    conic-gradient(${gradient})
+  `;
+  refs.analysisDonutInner.textContent = `${grouped[0].percent.toFixed(1)}%`;
+  refs.analysisCategoryBreakdown.innerHTML = grouped
+    .slice(0, 6)
+    .map((item) => `
+      <article class="analysis-category-row">
+        <div class="analysis-category-row__label">
+          <span class="analysis-category-row__dot" style="background:${item.appearance.color}"></span>
+          <strong>${item.category}</strong>
+        </div>
+        <div class="analysis-category-row__meta">
+          <span>${item.percent.toFixed(1)}%</span>
+          <em>${formatCurrency(item.amount)}</em>
+        </div>
+      </article>
+    `)
+    .join("");
+  refs.analysisEmptyText.textContent = `${grouped.length}개 카테고리`;
+}
+
 function displaySelectedDate(date) {
   const parsed = new Date(`${date}T00:00:00`);
   return `${parsed.getMonth() + 1}월 ${parsed.getDate()}일`;
@@ -1350,6 +1411,22 @@ function displaySelectedDate(date) {
 
 function sumByType(items, type) {
   return items.filter((item) => item.type === type).reduce((sum, item) => sum + item.amount, 0);
+}
+
+function categoryOptionsForType(type) {
+  const base = CATEGORY_META[type] || [];
+  const seen = new Set(base.map((item) => item.id));
+  const dynamic = state.transactions
+    .filter((item) => !item.deleted && item.type === type && item.category)
+    .map((item) => item.category)
+    .filter((category) => !seen.has(category))
+    .sort((left, right) => left.localeCompare(right, "ko-KR"))
+    .map((category) => {
+      seen.add(category);
+      const appearance = inferredCategoryMeta(category, type);
+      return { id: category, label: appearance.label, color: appearance.color, icon: appearance.icon };
+    });
+  return [...base, ...dynamic];
 }
 
 function groupNetAmount(items) {
@@ -1361,7 +1438,7 @@ function typeLabel(type) {
 }
 
 function categoryIdsForType(type) {
-  return (CATEGORY_META[type] || []).map((item) => item.id);
+  return categoryOptionsForType(type).map((item) => item.id);
 }
 
 function allCategoryIds() {
@@ -1383,7 +1460,26 @@ function categoryAppearance(category, type) {
     || CATEGORY_META.expense.find((item) => item.id === category)
     || CATEGORY_META.income.find((item) => item.id === category)
     || CATEGORY_META.transfer.find((item) => item.id === category)
+    || inferredCategoryMeta(category, type)
     || { color: "#b8c1cc", icon: "circle", label: category };
+}
+
+function inferredCategoryMeta(category, type) {
+  const inferred = {
+    expense: {
+      "가전": { color: "#a8dff0", icon: "smartphone", label: "가전" },
+      "미용": { color: "#ffc2db", icon: "sparkles", label: "미용" },
+      "자동차유지비": { color: "#b9d7fb", icon: "car-front", label: "자동차유지비" },
+      "경조사": { color: "#f4b2ba", icon: "hand-heart", label: "경조사" },
+      "생활용품": { color: "#f3c6a1", icon: "shopping-basket", label: "생활용품" },
+      "쇼핑": { color: "#a8dff0", icon: "gift", label: "쇼핑" },
+      "여가/취미": { color: "#e6b8ef", icon: "music", label: "여가/취미" },
+      "주거/공과금": { color: "#f1d7a6", icon: "house", label: "주거/공과금" },
+    },
+    income: {},
+    transfer: {},
+  };
+  return inferred[type]?.[category] || inferred.expense[category] || null;
 }
 
 function renderCategoryIcon(category, type) {

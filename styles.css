@@ -622,6 +622,67 @@ button:active {
   font-weight: 700;
 }
 
+.donut-placeholder__inner {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  color: #4b5560;
+  font-size: 17px;
+  font-weight: 800;
+  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.08);
+}
+
+.analysis-category-breakdown {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.analysis-category-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 18px;
+  background: #f7f8fa;
+}
+
+.analysis-category-row__label,
+.analysis-category-row__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.analysis-category-row__label strong,
+.analysis-category-row__meta span,
+.analysis-category-row__meta em {
+  font-style: normal;
+  font-size: 13px;
+}
+
+.analysis-category-row__meta {
+  color: #7b8590;
+}
+
+.analysis-category-row__meta span {
+  min-width: 46px;
+  text-align: right;
+  font-weight: 800;
+  color: #2f3640;
+}
+
+.analysis-category-row__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
 .analysis-empty-text,
 .empty-state {
   text-align: center;
