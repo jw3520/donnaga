@@ -935,6 +935,16 @@ button:active {
   background: linear-gradient(90deg, #ff8aa3 0%, #ff7043 100%);
 }
 
+.budget-row__progress-marker {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  right: 0;
+  width: 2px;
+  background: rgba(118, 96, 80, 0.9);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8);
+}
+
 .memo-row {
   min-height: 104px;
   padding: 18px;

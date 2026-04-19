@@ -827,6 +827,7 @@ function renderBudgetGroupCards(items, options = {}) {
               ${overflow
                 ? `<div class="budget-row__progress-overflow" style="width:${overflowWidth}%"></div>`
                 : ""}
+              ${overflow ? '<span class="budget-row__progress-marker" aria-hidden="true"></span>' : ""}
             </div>
           </summary>
           <div class="asset-row__details">
