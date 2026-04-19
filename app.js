@@ -2,6 +2,7 @@ const STORAGE_KEY_V3 = "donnaga-state-v3";
 const STORAGE_KEY_V4 = "donnaga-state-v4";
 const DB_NAME = "donnaga-db";
 const SYNC_INTERVAL_MS = 60_000;
+const SYNC_PUSH_BATCH_SIZE = 200;
 
 const MEMBERS = [
   { id: "jw", name: "나" },
@@ -1062,22 +1063,36 @@ async function pushPendingToServer() {
     return;
   }
 
-  updateSyncUI("동기화 중", "syncing");
+  updateSyncUI(`동기화 중 (${pending.length}건)`, "syncing");
   try {
-    const response = await fetch("/api/sync", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ transactions: pending }),
-    });
-    if (!response.ok) throw new Error(`push failed: ${response.status}`);
-    await Promise.all(
-      pending.map((item) => db.transactions.update(item.id, { sync_status: "synced" })),
-    );
+    let syncedCount = 0;
+    for (let index = 0; index < pending.length; index += SYNC_PUSH_BATCH_SIZE) {
+      const chunk = pending.slice(index, index + SYNC_PUSH_BATCH_SIZE);
+      const response = await fetch("/api/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transactions: chunk }),
+      });
+      let payload = null;
+      try {
+        payload = await response.json();
+      } catch {
+        payload = null;
+      }
+      if (!response.ok || payload?.ok === false) {
+        throw new Error(payload?.error || `push failed: ${response.status}`);
+      }
+      await Promise.all(chunk.map((item) => db.transactions.update(item.id, { sync_status: "synced" })));
+      syncedCount += chunk.length;
+      updateSyncUI(`동기화 중 (${syncedCount}/${pending.length}건)`, "syncing");
+    }
     state.lastSyncedAt = Date.now();
     await setMeta("lastSyncedAt", state.lastSyncedAt);
     await loadTransactionsFromDb();
     updateSyncUI("동기화 완료", "success");
   } catch (error) {
+    const message = error instanceof Error ? error.message : "알 수 없는 오류";
+    refs.syncDetailLabel.textContent = `동기화 실패: ${message}`;
     updateSyncUI("동기화 실패", "error");
   }
 }

@@ -17,6 +17,7 @@ const TABLE_SQL = `
     deleted INTEGER DEFAULT 0
   )
 `;
+const DB_BATCH_SIZE = 100;
 
 function json(body, init = {}) {
   return new Response(JSON.stringify(body), {
@@ -45,52 +46,67 @@ export async function onRequestPost(context) {
   const { env, request } = context;
   await ensureSchema(env.DB);
 
-  const payload = await request.json();
-  const transactions = Array.isArray(payload.transactions) ? payload.transactions : [];
-  if (!transactions.length) {
-    return json({ ok: true, upserted: 0 });
+  try {
+    const payload = await request.json();
+    const transactions = Array.isArray(payload.transactions) ? payload.transactions : [];
+    if (!transactions.length) {
+      return json({ ok: true, upserted: 0 });
+    }
+
+    let upserted = 0;
+    for (let index = 0; index < transactions.length; index += DB_BATCH_SIZE) {
+      const chunk = transactions.slice(index, index + DB_BATCH_SIZE);
+      const statements = chunk.map((item) =>
+        env.DB.prepare(
+          `INSERT INTO transactions (
+            id, type, amount, category, sub_category, member, account, payment_method, card_name, memo, note, date, updated_at, fingerprint, deleted
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            type = excluded.type,
+            amount = excluded.amount,
+            category = excluded.category,
+            sub_category = excluded.sub_category,
+            member = excluded.member,
+            account = excluded.account,
+            payment_method = excluded.payment_method,
+            card_name = excluded.card_name,
+            memo = excluded.memo,
+            note = excluded.note,
+            date = excluded.date,
+            updated_at = excluded.updated_at,
+            fingerprint = excluded.fingerprint,
+            deleted = excluded.deleted
+          WHERE excluded.updated_at >= transactions.updated_at`,
+        ).bind(
+          item.id,
+          item.type,
+          item.amount,
+          item.category || "",
+          item.sub_category || "",
+          item.member || "",
+          item.account || "",
+          item.payment_method || "",
+          item.card_name || "",
+          item.memo || "",
+          item.note || "",
+          item.date,
+          Number(item.updated_at || Date.now()),
+          item.fingerprint || "",
+          Number(item.deleted || 0),
+        ),
+      );
+      await env.DB.batch(statements);
+      upserted += chunk.length;
+    }
+
+    return json({ ok: true, upserted });
+  } catch (error) {
+    return json(
+      {
+        ok: false,
+        error: error instanceof Error ? error.message : "Failed to sync transactions",
+      },
+      { status: 500 },
+    );
   }
-
-  const statements = transactions.map((item) =>
-    env.DB.prepare(
-      `INSERT INTO transactions (
-        id, type, amount, category, sub_category, member, account, payment_method, card_name, memo, note, date, updated_at, fingerprint, deleted
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
-        type = excluded.type,
-        amount = excluded.amount,
-        category = excluded.category,
-        sub_category = excluded.sub_category,
-        member = excluded.member,
-        account = excluded.account,
-        payment_method = excluded.payment_method,
-        card_name = excluded.card_name,
-        memo = excluded.memo,
-        note = excluded.note,
-        date = excluded.date,
-        updated_at = excluded.updated_at,
-        fingerprint = excluded.fingerprint,
-        deleted = excluded.deleted
-      WHERE excluded.updated_at >= transactions.updated_at`,
-    ).bind(
-      item.id,
-      item.type,
-      item.amount,
-      item.category || "",
-      item.sub_category || "",
-      item.member || "",
-      item.account || "",
-      item.payment_method || "",
-      item.card_name || "",
-      item.memo || "",
-      item.note || "",
-      item.date,
-      Number(item.updated_at || Date.now()),
-      item.fingerprint || "",
-      Number(item.deleted || 0),
-    ),
-  );
-
-  await env.DB.batch(statements);
-  return json({ ok: true, upserted: transactions.length });
 }

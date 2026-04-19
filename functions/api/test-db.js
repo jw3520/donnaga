@@ -38,12 +38,19 @@ export async function onRequest(context) {
     const { results } = await context.env.DB.prepare(
       "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name",
     ).all();
+    const countResult = await context.env.DB.prepare(
+      "SELECT COUNT(*) AS total, SUM(CASE WHEN deleted = 0 THEN 1 ELSE 0 END) AS active FROM transactions",
+    ).first();
 
     return new Response(
       JSON.stringify({
         status: "Success",
         message: "DB is connected!",
         tables: results,
+        counts: {
+          total: Number(countResult?.total || 0),
+          active: Number(countResult?.active || 0),
+        },
       }),
       {
         headers: { "Content-Type": "application/json" },
