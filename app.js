@@ -63,6 +63,7 @@ const refs = {
   remoteStatusLabel: document.querySelector("#remote-status-label"),
   syncDetailLabel: document.querySelector("#sync-detail-label"),
   manualSyncButton: document.querySelector("#manual-sync-button"),
+  clearWebCacheButton: document.querySelector("#clear-web-cache-button"),
   openInstallDialogButton: document.querySelector("#open-install-dialog-button"),
   calendarGrid: document.querySelector("#calendar-grid"),
   selectedDateTitle: document.querySelector("#selected-date-title"),
@@ -242,6 +243,9 @@ function bindEvents() {
 
   refs.manualSyncButton.addEventListener("click", async () => {
     await fullSyncCycle();
+  });
+  refs.clearWebCacheButton.addEventListener("click", async () => {
+    await clearWebCacheAndReload();
   });
   refs.openInstallDialogButton.addEventListener("click", () => {
     openInstallDialog();
@@ -1323,5 +1327,29 @@ async function registerServiceWorker() {
     console.info("[PWA] service worker registered:", registration.scope);
   } catch (error) {
     console.error("[PWA] service worker registration failed:", error);
+  }
+}
+
+async function clearWebCacheAndReload() {
+  refs.clearWebCacheButton.disabled = true;
+  refs.clearWebCacheButton.textContent = "삭제 중";
+  try {
+    if ("serviceWorker" in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((registration) => registration.unregister()));
+    }
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((key) => caches.delete(key)));
+    }
+    updateSyncUI("웹 캐시 삭제 완료", "success");
+    window.setTimeout(() => {
+      window.location.reload();
+    }, 300);
+  } catch (error) {
+    console.error("[PWA] failed to clear cache:", error);
+    updateSyncUI("웹 캐시 삭제 실패", "error");
+    refs.clearWebCacheButton.disabled = false;
+    refs.clearWebCacheButton.textContent = "캐시 삭제";
   }
 }
