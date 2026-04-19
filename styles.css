@@ -910,6 +910,7 @@ button:active {
 
 .asset-row__progress,
 .budget-row__progress {
+  position: relative;
   width: 100%;
   height: 6px;
   border-radius: 999px;
@@ -919,12 +920,18 @@ button:active {
 
 .asset-row__progress-bar,
 .budget-row__progress-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, #ffd15f 0%, #ffb347 100%);
 }
 
-.budget-row__progress-bar.is-over {
+.budget-row__progress-overflow {
+  position: absolute;
+  inset: 0 0 0 auto;
+  height: 100%;
+  border-radius: inherit;
   background: linear-gradient(90deg, #ff8aa3 0%, #ff7043 100%);
 }
 
