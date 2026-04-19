@@ -141,6 +141,7 @@ const refs = {
   entryForm: document.querySelector("#entry-form"),
   entryDeleteButton: document.querySelector("#entry-delete-button"),
   resetFormButton: document.querySelector("#reset-form-button"),
+  entrySubmitButton: document.querySelector("#entry-submit-button"),
   editingIdField: document.querySelector("#editing-id-field"),
   typeField: document.querySelector("#type-field"),
   typeLabel: document.querySelector("#entry-type-label"),
@@ -315,6 +316,13 @@ function bindEvents() {
     const button = event.target.closest("[data-account-value]");
     if (!button) return;
     setEntryAccount(button.dataset.accountValue);
+  });
+  refs.entryCategoryGrid.addEventListener("pointerdown", () => refs.amountInput.blur());
+  refs.entryCategoryGrid.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-category-value]");
+    if (!button) return;
+    event.preventDefault();
+    setEntryCategory(button.dataset.categoryValue);
   });
   refs.amountInput.addEventListener("input", () => {
     setAmountValue(refs.amountInput.value);
@@ -920,16 +928,6 @@ function renderEntryCategories(type, selectedCategory = "") {
   refs.entryCategoryPrevButton.disabled = entryCategoryPage <= 0;
   refs.entryCategoryNextButton.disabled = entryCategoryPage >= totalPages - 1;
   renderIcons();
-  refs.entryCategoryGrid.querySelectorAll("[data-category-value]").forEach((button) => {
-    const applySelection = (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      refs.amountInput.blur();
-      setEntryCategory(button.dataset.categoryValue);
-    };
-    button.addEventListener("pointerdown", applySelection);
-    button.addEventListener("touchstart", applySelection, { passive: false });
-  });
 }
 
 function shiftEntryCategoryPage(direction) {
@@ -940,14 +938,12 @@ function shiftEntryCategoryPage(direction) {
 }
 
 function bindEntryPagerButton(button, direction) {
-  const handle = (event) => {
+  button.addEventListener("pointerdown", () => refs.amountInput.blur());
+  button.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
-    refs.amountInput.blur();
     shiftEntryCategoryPage(direction);
-  };
-  button.addEventListener("pointerdown", handle);
-  button.addEventListener("touchstart", handle, { passive: false });
+  });
 }
 
 function renderEntryAccountOptions() {
@@ -997,6 +993,7 @@ function resetEntryForm() {
   entryCategoryPage = 0;
   refs.editingIdField.value = "";
   refs.entryDeleteButton.classList.add("is-hidden");
+  refs.entrySubmitButton.textContent = "저장";
   clearEntrySelections();
   refs.entryForm.elements.note.value = "";
 }
@@ -1013,6 +1010,7 @@ function startEdit(id) {
   state.editingId = id;
   refs.editingIdField.value = id;
   refs.entryDeleteButton.classList.remove("is-hidden");
+  refs.entrySubmitButton.textContent = "수정 완료";
   refs.typeLabel.textContent = "내역 수정";
   setEntryType(transaction.type);
   setAmountValue(transaction.amount);
