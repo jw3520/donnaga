@@ -498,10 +498,15 @@ async function onSubmitLoginGate(event) {
   restoreAuthState();
   applyRoleToUI();
   ensureLoginGate();
+  render();
   if (navigator.onLine) {
-    await pullFromServer();
-    if (canWrite()) {
-      await pushPendingToServer();
+    try {
+      await pullFromServer();
+      if (canWrite()) {
+        await pushPendingToServer();
+      }
+    } catch {
+      updateSyncUI("서버 연결 실패", "error");
     }
   }
 }
