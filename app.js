@@ -3,6 +3,7 @@ const STORAGE_KEY_V4 = "donnaga-state-v4";
 const AUTH_PIN_STORAGE_KEY = "DONNAGA_PIN";
 const AUTH_ROLE_STORAGE_KEY = "DONNAGA_ROLE";
 const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
+const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const DB_NAME = "donnaga-db";
 const SYNC_INTERVAL_MS = 60_000;
 const SYNC_PUSH_BATCH_SIZE = 200;
@@ -130,7 +131,7 @@ const refs = {
   storageStatusLabel: document.querySelector("#storage-status-label"),
   remoteStatusLabel: document.querySelector("#remote-status-label"),
   syncDetailLabel: document.querySelector("#sync-detail-label"),
-  updateDetailLabel: document.querySelector("#update-detail-label"),
+  updateTimeLabel: document.querySelector("#update-time-label"),
   manualSyncButton: document.querySelector("#manual-sync-button"),
   clearWebCacheButton: document.querySelector("#clear-web-cache-button"),
   settingsUpdateBadge: document.querySelector("#settings-update-badge"),
@@ -383,13 +384,12 @@ function bindEvents() {
 
   refs.manualSyncButton.addEventListener("click", async () => {
     if (!canWrite()) return;
-    setButtonBusy(refs.manualSyncButton, true, { idleLabel: "지금 동기화", busyLabel: "동기화 중" });
     updateSyncUI("동기화 진행 중", "syncing");
-    try {
-      await withMinimumBusyTime(() => fullSyncCycle(), 2000);
-    } finally {
-      setButtonBusy(refs.manualSyncButton, false, { idleLabel: "지금 동기화" });
-    }
+    await runButtonFeedback(
+      refs.manualSyncButton,
+      { idle: "지금 동기화", busy: "확인 중...", done: "완료!" },
+      () => fullSyncCycle(),
+    );
   });
   refs.clearWebCacheButton.addEventListener("click", async () => {
     await clearWebCacheAndReload();
@@ -604,14 +604,15 @@ function syncUpdateUi() {
 }
 
 function syncUpdateTimestampUi() {
-  if (!refs.updateDetailLabel) return;
-  refs.updateDetailLabel.textContent = state.lastUpdateCheckedAt
-    ? `마지막 확인 ${formatRelativeSyncTime(state.lastUpdateCheckedAt)}`
-    : "아직 업데이트 확인 기록이 없어요.";
+  if (!refs.updateTimeLabel) return;
+  refs.updateTimeLabel.textContent = state.lastUpdateCheckedAt
+    ? `마지막 확인: ${formatRelativeSyncTime(state.lastUpdateCheckedAt)}`
+    : "마지막 확인: 아직 기록이 없어요.";
 }
 
 async function markUpdateChecked() {
   state.lastUpdateCheckedAt = Date.now();
+  localStorage.setItem(LAST_UPDATE_CHECK_STORAGE_KEY, String(state.lastUpdateCheckedAt));
   await setMeta("lastUpdateCheckedAt", state.lastUpdateCheckedAt);
   syncUpdateTimestampUi();
 }
@@ -645,15 +646,23 @@ function setButtonBusy(button, isBusy, options = {}) {
   button.textContent = isBusy ? (options.busyLabel || idleLabel) : idleLabel;
 }
 
-async function withMinimumBusyTime(task, minimumMs = 2000) {
-  const startedAt = Date.now();
+function wait(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function runButtonFeedback(button, labels, task) {
+  const idleLabel = labels.idle;
+  const busyLabel = labels.busy;
+  const doneLabel = labels.done || "완료!";
+  setButtonBusy(button, true, { idleLabel, busyLabel });
   try {
-    return await task();
+    const result = await task();
+    await wait(2200);
+    button.textContent = doneLabel;
+    await wait(1000);
+    return result;
   } finally {
-    const elapsed = Date.now() - startedAt;
-    if (elapsed < minimumMs) {
-      await new Promise((resolve) => window.setTimeout(resolve, minimumMs - elapsed));
-    }
+    setButtonBusy(button, false, { idleLabel });
   }
 }
 
@@ -771,7 +780,7 @@ async function loadUiMeta() {
   state.filters = normalizeFilterState(savedUi.filters || state.filters);
   state.listSortOrder = savedUi.listSortOrder === "asc" ? "asc" : "desc";
   state.lastSyncedAt = (await getMeta("lastSyncedAt")) || null;
-  state.lastUpdateCheckedAt = (await getMeta("lastUpdateCheckedAt")) || null;
+  state.lastUpdateCheckedAt = Number(localStorage.getItem(LAST_UPDATE_CHECK_STORAGE_KEY) || 0) || (await getMeta("lastUpdateCheckedAt")) || null;
   syncUpdateTimestampUi();
 }
 
@@ -916,10 +925,10 @@ function renderCalendar() {
       .join("");
     cells.push(`
       <button class="${classes.join(" ")}" type="button" data-date="${date}">
+        ${eventIcons ? `<span class="calendar-day__events">${eventIcons}</span>` : ""}
         <span class="calendar-day__header">
           <span class="calendar-day__date">${day}</span>
         </span>
-        <span class="calendar-day__events">${eventIcons}</span>
         <span class="calendar-day__amount">${expenseByDate[date] ? shortCurrency(expenseByDate[date]) : ""}</span>
       </button>
     `);
@@ -2417,44 +2426,44 @@ async function registerServiceWorker() {
 }
 
 async function clearWebCacheAndReload() {
-  setButtonBusy(refs.clearWebCacheButton, true, {
-    idleLabel: "업데이트",
-    busyLabel: state.updateAvailable ? "업데이트 중" : "확인 중",
-  });
   updateSyncUI(state.updateAvailable ? "새 버전 적용 중" : "최신 버전 확인 중", "syncing");
   try {
-    const shouldActivateWaitingWorker = state.updateAvailable && Boolean(swRegistrationRef?.waiting);
-    await withMinimumBusyTime(async () => {
-      if (shouldActivateWaitingWorker) {
-        setUpdateAvailable(false);
-        return;
-      }
-      if (swRegistrationRef) {
-        await swRegistrationRef.update();
-        await markUpdateChecked();
-        if (swRegistrationRef.waiting) {
-          setUpdateAvailable(true);
-          updateSyncUI("새 버전이 준비됐어요", "success");
-        } else {
-          updateSyncUI("이미 최신 버전입니다", "success");
+    await runButtonFeedback(
+      refs.clearWebCacheButton,
+      { idle: "업데이트", busy: "업데이트 확인 중...", done: "완료!" },
+      async () => {
+        const shouldActivateWaitingWorker = state.updateAvailable && Boolean(swRegistrationRef?.waiting);
+        if (shouldActivateWaitingWorker) {
+          setUpdateAvailable(false);
+          await markUpdateChecked();
+          return { shouldActivateWaitingWorker: true };
         }
-      }
-    }, 2000);
-    if (shouldActivateWaitingWorker && swRegistrationRef?.waiting) {
-      swRegistrationRef.waiting.postMessage({ type: "SKIP_WAITING" });
-      window.setTimeout(() => {
-        if (!reloadingForServiceWorker) {
-          window.location.reload();
+        if (swRegistrationRef) {
+          await swRegistrationRef.update();
+          await markUpdateChecked();
+          if (swRegistrationRef.waiting) {
+            setUpdateAvailable(true);
+            updateSyncUI("새 버전이 준비됐어요", "success");
+          } else {
+            updateSyncUI("이미 최신 버전입니다", "success");
+          }
         }
-      }, 300);
-      return;
-    }
-    setButtonBusy(refs.clearWebCacheButton, false, { idleLabel: "업데이트" });
+        return { shouldActivateWaitingWorker: false };
+      },
+    ).then((result) => {
+      if (result?.shouldActivateWaitingWorker && swRegistrationRef?.waiting) {
+        swRegistrationRef.waiting.postMessage({ type: "SKIP_WAITING" });
+        window.setTimeout(() => {
+          if (!reloadingForServiceWorker) {
+            window.location.reload();
+          }
+        }, 300);
+      }
+    });
     syncUpdateUi();
   } catch (error) {
     console.error("[PWA] failed to apply update:", error);
     updateSyncUI("업데이트 확인 실패", "error");
-    setButtonBusy(refs.clearWebCacheButton, false, { idleLabel: "업데이트" });
     syncUpdateUi();
   }
 }
