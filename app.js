@@ -130,6 +130,7 @@ const refs = {
   storageStatusLabel: document.querySelector("#storage-status-label"),
   remoteStatusLabel: document.querySelector("#remote-status-label"),
   syncDetailLabel: document.querySelector("#sync-detail-label"),
+  updateDetailLabel: document.querySelector("#update-detail-label"),
   manualSyncButton: document.querySelector("#manual-sync-button"),
   clearWebCacheButton: document.querySelector("#clear-web-cache-button"),
   settingsUpdateBadge: document.querySelector("#settings-update-badge"),
@@ -265,6 +266,7 @@ const state = {
   syncing: false,
   syncMessage: "로컬 준비 중",
   lastSyncedAt: null,
+  lastUpdateCheckedAt: null,
   syncDetailMessage: "",
   verifyingPin: false,
 };
@@ -598,6 +600,20 @@ function syncUpdateUi() {
   refs.clearWebCacheButton.classList.toggle("primary-button", state.updateAvailable);
   refs.clearWebCacheButton.classList.toggle("secondary-button", !state.updateAvailable);
   refs.clearWebCacheButton.classList.toggle("update-button--highlight", state.updateAvailable);
+  syncUpdateTimestampUi();
+}
+
+function syncUpdateTimestampUi() {
+  if (!refs.updateDetailLabel) return;
+  refs.updateDetailLabel.textContent = state.lastUpdateCheckedAt
+    ? `마지막 확인 ${formatRelativeSyncTime(state.lastUpdateCheckedAt)}`
+    : "아직 업데이트 확인 기록이 없어요.";
+}
+
+async function markUpdateChecked() {
+  state.lastUpdateCheckedAt = Date.now();
+  await setMeta("lastUpdateCheckedAt", state.lastUpdateCheckedAt);
+  syncUpdateTimestampUi();
 }
 
 async function verifyPinOnServer(pin) {
@@ -755,6 +771,8 @@ async function loadUiMeta() {
   state.filters = normalizeFilterState(savedUi.filters || state.filters);
   state.listSortOrder = savedUi.listSortOrder === "asc" ? "asc" : "desc";
   state.lastSyncedAt = (await getMeta("lastSyncedAt")) || null;
+  state.lastUpdateCheckedAt = (await getMeta("lastUpdateCheckedAt")) || null;
+  syncUpdateTimestampUi();
 }
 
 function defaultBudgetLimits() {
@@ -2369,6 +2387,7 @@ async function registerServiceWorker() {
     swRegistrationRef = registration;
     if (registration.waiting) {
       setUpdateAvailable(true);
+      await markUpdateChecked();
     }
     registration.addEventListener("updatefound", () => {
       const installingWorker = registration.installing;
@@ -2376,6 +2395,7 @@ async function registerServiceWorker() {
       installingWorker.addEventListener("statechange", () => {
         if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
           setUpdateAvailable(true);
+          void markUpdateChecked();
         }
       });
     });
@@ -2388,6 +2408,7 @@ async function registerServiceWorker() {
     await registration.update();
     if (registration.waiting) {
       setUpdateAvailable(true);
+      await markUpdateChecked();
     }
     console.info("[PWA] service worker registered:", registration.scope);
   } catch (error) {
@@ -2410,6 +2431,7 @@ async function clearWebCacheAndReload() {
       }
       if (swRegistrationRef) {
         await swRegistrationRef.update();
+        await markUpdateChecked();
         if (swRegistrationRef.waiting) {
           setUpdateAvailable(true);
           updateSyncUI("새 버전이 준비됐어요", "success");
