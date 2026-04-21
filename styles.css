@@ -1803,6 +1803,24 @@ select {
   animation: update-button-pulse 1.6s ease-in-out infinite;
 }
 
+.button--busy {
+  opacity: 0.88;
+  pointer-events: none;
+}
+
+.button--busy::before {
+  content: "";
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  margin-right: 7px;
+  vertical-align: -2px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: button-spinner 0.8s linear infinite;
+}
+
 @keyframes update-button-pulse {
   0%,
   100% {
@@ -1813,6 +1831,12 @@ select {
   50% {
     transform: scale(1.09);
     box-shadow: 0 14px 30px rgba(77, 182, 172, 0.34);
+  }
+}
+
+@keyframes button-spinner {
+  to {
+    transform: rotate(360deg);
   }
 }
 

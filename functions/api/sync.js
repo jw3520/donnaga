@@ -100,8 +100,10 @@ export async function onRequestPost(context) {
     await ensureSchema(env.DB);
     const payload = await request.json();
     const suppliedPin = request.headers.get("X-Donnaga-Pin") || payload?.pin || "";
-    const adminPin = env.SECRET_PIN || "0501";
-    if (suppliedPin !== adminPin) {
+    if (!env.ADMIN_PIN) {
+      return json({ ok: false, error: "ADMIN_PIN not configured" }, { status: 500 });
+    }
+    if (suppliedPin !== env.ADMIN_PIN) {
       return json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
     const transactions = Array.isArray(payload.transactions) ? payload.transactions : [];

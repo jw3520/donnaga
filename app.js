@@ -1,8 +1,7 @@
 const STORAGE_KEY_V3 = "donnaga-state-v3";
 const STORAGE_KEY_V4 = "donnaga-state-v4";
 const AUTH_PIN_STORAGE_KEY = "DONNAGA_PIN";
-const ADMIN_PIN = "0501";
-const READONLY_PIN = "0000";
+const AUTH_ROLE_STORAGE_KEY = "DONNAGA_ROLE";
 const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const DB_NAME = "donnaga-db";
 const SYNC_INTERVAL_MS = 60_000;
@@ -236,6 +235,7 @@ const refs = {
   loginGateForm: document.querySelector("#login-gate-form"),
   loginGateInput: document.querySelector("#login-gate-input"),
   loginGateError: document.querySelector("#login-gate-error"),
+  loginGateSubmit: document.querySelector(".login-gate__submit"),
   adminOnlyElements: [...document.querySelectorAll("[data-admin-only='true']")],
 };
 
@@ -266,6 +266,7 @@ const state = {
   syncMessage: "로컬 준비 중",
   lastSyncedAt: null,
   syncDetailMessage: "",
+  verifyingPin: false,
 };
 
 let deferredInstallPrompt = null;
@@ -380,7 +381,13 @@ function bindEvents() {
 
   refs.manualSyncButton.addEventListener("click", async () => {
     if (!canWrite()) return;
-    await fullSyncCycle();
+    setButtonBusy(refs.manualSyncButton, true, { idleLabel: "지금 동기화", busyLabel: "동기화 중" });
+    updateSyncUI("동기화 진행 중", "syncing");
+    try {
+      await fullSyncCycle();
+    } finally {
+      setButtonBusy(refs.manualSyncButton, false, { idleLabel: "지금 동기화" });
+    }
   });
   refs.clearWebCacheButton.addEventListener("click", async () => {
     await clearWebCacheAndReload();
@@ -483,8 +490,23 @@ function bindEvents() {
 
 function restoreAuthState() {
   const savedPin = localStorage.getItem(AUTH_PIN_STORAGE_KEY) || "";
+  const savedRole = localStorage.getItem(AUTH_ROLE_STORAGE_KEY) || "";
   state.authPin = savedPin;
-  state.role = savedPin === ADMIN_PIN ? "admin" : savedPin === READONLY_PIN ? "readonly" : "guest";
+  state.role = savedPin && (savedRole === "admin" || savedRole === "readonly") ? savedRole : "guest";
+}
+
+function persistAuthState(pin, role) {
+  localStorage.setItem(AUTH_PIN_STORAGE_KEY, pin);
+  localStorage.setItem(AUTH_ROLE_STORAGE_KEY, role);
+  state.authPin = pin;
+  state.role = role;
+}
+
+function clearAuthState() {
+  localStorage.removeItem(AUTH_PIN_STORAGE_KEY);
+  localStorage.removeItem(AUTH_ROLE_STORAGE_KEY);
+  state.authPin = "";
+  state.role = "guest";
 }
 
 function canWrite() {
@@ -519,13 +541,25 @@ function ensureLoginGate() {
 async function onSubmitLoginGate(event) {
   event.preventDefault();
   const pin = String(refs.loginGateInput.value || "").trim();
-  if (pin !== ADMIN_PIN && pin !== READONLY_PIN) {
+  if (!pin) {
     refs.loginGateError.hidden = false;
     refs.loginGateInput.select();
     return;
   }
-  localStorage.setItem(AUTH_PIN_STORAGE_KEY, pin);
-  restoreAuthState();
+  state.verifyingPin = true;
+  setButtonBusy(refs.loginGateSubmit, true, { idleLabel: "입장하기", busyLabel: "확인 중" });
+  refs.loginGateError.hidden = true;
+  try {
+    const role = await verifyPinOnServer(pin);
+    persistAuthState(pin, role);
+  } catch {
+    refs.loginGateError.hidden = false;
+    refs.loginGateInput.select();
+    return;
+  } finally {
+    state.verifyingPin = false;
+    setButtonBusy(refs.loginGateSubmit, false, { idleLabel: "입장하기" });
+  }
   applyRoleToUI();
   ensureLoginGate();
   render();
@@ -542,7 +576,7 @@ async function onSubmitLoginGate(event) {
 }
 
 function logoutAndReload() {
-  localStorage.removeItem(AUTH_PIN_STORAGE_KEY);
+  clearAuthState();
   window.location.reload();
 }
 
@@ -564,6 +598,35 @@ function syncUpdateUi() {
   refs.clearWebCacheButton.classList.toggle("primary-button", state.updateAvailable);
   refs.clearWebCacheButton.classList.toggle("secondary-button", !state.updateAvailable);
   refs.clearWebCacheButton.classList.toggle("update-button--highlight", state.updateAvailable);
+}
+
+async function verifyPinOnServer(pin) {
+  const response = await fetch("/api/verify-pin", {
+    method: "POST",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pin }),
+  });
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch {
+    payload = null;
+  }
+  if (!response.ok || !payload?.role) {
+    throw new Error(payload?.error || `verify failed: ${response.status}`);
+  }
+  return payload.role;
+}
+
+function setButtonBusy(button, isBusy, options = {}) {
+  if (!button) return;
+  const idleLabel = options.idleLabel || button.dataset.idleLabel || button.textContent.trim();
+  button.dataset.idleLabel = idleLabel;
+  button.disabled = isBusy;
+  button.classList.toggle("button--busy", isBusy);
+  button.setAttribute("aria-busy", isBusy ? "true" : "false");
+  button.textContent = isBusy ? (options.busyLabel || idleLabel) : idleLabel;
 }
 
 function bindBackdropClose(dialog) {
@@ -1686,6 +1749,7 @@ async function pushPendingToServer() {
     return;
   }
 
+  state.syncing = true;
   updateSyncUI(`동기화 중 (${pending.length}건)`, "syncing");
   try {
     let syncedCount = 0;
@@ -1721,6 +1785,8 @@ async function pushPendingToServer() {
     const message = error instanceof Error ? error.message : "알 수 없는 오류";
     state.syncDetailMessage = `동기화 실패: ${message}`;
     updateSyncUI("동기화 실패", "error");
+  } finally {
+    state.syncing = false;
   }
 }
 
@@ -1729,6 +1795,7 @@ async function pullFromServer() {
     updateSyncUI("오프라인", "offline");
     return;
   }
+  state.syncing = true;
   updateSyncUI("최신 데이터 확인 중", "syncing");
   try {
     const response = await fetch("/api/sync", { cache: "no-store" });
@@ -1752,6 +1819,8 @@ async function pullFromServer() {
     updateSyncUI("동기화 완료", "success");
   } catch {
     updateSyncUI("서버 연결 실패", "error");
+  } finally {
+    state.syncing = false;
   }
 }
 
@@ -2304,6 +2373,10 @@ async function registerServiceWorker() {
       setUpdateAvailable(false);
       window.location.reload();
     });
+    await registration.update();
+    if (registration.waiting) {
+      setUpdateAvailable(true);
+    }
     console.info("[PWA] service worker registered:", registration.scope);
   } catch (error) {
     console.error("[PWA] service worker registration failed:", error);
@@ -2311,8 +2384,11 @@ async function registerServiceWorker() {
 }
 
 async function clearWebCacheAndReload() {
-  refs.clearWebCacheButton.disabled = true;
-  refs.clearWebCacheButton.textContent = state.updateAvailable ? "업데이트 중" : "확인 중";
+  setButtonBusy(refs.clearWebCacheButton, true, {
+    idleLabel: "업데이트",
+    busyLabel: state.updateAvailable ? "업데이트 중" : "확인 중",
+  });
+  updateSyncUI(state.updateAvailable ? "새 버전 적용 중" : "최신 버전 확인 중", "syncing");
   try {
     if (state.updateAvailable && swRegistrationRef?.waiting) {
       setUpdateAvailable(false);
@@ -2328,16 +2404,17 @@ async function clearWebCacheAndReload() {
       await swRegistrationRef.update();
       if (swRegistrationRef.waiting) {
         setUpdateAvailable(true);
+        updateSyncUI("새 버전이 준비됐어요", "success");
+      } else {
+        updateSyncUI("이미 최신 버전입니다", "success");
       }
     }
-    refs.clearWebCacheButton.disabled = false;
-    refs.clearWebCacheButton.textContent = "업데이트";
+    setButtonBusy(refs.clearWebCacheButton, false, { idleLabel: "업데이트" });
     syncUpdateUi();
   } catch (error) {
     console.error("[PWA] failed to apply update:", error);
     updateSyncUI("업데이트 확인 실패", "error");
-    refs.clearWebCacheButton.disabled = false;
-    refs.clearWebCacheButton.textContent = "업데이트";
+    setButtonBusy(refs.clearWebCacheButton, false, { idleLabel: "업데이트" });
     syncUpdateUi();
   }
 }
