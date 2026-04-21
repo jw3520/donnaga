@@ -3,6 +3,7 @@ const STORAGE_KEY_V4 = "donnaga-state-v4";
 const AUTH_PIN_STORAGE_KEY = "DONNAGA_PIN";
 const ADMIN_PIN = "0501";
 const READONLY_PIN = "0000";
+const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const DB_NAME = "donnaga-db";
 const SYNC_INTERVAL_MS = 60_000;
 const SYNC_PUSH_BATCH_SIZE = 200;
@@ -131,6 +132,7 @@ const refs = {
   syncDetailLabel: document.querySelector("#sync-detail-label"),
   manualSyncButton: document.querySelector("#manual-sync-button"),
   clearWebCacheButton: document.querySelector("#clear-web-cache-button"),
+  settingsUpdateBadge: document.querySelector("#settings-update-badge"),
   openInstallDialogButton: document.querySelector("#open-install-dialog-button"),
   logoutButton: document.querySelector("#logout-button"),
   calendarCard: document.querySelector("#calendar-card"),
@@ -256,6 +258,7 @@ const state = {
   budgetLimits: {},
   authPin: "",
   role: "guest",
+  updateAvailable: false,
   editingId: null,
   syncing: false,
   syncMessage: "로컬 준비 중",
@@ -266,14 +269,18 @@ const state = {
 let deferredInstallPrompt = null;
 let syncTimerId = null;
 let calendarTouchState = null;
+let swRegistrationRef = null;
+let reloadingForServiceWorker = false;
 await boot();
 
 async function boot() {
   restoreAuthState();
+  ensureLoginGate();
   populateStaticOptions();
   renderFilterChips();
   bindEvents();
   applyRoleToUI();
+  syncUpdateUi();
   updateSyncUI("로컬 데이터베이스 준비 중", "idle");
   await migrateLegacyLocalState();
   await migrateLegacyMemberNames();
@@ -284,14 +291,18 @@ async function boot() {
   await loadBudgetLimits();
   await loadTransactionsFromDb();
   render();
-  updateSyncUI(navigator.onLine ? "초기 동기화 중" : "오프라인", navigator.onLine ? "syncing" : "offline");
-  await pullFromServer();
-  if (navigator.onLine) {
-    await pushPendingToServer();
+  if (hasAccess()) {
+    updateSyncUI(navigator.onLine ? "초기 동기화 중" : "오프라인", navigator.onLine ? "syncing" : "offline");
+    await pullFromServer();
+    if (navigator.onLine) {
+      await pushPendingToServer();
+    }
+  } else {
+    updateSyncUI("비밀번호 입력 대기", "idle");
   }
   schedulePeriodicSync();
   registerConnectivityHooks();
-  registerServiceWorker();
+  await registerServiceWorker();
   ensureLoginGate();
 }
 
@@ -470,6 +481,7 @@ function hasAccess() {
 
 function applyRoleToUI() {
   refs.adminOnlyElements.forEach((element) => {
+    element.style.display = canWrite() ? "" : "none";
     element.classList.toggle("is-hidden", !canWrite());
   });
   document.body.dataset.role = state.role;
@@ -516,6 +528,26 @@ async function onSubmitLoginGate(event) {
 function logoutAndReload() {
   localStorage.removeItem(AUTH_PIN_STORAGE_KEY);
   window.location.reload();
+}
+
+function setUpdateAvailable(isAvailable) {
+  state.updateAvailable = Boolean(isAvailable);
+  if (state.updateAvailable) {
+    localStorage.setItem(UPDATE_SEEN_STORAGE_KEY, "1");
+  } else {
+    localStorage.removeItem(UPDATE_SEEN_STORAGE_KEY);
+  }
+  syncUpdateUi();
+}
+
+function syncUpdateUi() {
+  if (refs.settingsUpdateBadge) {
+    refs.settingsUpdateBadge.hidden = !state.updateAvailable;
+  }
+  if (!refs.clearWebCacheButton) return;
+  refs.clearWebCacheButton.classList.toggle("primary-button", state.updateAvailable);
+  refs.clearWebCacheButton.classList.toggle("secondary-button", !state.updateAvailable);
+  refs.clearWebCacheButton.classList.toggle("update-button--highlight", state.updateAvailable);
 }
 
 function bindBackdropClose(dialog) {
@@ -1670,13 +1702,15 @@ function updateSyncUI(message, status) {
 function schedulePeriodicSync() {
   clearInterval(syncTimerId);
   syncTimerId = window.setInterval(() => {
+    if (!hasAccess()) return;
     void fullSyncCycle();
   }, SYNC_INTERVAL_MS);
 }
 
 function registerConnectivityHooks() {
   window.addEventListener("online", () => {
-    refs.remoteStatusLabel.textContent = "Cloudflare D1 동기화 활성";
+    refs.remoteStatusLabel.textContent = "연결됨";
+    if (!hasAccess()) return;
     void fullSyncCycle();
   });
   window.addEventListener("offline", () => {
@@ -2174,7 +2208,30 @@ async function registerServiceWorker() {
     return;
   }
   try {
+    if (localStorage.getItem(UPDATE_SEEN_STORAGE_KEY) === "1") {
+      state.updateAvailable = true;
+      syncUpdateUi();
+    }
     const registration = await navigator.serviceWorker.register("./sw.js");
+    swRegistrationRef = registration;
+    if (registration.waiting) {
+      setUpdateAvailable(true);
+    }
+    registration.addEventListener("updatefound", () => {
+      const installingWorker = registration.installing;
+      if (!installingWorker) return;
+      installingWorker.addEventListener("statechange", () => {
+        if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
+          setUpdateAvailable(true);
+        }
+      });
+    });
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (reloadingForServiceWorker) return;
+      reloadingForServiceWorker = true;
+      setUpdateAvailable(false);
+      window.location.reload();
+    });
     console.info("[PWA] service worker registered:", registration.scope);
   } catch (error) {
     console.error("[PWA] service worker registration failed:", error);
@@ -2183,24 +2240,32 @@ async function registerServiceWorker() {
 
 async function clearWebCacheAndReload() {
   refs.clearWebCacheButton.disabled = true;
-  refs.clearWebCacheButton.textContent = "삭제 중";
+  refs.clearWebCacheButton.textContent = state.updateAvailable ? "업데이트 중" : "확인 중";
   try {
-    if ("serviceWorker" in navigator) {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(registrations.map((registration) => registration.unregister()));
+    if (state.updateAvailable && swRegistrationRef?.waiting) {
+      setUpdateAvailable(false);
+      swRegistrationRef.waiting.postMessage({ type: "SKIP_WAITING" });
+      window.setTimeout(() => {
+        if (!reloadingForServiceWorker) {
+          window.location.reload();
+        }
+      }, 800);
+      return;
     }
-    if ("caches" in window) {
-      const keys = await caches.keys();
-      await Promise.all(keys.map((key) => caches.delete(key)));
+    if (swRegistrationRef) {
+      await swRegistrationRef.update();
+      if (swRegistrationRef.waiting) {
+        setUpdateAvailable(true);
+      }
     }
-    updateSyncUI("웹 캐시 삭제 완료", "success");
-    window.setTimeout(() => {
-      window.location.reload();
-    }, 300);
-  } catch (error) {
-    console.error("[PWA] failed to clear cache:", error);
-    updateSyncUI("웹 캐시 삭제 실패", "error");
     refs.clearWebCacheButton.disabled = false;
-    refs.clearWebCacheButton.textContent = "캐시 삭제";
+    refs.clearWebCacheButton.textContent = "업데이트";
+    syncUpdateUi();
+  } catch (error) {
+    console.error("[PWA] failed to apply update:", error);
+    updateSyncUI("업데이트 확인 실패", "error");
+    refs.clearWebCacheButton.disabled = false;
+    refs.clearWebCacheButton.textContent = "업데이트";
+    syncUpdateUi();
   }
 }
