@@ -338,6 +338,8 @@ function bindEvents() {
       renderCalendar();
       renderDailyRecords();
       renderListRecords();
+      renderAssets();
+      renderAnalysis();
       await persistUiMeta();
       renderIcons();
     });
@@ -890,7 +892,7 @@ function renderAnalysis() {
   refs.cardTotalAmount.textContent = formatCurrency(creditTotal);
   refs.debitTotalAmount.textContent = formatCurrency(debitTotal);
   refs.cardSummaryList.innerHTML = [
-    { label: "카드", amount: formatCurrency(creditTotal) },
+    { label: "신용카드", amount: formatCurrency(creditTotal) },
     { label: "체크카드", amount: formatCurrency(debitTotal) },
     { label: "현금", amount: formatCurrency(cashTotal) },
   ]
@@ -1468,7 +1470,7 @@ function getMemberScopedMonthTransactions() {
 }
 
 function getFilteredMonthTransactions() {
-  return applyFilters(getMonthTransactions());
+  return applyMemberFilter(applyFilters(getMonthTransactions()));
 }
 
 function applyMemberFilter(items) {
@@ -1772,7 +1774,7 @@ function openInstallDialog() {
     refs.installButton.textContent = "확인";
     refs.installButton.disabled = true;
     refs.installSteps.innerHTML = `
-      <li>홈 화면에서 돈나가 아이콘을 찾아 실행합니다.</li>
+      <li>홈 화면에서 DonNaGa 아이콘을 찾아 실행합니다.</li>
       <li>브라우저가 아닌 앱처럼 전체 화면으로 열립니다.</li>
     `;
     refs.installDialog.showModal();
@@ -1816,7 +1818,7 @@ function openInstallDialog() {
     refs.installSteps.innerHTML = `
       <li>브라우저 메뉴를 엽니다.</li>
       <li>'홈 화면에 추가' 또는 '앱 설치'를 선택합니다.</li>
-      <li>설치 후 홈 화면에서 돈나가를 실행합니다.</li>
+      <li>설치 후 홈 화면에서 DonNaGa를 실행합니다.</li>
     `;
   }
 
