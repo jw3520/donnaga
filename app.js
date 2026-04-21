@@ -16,7 +16,7 @@ const MEMBERS = [
 const ACCOUNTS = [
   { id: "cash", name: "현금", type: "cash" },
   { id: "debit-card", name: "체크카드", type: "debit" },
-  { id: "credit-card", name: "카드", type: "credit" },
+  { id: "credit-card", name: "신용카드", type: "credit" },
   { id: "bank-transfer", name: "계좌이체", type: "bank" },
   { id: "other", name: "기타", type: "other" },
 ];
@@ -125,6 +125,7 @@ const refs = {
   balanceTotal: document.querySelector("#balance-total"),
   cashExpenseTotal: document.querySelector("#cash-expense-total"),
   cardExpenseTotal: document.querySelector("#card-expense-total"),
+  memberFilterButtons: [...document.querySelectorAll("[data-member-filter]")],
   syncDot: document.querySelector("#sync-dot"),
   syncStatusLabel: document.querySelector("#sync-status-label"),
   storageStatusLabel: document.querySelector("#storage-status-label"),
@@ -254,6 +255,7 @@ const state = {
   analysisMode: "expense",
   listSortOrder: "desc",
   searchPeriod: "all",
+  memberFilter: "all",
   filters: { types: ["income", "expense", "investment"], categories: [] },
   budgetLimits: {},
   authPin: "",
@@ -328,6 +330,18 @@ function bindEvents() {
     renderIcons();
   });
   refs.listSearchButton.addEventListener("click", openSearchDialog);
+  refs.memberFilterButtons.forEach((button) => {
+    button.addEventListener("click", async () => {
+      state.memberFilter = button.dataset.memberFilter || "all";
+      syncMemberFilterButtons();
+      renderSummary();
+      renderCalendar();
+      renderDailyRecords();
+      renderListRecords();
+      await persistUiMeta();
+      renderIcons();
+    });
+  });
 
   refs.openMonthPickerButton.addEventListener("click", () => {
     renderMonthPicker();
@@ -660,6 +674,7 @@ async function loadUiMeta() {
   state.selectedDateByUser = savedUi.selectedDateByUser || false;
   state.analysisTab = savedUi.analysisTab || state.analysisTab;
   state.analysisMode = savedUi.analysisMode || state.analysisMode;
+  state.memberFilter = ["all", "정우", "솔이"].includes(savedUi.memberFilter) ? savedUi.memberFilter : "all";
   state.filters = normalizeFilterState(savedUi.filters || state.filters);
   state.listSortOrder = savedUi.listSortOrder === "asc" ? "asc" : "desc";
   state.lastSyncedAt = (await getMeta("lastSyncedAt")) || null;
@@ -687,6 +702,7 @@ async function persistUiMeta() {
     selectedDateByUser: state.selectedDateByUser,
     analysisTab: state.analysisTab,
     analysisMode: state.analysisMode,
+    memberFilter: state.memberFilter,
     filters: state.filters,
     listSortOrder: state.listSortOrder,
   });
@@ -726,12 +742,13 @@ function renderMonthLabels() {
   if (refs.memoMonthLabel) refs.memoMonthLabel.textContent = shortMonthLabel(state.currentMonth);
   refs.analysisMonthLabel.textContent = shortMonthLabel(state.currentMonth);
   refs.analysisRangeLabel.textContent = monthRangeLabel(state.currentMonth);
-  refs.listRecordsCaption.textContent = `${monthLabel(state.currentMonth)} 전체 내역`;
+  refs.listRecordsCaption.textContent = `${monthLabel(state.currentMonth)} ${memberFilterLabel()} 내역`;
   refs.searchDateLabel.textContent = `- ${todayISO().replaceAll("-", ".")}`;
+  syncMemberFilterButtons();
 }
 
 function renderSummary() {
-  const transactions = getFilteredMonthTransactions();
+  const transactions = getMemberScopedMonthTransactions();
   const income = sumByType(transactions, "income");
   const expense = sumByType(transactions, "expense");
   const investment = sumByType(transactions, "investment");
@@ -752,7 +769,7 @@ function renderCalendar() {
   const [year, month] = state.currentMonth.split("-").map(Number);
   const firstDay = new Date(year, month - 1, 1);
   const daysInMonth = new Date(year, month, 0).getDate();
-  const expenseByDate = getFilteredMonthTransactions()
+  const expenseByDate = getMemberScopedMonthTransactions()
     .filter((item) => item.type === "expense")
     .reduce((acc, item) => {
       acc[item.date] = (acc[item.date] || 0) + item.amount;
@@ -795,14 +812,14 @@ function renderCalendar() {
 }
 
 function renderDailyRecords() {
-  const items = getFilteredMonthTransactions().filter((item) => item.date === state.selectedDate);
+  const items = getMemberScopedMonthTransactions().filter((item) => item.date === state.selectedDate);
   refs.selectedDateTitle.textContent = displaySelectedDate(state.selectedDate);
   refs.recordsCaption.textContent = items.length ? `${items.length}건의 내역` : "지출 내역이 없어요.";
   renderRecordCollection(refs.recordsList, items, "daily");
 }
 
 function renderListRecords() {
-  renderRecordCollection(refs.listRecordsList, getFilteredMonthTransactions(), "daily", state.listSortOrder);
+  renderRecordCollection(refs.listRecordsList, getMemberScopedMonthTransactions(), "daily", state.listSortOrder);
   syncListSortButton();
 }
 
@@ -1446,8 +1463,17 @@ function getMonthTransactions() {
   return state.transactions.filter((item) => !item.deleted && item.date.startsWith(state.currentMonth));
 }
 
+function getMemberScopedMonthTransactions() {
+  return applyMemberFilter(applyFilters(getMonthTransactions()));
+}
+
 function getFilteredMonthTransactions() {
   return applyFilters(getMonthTransactions());
+}
+
+function applyMemberFilter(items) {
+  if (state.memberFilter === "all") return items;
+  return items.filter((item) => normalizeMemberId(item.member) === state.memberFilter);
 }
 
 function applyFilters(items) {
@@ -1459,6 +1485,16 @@ function applyFilters(items) {
     );
     return typeAllowed && categoryAllowed;
   });
+}
+
+function syncMemberFilterButtons() {
+  refs.memberFilterButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.memberFilter === state.memberFilter);
+  });
+}
+
+function memberFilterLabel() {
+  return state.memberFilter === "all" ? "전체" : state.memberFilter;
 }
 
 function filterBySearchPeriod(items, period) {
