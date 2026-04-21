@@ -631,12 +631,14 @@ function setButtonBusy(button, isBusy, options = {}) {
 
 async function withMinimumBusyTime(task, minimumMs = 2000) {
   const startedAt = Date.now();
-  const result = await task();
-  const elapsed = Date.now() - startedAt;
-  if (elapsed < minimumMs) {
-    await new Promise((resolve) => window.setTimeout(resolve, minimumMs - elapsed));
+  try {
+    return await task();
+  } finally {
+    const elapsed = Date.now() - startedAt;
+    if (elapsed < minimumMs) {
+      await new Promise((resolve) => window.setTimeout(resolve, minimumMs - elapsed));
+    }
   }
-  return result;
 }
 
 function bindBackdropClose(dialog) {
@@ -896,7 +898,7 @@ function renderCalendar() {
       .join("");
     cells.push(`
       <button class="${classes.join(" ")}" type="button" data-date="${date}">
-        <span class="calendar-day__date-row">
+        <span class="calendar-day__header">
           <span class="calendar-day__date">${day}</span>
           ${eventIcons ? `<span class="calendar-day__events">${eventIcons}</span>` : ""}
         </span>
@@ -2400,15 +2402,10 @@ async function clearWebCacheAndReload() {
   });
   updateSyncUI(state.updateAvailable ? "새 버전 적용 중" : "최신 버전 확인 중", "syncing");
   try {
+    const shouldActivateWaitingWorker = state.updateAvailable && Boolean(swRegistrationRef?.waiting);
     await withMinimumBusyTime(async () => {
-      if (state.updateAvailable && swRegistrationRef?.waiting) {
+      if (shouldActivateWaitingWorker) {
         setUpdateAvailable(false);
-        swRegistrationRef.waiting.postMessage({ type: "SKIP_WAITING" });
-        window.setTimeout(() => {
-          if (!reloadingForServiceWorker) {
-            window.location.reload();
-          }
-        }, 800);
         return;
       }
       if (swRegistrationRef) {
@@ -2421,6 +2418,15 @@ async function clearWebCacheAndReload() {
         }
       }
     }, 2000);
+    if (shouldActivateWaitingWorker && swRegistrationRef?.waiting) {
+      swRegistrationRef.waiting.postMessage({ type: "SKIP_WAITING" });
+      window.setTimeout(() => {
+        if (!reloadingForServiceWorker) {
+          window.location.reload();
+        }
+      }, 300);
+      return;
+    }
     setButtonBusy(refs.clearWebCacheButton, false, { idleLabel: "업데이트" });
     syncUpdateUi();
   } catch (error) {
