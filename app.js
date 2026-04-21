@@ -384,7 +384,7 @@ function bindEvents() {
     setButtonBusy(refs.manualSyncButton, true, { idleLabel: "지금 동기화", busyLabel: "동기화 중" });
     updateSyncUI("동기화 진행 중", "syncing");
     try {
-      await fullSyncCycle();
+      await withMinimumBusyTime(() => fullSyncCycle(), 1000);
     } finally {
       setButtonBusy(refs.manualSyncButton, false, { idleLabel: "지금 동기화" });
     }
@@ -627,6 +627,16 @@ function setButtonBusy(button, isBusy, options = {}) {
   button.classList.toggle("button--busy", isBusy);
   button.setAttribute("aria-busy", isBusy ? "true" : "false");
   button.textContent = isBusy ? (options.busyLabel || idleLabel) : idleLabel;
+}
+
+async function withMinimumBusyTime(task, minimumMs = 1000) {
+  const startedAt = Date.now();
+  const result = await task();
+  const elapsed = Date.now() - startedAt;
+  if (elapsed < minimumMs) {
+    await new Promise((resolve) => window.setTimeout(resolve, minimumMs - elapsed));
+  }
+  return result;
 }
 
 function bindBackdropClose(dialog) {
@@ -2390,25 +2400,27 @@ async function clearWebCacheAndReload() {
   });
   updateSyncUI(state.updateAvailable ? "새 버전 적용 중" : "최신 버전 확인 중", "syncing");
   try {
-    if (state.updateAvailable && swRegistrationRef?.waiting) {
-      setUpdateAvailable(false);
-      swRegistrationRef.waiting.postMessage({ type: "SKIP_WAITING" });
-      window.setTimeout(() => {
-        if (!reloadingForServiceWorker) {
-          window.location.reload();
-        }
-      }, 800);
-      return;
-    }
-    if (swRegistrationRef) {
-      await swRegistrationRef.update();
-      if (swRegistrationRef.waiting) {
-        setUpdateAvailable(true);
-        updateSyncUI("새 버전이 준비됐어요", "success");
-      } else {
-        updateSyncUI("이미 최신 버전입니다", "success");
+    await withMinimumBusyTime(async () => {
+      if (state.updateAvailable && swRegistrationRef?.waiting) {
+        setUpdateAvailable(false);
+        swRegistrationRef.waiting.postMessage({ type: "SKIP_WAITING" });
+        window.setTimeout(() => {
+          if (!reloadingForServiceWorker) {
+            window.location.reload();
+          }
+        }, 800);
+        return;
       }
-    }
+      if (swRegistrationRef) {
+        await swRegistrationRef.update();
+        if (swRegistrationRef.waiting) {
+          setUpdateAvailable(true);
+          updateSyncUI("새 버전이 준비됐어요", "success");
+        } else {
+          updateSyncUI("이미 최신 버전입니다", "success");
+        }
+      }
+    }, 1000);
     setButtonBusy(refs.clearWebCacheButton, false, { idleLabel: "업데이트" });
     syncUpdateUi();
   } catch (error) {
