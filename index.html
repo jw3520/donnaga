@@ -161,10 +161,10 @@
             <div class="settings-list">
               <article class="settings-row settings-row--danger">
                 <div class="stack">
-                  <strong>웹 캐시 삭제</strong>
-                  <p>배포 반영이 안 보일 때 서비스워커 캐시를 지우고 새로고침합니다.</p>
+                  <strong>앱 최신버전 업데이트</strong>
+                  <p>앱 화면이 이상하거나 최신 반영이 안 될 때 누르세요.</p>
                 </div>
-                <button class="ghost-button" id="clear-web-cache-button" type="button">캐시 삭제</button>
+                <button class="ghost-button" id="clear-web-cache-button" type="button">업데이트</button>
               </article>
               <article class="settings-row settings-row--status">
                 <div class="stack">
@@ -174,7 +174,7 @@
               </article>
               <article class="settings-row">
                 <div class="stack">
-                  <strong>데이터 저장</strong>
+                  <strong>기록된 내역 수</strong>
                   <p id="storage-status-label">IndexedDB 준비 중</p>
                 </div>
               </article>
@@ -186,17 +186,24 @@
               </article>
               <article class="settings-row">
                 <div class="stack">
-                  <strong>최근 동기화</strong>
+                  <strong>마지막 동기화</strong>
                   <p id="sync-detail-label">마지막 동기화 기록 없음</p>
                 </div>
-                <button class="secondary-button" id="manual-sync-button" type="button">지금 동기화</button>
+                <button class="secondary-button" id="manual-sync-button" type="button" data-admin-only="true">지금 동기화</button>
               </article>
               <article class="settings-row">
                 <div class="stack">
-                  <strong>앱 설치</strong>
+                  <strong>홈 화면에 추가</strong>
                   <p>홈 화면에 추가해서 앱처럼 사용할 수 있습니다.</p>
                 </div>
                 <button class="primary-button" id="open-install-dialog-button" type="button">설치 안내</button>
+              </article>
+              <article class="settings-row settings-row--logout">
+                <div class="stack">
+                  <strong>권한 초기화</strong>
+                  <p>다시 비밀번호를 입력해서 권한을 선택합니다.</p>
+                </div>
+                <button class="ghost-button" id="logout-button" type="button">로그아웃</button>
               </article>
             </div>
           </section>
@@ -288,7 +295,7 @@
           </nav>
         </section>
 
-        <button class="fab" id="open-entry-button" type="button" aria-label="내역 추가">
+        <button class="fab" id="open-entry-button" type="button" aria-label="내역 추가" data-admin-only="true">
           <i data-lucide="plus"></i>
         </button>
 
@@ -500,9 +507,9 @@
         </section>
 
         <div class="entry-form__actions">
-          <button class="ghost-button is-hidden" id="entry-delete-button" type="button">삭제</button>
+          <button class="ghost-button is-hidden" id="entry-delete-button" type="button" data-admin-only="true">삭제</button>
           <button class="secondary-button" id="reset-form-button" type="button">초기화</button>
-          <button class="primary-button" id="entry-submit-button" type="submit">저장</button>
+          <button class="primary-button" id="entry-submit-button" type="submit" data-admin-only="true">저장</button>
         </div>
       </form>
     </dialog>
@@ -519,12 +526,25 @@
           <strong class="record-card__amount"></strong>
         </div>
         <div class="record-card__actions">
-          <button class="ghost-button ghost-button--icon record-delete-button" type="button" aria-label="삭제">
+          <button class="ghost-button ghost-button--icon record-delete-button" type="button" aria-label="삭제" data-admin-only="true">
             <i data-lucide="minus"></i>
           </button>
         </div>
       </article>
     </template>
+
+    <div class="login-gate" id="login-gate" hidden>
+      <div class="login-gate__card">
+        <p class="section-label">Access</p>
+        <h2>비밀번호를 입력하세요</h2>
+        <p class="login-gate__description">0501은 수정 가능, 0000은 조회 전용으로 들어갑니다.</p>
+        <form id="login-gate-form" class="login-gate__form">
+          <input id="login-gate-input" type="password" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="4자리 PIN" />
+          <p class="login-gate__error" id="login-gate-error" hidden>비밀번호가 틀렸습니다.</p>
+          <button class="primary-button login-gate__submit" type="submit">입장하기</button>
+        </form>
+      </div>
+    </div>
 
     <script src="./app.js" type="module"></script>
   </body>

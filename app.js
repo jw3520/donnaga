@@ -1,5 +1,8 @@
 const STORAGE_KEY_V3 = "donnaga-state-v3";
 const STORAGE_KEY_V4 = "donnaga-state-v4";
+const AUTH_PIN_STORAGE_KEY = "DONNAGA_PIN";
+const ADMIN_PIN = "0501";
+const READONLY_PIN = "0000";
 const DB_NAME = "donnaga-db";
 const SYNC_INTERVAL_MS = 60_000;
 const SYNC_PUSH_BATCH_SIZE = 200;
@@ -129,6 +132,7 @@ const refs = {
   manualSyncButton: document.querySelector("#manual-sync-button"),
   clearWebCacheButton: document.querySelector("#clear-web-cache-button"),
   openInstallDialogButton: document.querySelector("#open-install-dialog-button"),
+  logoutButton: document.querySelector("#logout-button"),
   calendarCard: document.querySelector("#calendar-card"),
   calendarGrid: document.querySelector("#calendar-grid"),
   selectedDateTitle: document.querySelector("#selected-date-title"),
@@ -225,6 +229,11 @@ const refs = {
   installLaterButton: document.querySelector("#install-later-button"),
   installDescription: document.querySelector("#install-description"),
   installSteps: document.querySelector("#install-steps"),
+  loginGate: document.querySelector("#login-gate"),
+  loginGateForm: document.querySelector("#login-gate-form"),
+  loginGateInput: document.querySelector("#login-gate-input"),
+  loginGateError: document.querySelector("#login-gate-error"),
+  adminOnlyElements: [...document.querySelectorAll("[data-admin-only='true']")],
 };
 
 const db = new window.Dexie(DB_NAME);
@@ -245,6 +254,8 @@ const state = {
   searchPeriod: "all",
   filters: { types: ["income", "expense", "investment"], categories: [] },
   budgetLimits: {},
+  authPin: "",
+  role: "guest",
   editingId: null,
   syncing: false,
   syncMessage: "로컬 준비 중",
@@ -258,9 +269,11 @@ let calendarTouchState = null;
 await boot();
 
 async function boot() {
+  restoreAuthState();
   populateStaticOptions();
   renderFilterChips();
   bindEvents();
+  applyRoleToUI();
   updateSyncUI("로컬 데이터베이스 준비 중", "idle");
   await migrateLegacyLocalState();
   await migrateLegacyMemberNames();
@@ -279,6 +292,7 @@ async function boot() {
   schedulePeriodicSync();
   registerConnectivityHooks();
   registerServiceWorker();
+  ensureLoginGate();
 }
 
 function populateStaticOptions() {
@@ -338,6 +352,7 @@ function bindEvents() {
   });
 
   refs.manualSyncButton.addEventListener("click", async () => {
+    if (!canWrite()) return;
     await fullSyncCycle();
   });
   refs.clearWebCacheButton.addEventListener("click", async () => {
@@ -346,6 +361,7 @@ function bindEvents() {
   refs.openInstallDialogButton.addEventListener("click", () => {
     openInstallDialog();
   });
+  refs.logoutButton.addEventListener("click", logoutAndReload);
 
   refs.screenButtons.forEach((button) => {
     button.addEventListener("click", () => switchScreen(button.dataset.screenTarget));
@@ -374,6 +390,7 @@ function bindEvents() {
   refs.entryForm.addEventListener("submit", onSubmitEntry);
   refs.resetFormButton.addEventListener("click", resetEntryForm);
   refs.entryDeleteButton.addEventListener("click", async () => {
+    if (!canWrite()) return;
     if (!state.editingId) return;
     refs.entryDialog.close();
     await deleteRecord(state.editingId);
@@ -411,6 +428,7 @@ function bindEvents() {
   [refs.monthPickerDialog, refs.searchDialog, refs.filterDialog, refs.installDialog, refs.entryDialog].forEach(
     bindBackdropClose,
   );
+  refs.loginGateForm.addEventListener("submit", onSubmitLoginGate);
 
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
@@ -434,6 +452,63 @@ function bindEvents() {
     refs.installDialog.close();
   });
   refs.installLaterButton.addEventListener("click", () => refs.installDialog.close());
+}
+
+function restoreAuthState() {
+  const savedPin = localStorage.getItem(AUTH_PIN_STORAGE_KEY) || "";
+  state.authPin = savedPin;
+  state.role = savedPin === ADMIN_PIN ? "admin" : savedPin === READONLY_PIN ? "readonly" : "guest";
+}
+
+function canWrite() {
+  return state.role === "admin";
+}
+
+function hasAccess() {
+  return state.role === "admin" || state.role === "readonly";
+}
+
+function applyRoleToUI() {
+  refs.adminOnlyElements.forEach((element) => {
+    element.classList.toggle("is-hidden", !canWrite());
+  });
+  document.body.dataset.role = state.role;
+}
+
+function ensureLoginGate() {
+  const blocked = !hasAccess();
+  refs.loginGate.hidden = !blocked;
+  document.body.classList.toggle("is-auth-blocked", blocked);
+  if (blocked) {
+    refs.loginGateInput.value = "";
+    refs.loginGateError.hidden = true;
+    requestAnimationFrame(() => refs.loginGateInput.focus());
+  }
+}
+
+async function onSubmitLoginGate(event) {
+  event.preventDefault();
+  const pin = String(refs.loginGateInput.value || "").trim();
+  if (pin !== ADMIN_PIN && pin !== READONLY_PIN) {
+    refs.loginGateError.hidden = false;
+    refs.loginGateInput.select();
+    return;
+  }
+  localStorage.setItem(AUTH_PIN_STORAGE_KEY, pin);
+  restoreAuthState();
+  applyRoleToUI();
+  ensureLoginGate();
+  if (navigator.onLine) {
+    await pullFromServer();
+    if (canWrite()) {
+      await pushPendingToServer();
+    }
+  }
+}
+
+function logoutAndReload() {
+  localStorage.removeItem(AUTH_PIN_STORAGE_KEY);
+  window.location.reload();
 }
 
 function bindBackdropClose(dialog) {
@@ -584,11 +659,11 @@ async function persistBudgetLimits() {
 
 async function loadTransactionsFromDb() {
   state.transactions = await db.transactions.orderBy("date").reverse().toArray();
-  refs.storageStatusLabel.textContent = `IndexedDB에 ${state.transactions.filter((item) => !item.deleted).length}건 저장됨`;
-  refs.remoteStatusLabel.textContent = navigator.onLine ? "Cloudflare D1 동기화 가능" : "오프라인";
+  refs.storageStatusLabel.textContent = `총 ${state.transactions.filter((item) => !item.deleted).length}건`;
+  refs.remoteStatusLabel.textContent = navigator.onLine ? "연결됨" : "오프라인";
   refs.syncDetailLabel.textContent = state.lastSyncedAt
-    ? `마지막 동기화 ${formatDateTime(state.lastSyncedAt)}`
-    : "마지막 동기화 기록 없음";
+    ? formatRelativeSyncTime(state.lastSyncedAt)
+    : "아직 동기화 기록이 없어요.";
 }
 
 function render() {
@@ -602,6 +677,7 @@ function render() {
   renderAnalysis();
   renderFilterChips();
   syncScreens();
+  applyRoleToUI();
   syncFilterForm();
   renderIcons();
 }
@@ -791,6 +867,7 @@ function renderAnalysis() {
 
 function renderBudgetGroupCards(items, options = {}) {
   const variant = options.variant || "asset";
+  const editable = canWrite();
   return budgetGroupsForItems(items)
     .map((group) => {
       const rawProgress = Math.round((group.spent / Math.max(group.limit, 1)) * 100) || 0;
@@ -837,13 +914,17 @@ function renderBudgetGroupCards(items, options = {}) {
             <div class="asset-category-breakdown">
               ${categoryRows}
             </div>
-            <form class="asset-budget-form" data-budget-group-form="${group.id}">
-              <label class="asset-budget-form__label">
-                <span>예산 수정</span>
-                <input name="limit" type="number" min="0" step="10000" value="${group.limit}" inputmode="numeric" />
-              </label>
-              <button class="secondary-button" type="submit">저장</button>
-            </form>
+            ${editable
+              ? `
+                <form class="asset-budget-form" data-budget-group-form="${group.id}">
+                  <label class="asset-budget-form__label">
+                    <span>예산 수정</span>
+                    <input name="limit" type="number" min="0" step="10000" value="${group.limit}" inputmode="numeric" />
+                  </label>
+                  <button class="secondary-button" type="submit">저장</button>
+                </form>
+              `
+              : ""}
           </div>
         </details>
       `;
@@ -890,9 +971,13 @@ function createRecordElement(item) {
   amount.textContent = `${item.type === "income" ? "+" : "-"}${formatCurrency(item.amount)}`;
   amount.classList.add(`is-${item.type}`);
   fragment.querySelector(".record-card__meta").textContent = `${item.date} · ${accountName(item.account)}`;
-  card.addEventListener("click", () => startEdit(item.id));
+  card.addEventListener("click", () => {
+    if (!canWrite()) return;
+    startEdit(item.id);
+  });
   fragment.querySelector(".record-delete-button").addEventListener("click", (event) => {
     event.stopPropagation();
+    if (!canWrite()) return;
     void deleteRecord(item.id);
   });
   return fragment;
@@ -1013,6 +1098,7 @@ async function onSearchSubmit(event) {
 
 async function onSubmitEntry(event) {
   event.preventDefault();
+  if (!canWrite()) return;
   const category = String(refs.categoryField.value || "");
   const editingId = String(refs.editingIdField.value || state.editingId || "");
   const type = String(refs.typeField.value || "");
@@ -1182,6 +1268,7 @@ function resetEntryForm() {
 }
 
 function openEntryDialog() {
+  if (!canWrite()) return;
   resetEntryForm();
   refs.dateField.value = state.selectedDateByUser && state.selectedDate ? state.selectedDate : todayISO();
   requestAnimationFrame(() => refs.entryDialog.showModal());
@@ -1208,6 +1295,7 @@ function startEdit(id) {
 }
 
 async function deleteRecord(id) {
+  if (!canWrite()) return;
   const transaction = state.transactions.find((item) => item.id === id);
   if (!transaction) return;
   const confirmed = window.confirm(
@@ -1241,8 +1329,8 @@ function syncScreens() {
   refs.screenButtons.forEach((button) => {
     button.classList.toggle("is-active", button.dataset.screenTarget === state.currentScreen);
   });
-  refs.openEntryButton.classList.toggle("is-hidden", state.currentScreen === "memo" || state.currentScreen === "analysis");
-  refs.memoAddButton.classList.toggle("is-hidden", state.currentScreen !== "memo");
+  refs.openEntryButton.classList.toggle("is-hidden", state.currentScreen === "memo" || state.currentScreen === "analysis" || !canWrite());
+  refs.memoAddButton.classList.toggle("is-hidden", state.currentScreen !== "memo" || !canWrite());
 }
 
 function syncListSortButton() {
@@ -1302,6 +1390,7 @@ function categoryTypeForBudget(category) {
 
 async function onBudgetLimitSubmit(event) {
   event.preventDefault();
+  if (!canWrite()) return;
   const form = event.target.closest("[data-budget-group-form]");
   if (!form) return;
   const groupId = form.dataset.budgetGroupForm;
@@ -1465,11 +1554,14 @@ function buildFingerprint(item) {
 }
 
 async function fullSyncCycle() {
-  await pushPendingToServer();
+  if (canWrite()) {
+    await pushPendingToServer();
+  }
   await pullFromServer();
 }
 
 async function pushPendingToServer() {
+  if (!canWrite()) return;
   if (!navigator.onLine) {
     updateSyncUI("오프라인", "offline");
     return;
@@ -1491,8 +1583,11 @@ async function pushPendingToServer() {
       const response = await fetch("/api/sync", {
         method: "POST",
         cache: "no-store",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transactions: chunk }),
+        headers: {
+          "Content-Type": "application/json",
+          "X-Donnaga-Pin": state.authPin,
+        },
+        body: JSON.stringify({ transactions: chunk, pin: state.authPin }),
       });
       let payload = null;
       try {
@@ -1554,15 +1649,15 @@ function updateSyncUI(message, status) {
   refs.syncStatusLabel.textContent = message;
   refs.syncDot.dataset.status = status;
   refs.remoteStatusLabel.textContent =
-    status === "offline" ? "Cloudflare D1 연결 대기" : "Cloudflare D1 동기화 활성";
+    status === "offline" ? "오프라인" : "연결됨";
   if (status === "error" && state.syncDetailMessage) {
     refs.syncDetailLabel.textContent = state.syncDetailMessage;
     return;
   }
   state.syncDetailMessage = "";
   refs.syncDetailLabel.textContent = state.lastSyncedAt
-    ? `마지막 동기화 ${formatDateTime(state.lastSyncedAt)}`
-    : "마지막 동기화 기록 없음";
+    ? formatRelativeSyncTime(state.lastSyncedAt)
+    : "아직 동기화 기록이 없어요.";
 }
 
 function schedulePeriodicSync() {
@@ -2034,6 +2129,21 @@ function formatDateTime(timestamp) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(timestamp);
+}
+
+function formatRelativeSyncTime(timestamp) {
+  const diffMs = Date.now() - Number(timestamp || 0);
+  const diffMinutes = Math.floor(diffMs / 60000);
+  if (diffMinutes < 1) return "방금 전";
+  if (diffMinutes < 60) return `${diffMinutes}분 전`;
+  if (diffMinutes < 24 * 60) return `${Math.floor(diffMinutes / 60)}시간 전`;
+  const date = new Date(timestamp);
+  const year = String(date.getFullYear()).slice(2);
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  return `${year}.${month}.${day} ${hour}:${minute}`;
 }
 
 function todayISO() {

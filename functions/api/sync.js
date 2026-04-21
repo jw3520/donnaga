@@ -99,6 +99,10 @@ export async function onRequestPost(context) {
     }
     await ensureSchema(env.DB);
     const payload = await request.json();
+    const suppliedPin = request.headers.get("X-Donnaga-Pin") || payload?.pin || "";
+    if (!env.SECRET_PIN || suppliedPin !== env.SECRET_PIN) {
+      return json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    }
     const transactions = Array.isArray(payload.transactions) ? payload.transactions : [];
     if (!transactions.length) {
       return json({ ok: true, upserted: 0 });

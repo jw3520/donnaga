@@ -47,6 +47,8 @@ button {
     background-color 0.16s ease,
     color 0.16s ease,
     box-shadow 0.16s ease;
+  white-space: nowrap;
+  word-break: keep-all;
 }
 
 button:active {
@@ -1189,6 +1191,8 @@ select {
   border: 0;
   border-radius: 999px;
   padding: 12px 18px;
+  white-space: nowrap;
+  word-break: keep-all;
 }
 
 .search-submit {
@@ -1436,6 +1440,8 @@ select {
 }
 
 .type-chip {
+  white-space: nowrap;
+  word-break: keep-all;
   min-height: 48px;
   padding: 13px 14px;
   border-radius: 20px;
@@ -1708,6 +1714,12 @@ select {
   background: linear-gradient(180deg, #ffffff 0%, #f7fbfa 100%);
 }
 
+.settings-row--logout {
+  margin-top: 4px;
+  border-top: 1px dashed rgba(221, 229, 234, 0.95);
+  padding-top: 16px;
+}
+
 .settings-inline-status {
   justify-content: flex-start;
   gap: 8px;
@@ -1771,6 +1783,70 @@ select {
 
 .is-hidden {
   display: none !important;
+}
+
+.login-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(20, 27, 34, 0.52);
+  backdrop-filter: blur(6px);
+}
+
+.login-gate__card {
+  width: min(360px, 100%);
+  padding: 22px 20px 20px;
+  border-radius: 28px;
+  background: #fff;
+  box-shadow: 0 20px 38px rgba(27, 44, 56, 0.18);
+  display: grid;
+  gap: 14px;
+}
+
+.login-gate__card h2,
+.login-gate__description,
+.login-gate__error {
+  margin: 0;
+}
+
+.login-gate__description {
+  color: #69737d;
+  line-height: 1.5;
+}
+
+.login-gate__form {
+  display: grid;
+  gap: 10px;
+}
+
+.login-gate__form input {
+  width: 100%;
+  min-height: 54px;
+  padding: 0 16px;
+  border: 1px solid #dde5ea;
+  border-radius: 18px;
+  background: #fbfcfd;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+}
+
+.login-gate__error {
+  color: #e15d69;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.login-gate__submit {
+  width: 100%;
+}
+
+body.is-auth-blocked {
+  overflow: hidden;
 }
 
 @media (min-width: 431px) {
