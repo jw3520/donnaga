@@ -918,8 +918,8 @@ function renderCalendar() {
       <button class="${classes.join(" ")}" type="button" data-date="${date}">
         <span class="calendar-day__header">
           <span class="calendar-day__date">${day}</span>
-          ${eventIcons ? `<span class="calendar-day__events">${eventIcons}</span>` : ""}
         </span>
+        <span class="calendar-day__events">${eventIcons}</span>
         <span class="calendar-day__amount">${expenseByDate[date] ? shortCurrency(expenseByDate[date]) : ""}</span>
       </button>
     `);

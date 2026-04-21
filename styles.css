@@ -355,14 +355,14 @@ button:active {
 
 .calendar-day {
   width: 100%;
-  min-height: 55px;
+  min-height: 58px;
   border: 0;
   border-radius: 16px;
   background: transparent;
   padding: 8px 2px;
   text-align: center;
   display: grid;
-  grid-template-rows: 28px 14px;
+  grid-template-rows: 28px 10px 14px;
   justify-items: center;
   align-content: center;
 }
@@ -371,7 +371,6 @@ button:active {
   width: 28px;
   min-width: 28px;
   min-height: 28px;
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -390,13 +389,13 @@ button:active {
 }
 
 .calendar-day__events {
-  position: absolute;
-  top: 1px;
-  left: calc(100% - 2px);
+  width: 100%;
+  min-height: 10px;
   display: inline-flex;
+  justify-content: center;
   align-items: center;
   gap: 1px;
-  min-height: 10px;
+  overflow: hidden;
 }
 
 .calendar-day__event-icon {
@@ -427,7 +426,7 @@ button:active {
   display: block;
   width: 100%;
   min-height: 14px;
-  margin-top: 4px;
+  margin-top: 2px;
   font-size: 10px;
   line-height: 1.2;
   text-align: center;
