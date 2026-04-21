@@ -384,7 +384,7 @@ function bindEvents() {
     setButtonBusy(refs.manualSyncButton, true, { idleLabel: "지금 동기화", busyLabel: "동기화 중" });
     updateSyncUI("동기화 진행 중", "syncing");
     try {
-      await withMinimumBusyTime(() => fullSyncCycle(), 1000);
+      await withMinimumBusyTime(() => fullSyncCycle(), 2000);
     } finally {
       setButtonBusy(refs.manualSyncButton, false, { idleLabel: "지금 동기화" });
     }
@@ -629,7 +629,7 @@ function setButtonBusy(button, isBusy, options = {}) {
   button.textContent = isBusy ? (options.busyLabel || idleLabel) : idleLabel;
 }
 
-async function withMinimumBusyTime(task, minimumMs = 1000) {
+async function withMinimumBusyTime(task, minimumMs = 2000) {
   const startedAt = Date.now();
   const result = await task();
   const elapsed = Date.now() - startedAt;
@@ -2420,7 +2420,7 @@ async function clearWebCacheAndReload() {
           updateSyncUI("이미 최신 버전입니다", "success");
         }
       }
-    }, 1000);
+    }, 2000);
     setButtonBusy(refs.clearWebCacheButton, false, { idleLabel: "업데이트" });
     syncUpdateUi();
   } catch (error) {
