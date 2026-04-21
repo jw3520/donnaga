@@ -70,6 +70,7 @@ const BUDGET_GROUPS = [
       { id: "의료/건강", label: "의료/건강", color: "#b3dec1", icon: "heart-pulse" },
       { id: "선물", label: "선물", color: "#a8dff0", icon: "gift" },
       { id: "경조사", label: "경조사", color: "#f4b2ba", icon: "hand-heart" },
+      { id: "차량관리비", label: "차량관리비", color: "#b9d7fb", icon: "car-front" },
       { id: "술", label: "술", color: "#f4b2ba", icon: "wine" },
       { id: "미용", label: "미용", color: "#ffc2db", icon: "sparkles" },
       { id: "variable-other", label: "기타", color: "#d8c8ff", icon: "sparkles" },
@@ -1908,8 +1909,9 @@ function inferredCategoryMeta(category, type) {
       "문화생활": { color: "#e6b8ef", icon: "gamepad-2", label: "문화생활" },
       "술": { color: "#f4b2ba", icon: "wine", label: "술" },
       "오락": { color: "#d8c8ff", icon: "ticket", label: "오락" },
-      "자동차": { color: "#b9d7fb", icon: "car-front", label: "자동차" },
-      "자동차유지비": { color: "#b9d7fb", icon: "car-front", label: "자동차유지비" },
+      "자동차": { color: "#b9d7fb", icon: "car-front", label: "차량관리비" },
+      "자동차유지비": { color: "#b9d7fb", icon: "car-front", label: "차량관리비" },
+      "차량관리비": { color: "#b9d7fb", icon: "car-front", label: "차량관리비" },
       "경조사": { color: "#f4b2ba", icon: "hand-heart", label: "경조사" },
       "주거비": { color: "#f1d7a6", icon: "house", label: "주거비" },
       "생활용품": { color: "#f3c6a1", icon: "shopping-basket", label: "생필품" },
@@ -1943,7 +1945,8 @@ function normalizeCategoryId(category, type = "") {
   else if (normalized === "투자" || normalized === "주식" || normalized === "국내 주식") normalized = "국내주식";
   else if (normalized === "해외 주식") normalized = "해외주식";
   else if (normalized === "코인" || normalized === "가상 화폐") normalized = "가상자산";
-  else if (["가전", "기부", "여행", "자동차유지비", "자동차"].includes(normalized)) normalized = "variable-other";
+  else if (normalized === "자동차유지비" || normalized === "자동차") normalized = "차량관리비";
+  else if (["가전", "기부", "여행"].includes(normalized)) normalized = "variable-other";
 
   const normalizedType = normalizeTypeId(type);
   if (normalizedType && CATEGORY_META[normalizedType]?.some((item) => item.id === normalized)) {
