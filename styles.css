@@ -1796,6 +1796,10 @@ select {
   backdrop-filter: blur(6px);
 }
 
+.login-gate[hidden] {
+  display: none !important;
+}
+
 .login-gate__card {
   width: min(360px, 100%);
   padding: 22px 20px 20px;

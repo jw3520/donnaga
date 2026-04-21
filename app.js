@@ -478,6 +478,8 @@ function applyRoleToUI() {
 function ensureLoginGate() {
   const blocked = !hasAccess();
   refs.loginGate.hidden = !blocked;
+  refs.loginGate.style.display = blocked ? "grid" : "none";
+  refs.loginGate.setAttribute("aria-hidden", blocked ? "false" : "true");
   document.body.classList.toggle("is-auth-blocked", blocked);
   if (blocked) {
     refs.loginGateInput.value = "";
