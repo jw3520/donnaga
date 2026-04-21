@@ -771,12 +771,28 @@ function renderCalendar() {
   const [year, month] = state.currentMonth.split("-").map(Number);
   const firstDay = new Date(year, month - 1, 1);
   const daysInMonth = new Date(year, month, 0).getDate();
-  const expenseByDate = getMemberScopedMonthTransactions()
+  const monthTransactions = getMemberScopedMonthTransactions();
+  const expenseByDate = monthTransactions
     .filter((item) => item.type === "expense")
     .reduce((acc, item) => {
       acc[item.date] = (acc[item.date] || 0) + item.amount;
       return acc;
     }, {});
+  const calendarEventsByDate = monthTransactions.reduce((acc, item) => {
+    acc[item.date] ??= { income: false, savings: false, investment: false };
+    if (item.type === "income") {
+      acc[item.date].income = true;
+      return acc;
+    }
+    if (budgetGroupMatchesCategory("savings", item.category)) {
+      acc[item.date].savings = true;
+      return acc;
+    }
+    if (budgetGroupMatchesCategory("investment", item.category)) {
+      acc[item.date].investment = true;
+    }
+    return acc;
+  }, {});
 
   const cells = [];
   for (let index = 0; index < firstDay.getDay(); index += 1) {
@@ -790,9 +806,27 @@ function renderCalendar() {
     if (date === todayISO()) classes.push("is-today");
     if (dateObj.getDay() === 0) classes.push("is-sunday");
     if (dateObj.getDay() === 6) classes.push("is-saturday");
+    const dayEvents = calendarEventsByDate[date] || {};
+    const eventIcons = [
+      dayEvents.income
+        ? `<span class="calendar-day__event-icon calendar-day__event-icon--income" aria-label="수입"><i data-lucide="coins"></i></span>`
+        : "",
+      dayEvents.savings
+        ? `<span class="calendar-day__event-icon calendar-day__event-icon--savings" aria-label="저축"><i data-lucide="piggy-bank"></i></span>`
+        : "",
+      dayEvents.investment
+        ? `<span class="calendar-day__event-icon calendar-day__event-icon--investment" aria-label="투자"><i data-lucide="trending-up"></i></span>`
+        : "",
+    ]
+      .filter(Boolean)
+      .slice(0, 3)
+      .join("");
     cells.push(`
       <button class="${classes.join(" ")}" type="button" data-date="${date}">
-        <span class="calendar-day__date">${day}</span>
+        <span class="calendar-day__date-row">
+          <span class="calendar-day__date">${day}</span>
+          ${eventIcons ? `<span class="calendar-day__events">${eventIcons}</span>` : ""}
+        </span>
         <span class="calendar-day__amount">${expenseByDate[date] ? shortCurrency(expenseByDate[date]) : ""}</span>
       </button>
     `);
