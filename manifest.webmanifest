@@ -1,6 +1,6 @@
 {
-  "name": "DonnaGa",
-  "short_name": "DonnaGa",
+  "name": "돈나가",
+  "short_name": "돈나가",
   "description": "둘이 함께 쓰는 생활형 PWA 가계부",
   "id": "./",
   "start_url": "./",

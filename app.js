@@ -1772,7 +1772,7 @@ function openInstallDialog() {
     refs.installButton.textContent = "확인";
     refs.installButton.disabled = true;
     refs.installSteps.innerHTML = `
-      <li>홈 화면에서 DonnaGa 아이콘을 찾아 실행합니다.</li>
+      <li>홈 화면에서 돈나가 아이콘을 찾아 실행합니다.</li>
       <li>브라우저가 아닌 앱처럼 전체 화면으로 열립니다.</li>
     `;
     refs.installDialog.showModal();
@@ -1816,7 +1816,7 @@ function openInstallDialog() {
     refs.installSteps.innerHTML = `
       <li>브라우저 메뉴를 엽니다.</li>
       <li>'홈 화면에 추가' 또는 '앱 설치'를 선택합니다.</li>
-      <li>설치 후 홈 화면에서 DonnaGa를 실행합니다.</li>
+      <li>설치 후 홈 화면에서 돈나가를 실행합니다.</li>
     `;
   }
 
