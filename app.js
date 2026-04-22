@@ -38,7 +38,7 @@ const BUDGET_GROUPS = [
     fullLabel: "생활 지출",
     type: "expense",
     limit: 1_500_000,
-    color: "#ffb586",
+    color: "#ffad6f",
     categories: [
       { id: "식비", label: "식비", color: "#ffd89b", icon: "utensils-crossed" },
       { id: "생필품", label: "생필품", color: "#f3c6a1", icon: "shopping-basket" },
@@ -56,7 +56,7 @@ const BUDGET_GROUPS = [
     fullLabel: "고정 지출",
     type: "expense",
     limit: 1_000_000,
-    color: "#f2c78e",
+    color: "#e9bd67",
     categories: [
       { id: "주거비", label: "주거비", color: "#f1d7a6", icon: "house" },
       { id: "통신비", label: "통신비", color: "#a8dff0", icon: "smartphone" },
@@ -71,7 +71,7 @@ const BUDGET_GROUPS = [
     fullLabel: "변동 지출",
     type: "expense",
     limit: 500_000,
-    color: "#f4b2ba",
+    color: "#ef8fa2",
     categories: [
       { id: "의료/건강", label: "의료/건강", color: "#b3dec1", icon: "heart-pulse" },
       { id: "선물", label: "선물", color: "#a8dff0", icon: "gift" },
@@ -89,7 +89,7 @@ const BUDGET_GROUPS = [
     fullLabel: "저축",
     type: "investment",
     limit: 3_000_000,
-    color: "#52cfc3",
+    color: "#62d7b6",
     categories: [
       { id: "적금", label: "적금", color: "#f2de96", icon: "piggy-bank" },
       { id: "청약", label: "청약", color: "#efc2a8", icon: "building-2" },
@@ -103,7 +103,7 @@ const BUDGET_GROUPS = [
     fullLabel: "투자",
     type: "investment",
     limit: 1_000_000,
-    color: "#33b8ad",
+    color: "#289eaf",
     categories: [
       { id: "금", label: "금", color: "#f4c95d", icon: "badge-cent" },
       { id: "국내주식", label: "국내 주식", color: "#8ec5ff", icon: "chart-candlestick" },
