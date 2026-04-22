@@ -59,6 +59,7 @@ const BUDGET_GROUPS = [
     categories: [
       { id: "주거비", label: "주거비", color: "#f1d7a6", icon: "house" },
       { id: "주유비", label: "주유비", color: "#ffc46b", icon: "fuel" },
+      { id: "하이패스", label: "하이패스", color: "#8dc7ff", icon: "road" },
       { id: "통신비", label: "통신비", color: "#a8dff0", icon: "smartphone" },
       { id: "보험", label: "보험", color: "#c7e7a5", icon: "shield-check" },
       { id: "구독", label: "구독", color: "#f8c8a7", icon: "krw-note" },
@@ -2279,6 +2280,7 @@ function inferredCategoryMeta(category, type) {
       "건강": { color: "#b7e4c7", icon: "heart-pulse", label: "건강" },
       "교통": { color: "#ffb4bf", icon: "bus-front", label: "교통" },
       "주유비": { color: "#ffc46b", icon: "fuel", label: "주유비" },
+      "하이패스": { color: "#8dc7ff", icon: "road", label: "하이패스" },
       "미용": { color: "#ffc2db", icon: "sparkles", label: "미용" },
       "문화": { color: "#e6b8ef", icon: "clapperboard", label: "문화" },
       "문화생활": { color: "#e6b8ef", icon: "gamepad-2", label: "문화생활" },
@@ -2311,6 +2313,7 @@ function normalizeCategoryId(category, type = "") {
   else if (normalized === "의류/잡화") normalized = "의류/잡화";
   else if (normalized === "교통비") normalized = "교통";
   else if (normalized === "주유" || normalized === "기름값" || normalized === "유류비") normalized = "주유비";
+  else if (normalized === "톨게이트비" || normalized === "통행료" || normalized === "하이패스비") normalized = "하이패스";
   else if (normalized === "주거/공과금" || normalized === "집세") normalized = "주거비";
   else if (normalized === "생활용품") normalized = "생필품";
   else if (normalized === "여가/취미" || normalized === "오락" || normalized === "문화") normalized = "취미";
