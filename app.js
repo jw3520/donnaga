@@ -1596,23 +1596,28 @@ function budgetGroupsForItems(items) {
   }));
 
   items.forEach((item) => {
-    if (!item.category || item.deleted) return;
-    const normalizedCategory = normalizeCategoryId(item.category);
-    const target = groups.find((group) => budgetGroupMatchesCategory(group.id, normalizedCategory)) || groups[0];
+    const normalizedType = normalizeTypeId(item.type || "");
+    if (!item.category || item.deleted || !["expense", "investment"].includes(normalizedType)) return;
+    const normalizedCategory = normalizeCategoryId(item.category, normalizedType);
+    const target = groups.find((group) =>
+      group.type === normalizedType && budgetGroupMatchesCategory(group.id, normalizedCategory, normalizedType)
+    );
+    if (!target) return;
     const categoryRow = target.categories.find((category) => category.id === normalizedCategory);
     if (!categoryRow) return;
-    if (item.type === "expense" || item.type === "investment") {
-      target.spent += item.amount;
-      categoryRow.amount += item.amount;
-    }
+    target.spent += item.amount;
+    categoryRow.amount += item.amount;
   });
 
   return groups;
 }
 
-function budgetGroupMatchesCategory(groupId, category) {
-  const normalizedCategory = normalizeCategoryId(category);
+function budgetGroupMatchesCategory(groupId, category, type = "") {
+  const normalizedType = normalizeTypeId(type);
+  const normalizedCategory = normalizeCategoryId(category, normalizedType);
   const group = BUDGET_GROUPS.find((item) => item.id === groupId);
+  if (!group) return false;
+  if (normalizedType && group.type !== normalizedType) return false;
   return Boolean(group?.categories.some((item) => item.id === normalizedCategory));
 }
 
