@@ -1555,16 +1555,16 @@ select {
 }
 
 .type-chip--income.is-active {
-  background: linear-gradient(180deg, #58d4ca 0%, #2fb8ad 100%);
+  background: linear-gradient(180deg, #f8d56a 0%, #efbd34 100%);
   color: #fff;
-  box-shadow: 0 10px 18px rgba(53, 191, 180, 0.28);
+  box-shadow: 0 10px 18px rgba(239, 189, 52, 0.28);
   transform: translateY(-1px);
 }
 
 .type-chip--investment.is-active {
-  background: linear-gradient(180deg, #8ec5ff 0%, #679ff0 100%);
+  background: linear-gradient(180deg, #58d4ca 0%, #2fb8ad 100%);
   color: #fff;
-  box-shadow: 0 10px 18px rgba(110, 170, 245, 0.28);
+  box-shadow: 0 10px 18px rgba(53, 191, 180, 0.28);
   transform: translateY(-1px);
 }
 
