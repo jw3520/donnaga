@@ -1707,8 +1707,8 @@ function normalizeTransaction(item, markPending) {
     date: item.date || todayISO(),
     note: item.note || defaultNote(normalizedCategory || "기타"),
     memo: item.memo || "",
-    updated_at: Number(item.updated_at || Date.now()),
-    sync_status: item.sync_status || (markPending ? "pending" : "synced"),
+    updated_at: markPending ? Date.now() : Number(item.updated_at || Date.now()),
+    sync_status: markPending ? "pending" : (item.sync_status || "synced"),
     deleted: item.deleted ? 1 : 0,
   };
   normalized.fingerprint = buildFingerprint(normalized);
