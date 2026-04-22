@@ -74,6 +74,7 @@ const BUDGET_GROUPS = [
       { id: "의료/건강", label: "의료/건강", color: "#b3dec1", icon: "heart-pulse" },
       { id: "선물", label: "선물", color: "#a8dff0", icon: "gift" },
       { id: "경조사", label: "경조사", color: "#f4b2ba", icon: "hand-heart" },
+      { id: "의류/잡화", label: "의류/잡화", color: "#f6c4d1", icon: "shirt" },
       { id: "차량관리비", label: "차량관리비", color: "#b9d7fb", icon: "car-front" },
       { id: "술", label: "술", color: "#f4b2ba", icon: "wine" },
       { id: "미용", label: "미용", color: "#ffc2db", icon: "sparkles" },

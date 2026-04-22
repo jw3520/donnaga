@@ -415,15 +415,15 @@ button:active {
 }
 
 .calendar-day__event-icon--income {
-  color: var(--income);
+  color: #f3c54b;
 }
 
 .calendar-day__event-icon--savings {
-  color: #6eaaf5;
+  color: var(--income);
 }
 
 .calendar-day__event-icon--investment {
-  color: #a881af;
+  color: var(--income);
 }
 
 .calendar-day__amount {
