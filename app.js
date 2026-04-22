@@ -4,6 +4,7 @@ const AUTH_PIN_STORAGE_KEY = "DONNAGA_PIN";
 const AUTH_ROLE_STORAGE_KEY = "DONNAGA_ROLE";
 const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
+const AUTO_UPDATE_APPLY_KEY = "DONNAGA_AUTO_UPDATE_APPLY";
 const DB_NAME = "donnaga-db";
 const SYNC_INTERVAL_MS = 60_000;
 const SYNC_PUSH_BATCH_SIZE = 200;
@@ -643,6 +644,50 @@ async function clearAppCaches() {
   if (!("caches" in window)) return;
   const keys = await caches.keys();
   await Promise.all(keys.map((key) => caches.delete(key)));
+}
+
+function hasPendingAutoUpdateAttempt() {
+  try {
+    return sessionStorage.getItem(AUTO_UPDATE_APPLY_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markAutoUpdateAttempted() {
+  try {
+    sessionStorage.setItem(AUTO_UPDATE_APPLY_KEY, "1");
+  } catch {
+    // Ignore sessionStorage failures.
+  }
+}
+
+function clearAutoUpdateAttempt() {
+  try {
+    sessionStorage.removeItem(AUTO_UPDATE_APPLY_KEY);
+  } catch {
+    // Ignore sessionStorage failures.
+  }
+}
+
+async function autoApplyDetectedUpdate(registration, mode) {
+  if (hasPendingAutoUpdateAttempt()) return false;
+  markAutoUpdateAttempted();
+  setUpdateAvailable(true);
+  await markUpdateChecked();
+
+  if (mode === "activate-waiting" && registration?.waiting) {
+    registration.waiting.postMessage({ type: "SKIP_WAITING" });
+    return true;
+  }
+
+  if (mode === "clear-cache-reload") {
+    await clearAppCaches();
+    window.location.reload();
+    return true;
+  }
+
+  return false;
 }
 
 async function verifyPinOnServer(pin) {
@@ -2440,6 +2485,7 @@ async function registerServiceWorker() {
     navigator.serviceWorker.addEventListener("controllerchange", () => {
       if (reloadingForServiceWorker) return;
       reloadingForServiceWorker = true;
+      clearAutoUpdateAttempt();
       setUpdateAvailable(false);
       window.location.reload();
     });
@@ -2447,10 +2493,16 @@ async function registerServiceWorker() {
     if (registration.waiting) {
       setUpdateAvailable(true);
       await markUpdateChecked();
+      await autoApplyDetectedUpdate(registration, "activate-waiting");
     } else {
       const hasAssetUpdate = await detectCachedAssetUpdate();
       setUpdateAvailable(hasAssetUpdate);
       await markUpdateChecked();
+      if (hasAssetUpdate) {
+        await autoApplyDetectedUpdate(registration, "clear-cache-reload");
+      } else {
+        clearAutoUpdateAttempt();
+      }
     }
     console.info("[PWA] service worker registered:", registration.scope);
   } catch (error) {
