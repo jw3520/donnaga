@@ -89,7 +89,7 @@ const BUDGET_GROUPS = [
     fullLabel: "저축",
     type: "investment",
     limit: 3_000_000,
-    color: "#f2de96",
+    color: "#52cfc3",
     categories: [
       { id: "적금", label: "적금", color: "#f2de96", icon: "piggy-bank" },
       { id: "청약", label: "청약", color: "#efc2a8", icon: "building-2" },
@@ -103,7 +103,7 @@ const BUDGET_GROUPS = [
     fullLabel: "투자",
     type: "investment",
     limit: 1_000_000,
-    color: "#9fc2ff",
+    color: "#33b8ad",
     categories: [
       { id: "금", label: "금", color: "#f4c95d", icon: "badge-cent" },
       { id: "국내주식", label: "국내 주식", color: "#8ec5ff", icon: "chart-candlestick" },
