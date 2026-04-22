@@ -398,8 +398,9 @@ button:active {
   display: flex;
   align-items: center;
   gap: 1px;
-  overflow: hidden;
+  overflow: visible;
   pointer-events: none;
+  z-index: 2;
 }
 
 .calendar-day__event-icon {
@@ -409,8 +410,8 @@ button:active {
 }
 
 .calendar-day__event-icon svg {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   stroke-width: 2.1;
 }
 

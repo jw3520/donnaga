@@ -2250,6 +2250,7 @@ function normalizeCategoryId(category, type = "") {
   let normalized = category;
   if (normalized === "레이") normalized = "반려동물";
   else if (normalized === "의류") normalized = "미용";
+  else if (normalized === "의류/잡화") normalized = "의류/잡화";
   else if (normalized === "교통비") normalized = "교통";
   else if (normalized === "주거/공과금" || normalized === "집세") normalized = "주거비";
   else if (normalized === "생활용품") normalized = "생필품";
