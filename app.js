@@ -4,7 +4,6 @@ const AUTH_PIN_STORAGE_KEY = "DONNAGA_PIN";
 const AUTH_ROLE_STORAGE_KEY = "DONNAGA_ROLE";
 const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
-const AUTO_UPDATE_APPLY_KEY = "DONNAGA_AUTO_UPDATE_APPLY";
 const DB_NAME = "donnaga-db";
 const SYNC_INTERVAL_MS = 60_000;
 const SYNC_PUSH_BATCH_SIZE = 200;
@@ -583,6 +582,14 @@ function logoutAndReload() {
   window.location.reload();
 }
 
+function showUpdateAvailableUI() {
+  setUpdateAvailable(true);
+}
+
+function hideUpdateAvailableUI() {
+  setUpdateAvailable(false);
+}
+
 function setUpdateAvailable(isAvailable) {
   state.updateAvailable = Boolean(isAvailable);
   if (state.updateAvailable) {
@@ -600,7 +607,7 @@ function syncUpdateUi() {
   if (!refs.clearWebCacheButton) return;
   refs.clearWebCacheButton.classList.toggle("primary-button", state.updateAvailable);
   refs.clearWebCacheButton.classList.toggle("secondary-button", !state.updateAvailable);
-  refs.clearWebCacheButton.classList.toggle("update-button--highlight", state.updateAvailable);
+  refs.clearWebCacheButton.classList.toggle("is-pulsing", state.updateAvailable && state.currentScreen === "settings");
   syncUpdateTimestampUi();
 }
 
@@ -642,50 +649,6 @@ async function clearAppCaches() {
   if (!("caches" in window)) return;
   const keys = await caches.keys();
   await Promise.all(keys.map((key) => caches.delete(key)));
-}
-
-function hasPendingAutoUpdateAttempt() {
-  try {
-    return sessionStorage.getItem(AUTO_UPDATE_APPLY_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function markAutoUpdateAttempted() {
-  try {
-    sessionStorage.setItem(AUTO_UPDATE_APPLY_KEY, "1");
-  } catch {
-    // Ignore sessionStorage failures.
-  }
-}
-
-function clearAutoUpdateAttempt() {
-  try {
-    sessionStorage.removeItem(AUTO_UPDATE_APPLY_KEY);
-  } catch {
-    // Ignore sessionStorage failures.
-  }
-}
-
-async function autoApplyDetectedUpdate(registration, mode) {
-  if (hasPendingAutoUpdateAttempt()) return false;
-  markAutoUpdateAttempted();
-  setUpdateAvailable(true);
-  await markUpdateChecked();
-
-  if (mode === "activate-waiting" && registration?.waiting) {
-    registration.waiting.postMessage({ type: "SKIP_WAITING" });
-    return true;
-  }
-
-  if (mode === "clear-cache-reload") {
-    await clearAppCaches();
-    window.location.reload();
-    return true;
-  }
-
-  return false;
 }
 
 async function verifyPinOnServer(pin) {
@@ -1596,6 +1559,7 @@ function syncScreens() {
   });
   refs.openEntryButton.classList.toggle("is-hidden", state.currentScreen === "memo" || state.currentScreen === "analysis" || !canWrite());
   refs.memoAddButton.classList.toggle("is-hidden", state.currentScreen !== "memo" || !canWrite());
+  syncUpdateUi();
 }
 
 function syncListSortButton() {
@@ -2461,13 +2425,12 @@ async function registerServiceWorker() {
   }
   try {
     if (localStorage.getItem(UPDATE_SEEN_STORAGE_KEY) === "1") {
-      state.updateAvailable = true;
-      syncUpdateUi();
+      showUpdateAvailableUI();
     }
     const registration = await navigator.serviceWorker.register("./sw.js");
     swRegistrationRef = registration;
     if (registration.waiting) {
-      setUpdateAvailable(true);
+      showUpdateAvailableUI();
       await markUpdateChecked();
     }
     registration.addEventListener("updatefound", () => {
@@ -2475,7 +2438,7 @@ async function registerServiceWorker() {
       if (!installingWorker) return;
       installingWorker.addEventListener("statechange", () => {
         if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
-          setUpdateAvailable(true);
+          showUpdateAvailableUI();
           void markUpdateChecked();
         }
       });
@@ -2483,24 +2446,21 @@ async function registerServiceWorker() {
     navigator.serviceWorker.addEventListener("controllerchange", () => {
       if (reloadingForServiceWorker) return;
       reloadingForServiceWorker = true;
-      clearAutoUpdateAttempt();
-      setUpdateAvailable(false);
+      hideUpdateAvailableUI();
       window.location.reload();
     });
     await registration.update();
     if (registration.waiting) {
-      setUpdateAvailable(true);
+      showUpdateAvailableUI();
       await markUpdateChecked();
-      await autoApplyDetectedUpdate(registration, "activate-waiting");
     } else {
       const hasAssetUpdate = await detectCachedAssetUpdate();
-      setUpdateAvailable(hasAssetUpdate);
-      await markUpdateChecked();
       if (hasAssetUpdate) {
-        await autoApplyDetectedUpdate(registration, "clear-cache-reload");
+        showUpdateAvailableUI();
       } else {
-        clearAutoUpdateAttempt();
+        hideUpdateAvailableUI();
       }
+      await markUpdateChecked();
     }
     console.info("[PWA] service worker registered:", registration.scope);
   } catch (error) {
@@ -2517,7 +2477,7 @@ async function clearWebCacheAndReload() {
       async () => {
         const shouldActivateWaitingWorker = state.updateAvailable && Boolean(swRegistrationRef?.waiting);
         if (shouldActivateWaitingWorker) {
-          setUpdateAvailable(false);
+          hideUpdateAvailableUI();
           await markUpdateChecked();
           return { mode: "activate-waiting" };
         }
@@ -2525,18 +2485,18 @@ async function clearWebCacheAndReload() {
           await swRegistrationRef.update();
           await markUpdateChecked();
           if (swRegistrationRef.waiting) {
-            setUpdateAvailable(true);
+            showUpdateAvailableUI();
             updateSyncUI("새 버전이 준비됐어요", "success");
             return { mode: "activate-waiting" };
           }
 
           const hasAssetUpdate = await detectCachedAssetUpdate();
           if (hasAssetUpdate) {
-            setUpdateAvailable(true);
+            showUpdateAvailableUI();
             updateSyncUI("새 버전이 준비됐어요", "success");
             return { mode: "clear-cache-reload" };
           } else {
-            setUpdateAvailable(false);
+            hideUpdateAvailableUI();
             updateSyncUI("이미 최신 버전입니다", "success");
           }
         }
@@ -2555,7 +2515,7 @@ async function clearWebCacheAndReload() {
     }
 
     if (result?.mode === "clear-cache-reload") {
-      setUpdateAvailable(false);
+      hideUpdateAvailableUI();
       await clearAppCaches();
       window.location.reload();
       return;
