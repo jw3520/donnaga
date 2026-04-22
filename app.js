@@ -58,6 +58,7 @@ const BUDGET_GROUPS = [
     color: "#e9bd67",
     categories: [
       { id: "주거비", label: "주거비", color: "#f1d7a6", icon: "house" },
+      { id: "주유비", label: "주유비", color: "#ffc46b", icon: "fuel" },
       { id: "통신비", label: "통신비", color: "#a8dff0", icon: "smartphone" },
       { id: "보험", label: "보험", color: "#c7e7a5", icon: "shield-check" },
       { id: "구독", label: "구독", color: "#f8c8a7", icon: "krw-note" },
@@ -1327,28 +1328,33 @@ async function onSearchSubmit(event) {
 async function onSubmitEntry(event) {
   event.preventDefault();
   if (!canWrite()) return;
-  const category = String(refs.categoryField.value || "");
   const editingId = String(refs.editingIdField.value || state.editingId || "");
-  const type = String(refs.typeField.value || "");
-  const member = String(refs.memberField.value || "");
-  const account = String(refs.accountField.value || "");
-  const date = String(refs.dateField.value || "");
+  const existingTransaction = editingId ? state.transactions.find((item) => item.id === editingId) || null : null;
+  const category = String(refs.categoryField.value || existingTransaction?.category || "");
+  const type = String(refs.typeField.value || existingTransaction?.type || "");
+  const member = String(refs.memberField.value || existingTransaction?.member || "");
+  const account = String(refs.accountField.value || existingTransaction?.account || "");
+  const date = String(refs.dateField.value || existingTransaction?.date || "");
   const amount = Number(refs.amountInput.value || 0);
   const note = String(refs.entryForm.elements.note.value || "").trim();
   const transaction = normalizeTransaction(
     {
-      id: editingId || crypto.randomUUID(),
+      ...(existingTransaction || {}),
+      id: existingTransaction?.id || editingId || crypto.randomUUID(),
       type,
-      amount,
+      amount: amount || existingTransaction?.amount || 0,
       category,
       member,
       account,
       date,
-      note: note || defaultNote(category),
+      note: note || existingTransaction?.note || defaultNote(category),
     },
     true,
   );
-  if (!transaction.amount || !transaction.date || !transaction.type || !transaction.category || !transaction.member || !transaction.account) return;
+  if (!transaction.amount || !transaction.date || !transaction.type || !transaction.category || !transaction.member || !transaction.account) {
+    window.alert("금액, 분류, 사용자, 지불수단, 날짜를 모두 확인해 주세요.");
+    return;
+  }
   await db.transactions.put(transaction);
   state.currentMonth = transaction.date.slice(0, 7);
   state.selectedDate = transaction.date;
@@ -1516,7 +1522,7 @@ function startEdit(id) {
   setAmountValue(transaction.amount);
   setEntryCategory(transaction.category);
   setEntryMember(transaction.member);
-  setEntryAccount(transaction.account);
+  setEntryAccount(normalizeAccountId(transaction.account || transaction.payment_method || ""));
   refs.dateField.value = transaction.date;
   refs.entryForm.elements.note.value = transaction.note || "";
   requestAnimationFrame(() => refs.entryDialog.showModal());
@@ -1689,7 +1695,7 @@ function normalizeTransaction(item, markPending) {
     category: normalizedCategory,
     sub_category: item.sub_category || "",
     member: normalizeMemberId(item.member),
-    account: item.account || "",
+    account: normalizeAccountId(item.account || item.payment_method || ""),
     payment_method: item.payment_method || "",
     card_name: item.card_name || "",
     date: item.date || todayISO(),
@@ -1737,6 +1743,17 @@ function normalizeMemberId(value) {
   if (value === "partner" || value === "솔이" || value === "예비신부") return "솔이";
   if (value === "jw" || value === "정우" || value === "나" || value === "Default") return "정우";
   return "정우";
+}
+
+function normalizeAccountId(value) {
+  if (value == null || value === "") return "";
+  const normalized = String(value).trim();
+  if (["cash", "debit-card", "credit-card", "bank-transfer", "other"].includes(normalized)) return normalized;
+  if (normalized === "현금") return "cash";
+  if (normalized === "체크카드" || normalized === "debit" || normalized === "check-card") return "debit-card";
+  if (normalized === "신용카드" || normalized === "credit" || normalized === "card") return "credit-card";
+  if (normalized === "계좌이체" || normalized === "transfer" || normalized === "bank") return "bank-transfer";
+  return "other";
 }
 
 async function migrateLegacyBudgetReorg() {
@@ -2236,7 +2253,8 @@ function memberName(id) {
 }
 
 function accountName(id) {
-  return ACCOUNTS.find((account) => account.id === id)?.name || id;
+  const normalizedId = normalizeAccountId(id);
+  return ACCOUNTS.find((account) => account.id === normalizedId)?.name || id;
 }
 
 function categoryAppearance(category, type) {
@@ -2255,6 +2273,7 @@ function inferredCategoryMeta(category, type) {
       "가전": { color: "#a8dff0", icon: "smartphone", label: "가전" },
       "건강": { color: "#b7e4c7", icon: "heart-pulse", label: "건강" },
       "교통": { color: "#ffb4bf", icon: "bus-front", label: "교통" },
+      "주유비": { color: "#ffc46b", icon: "fuel", label: "주유비" },
       "미용": { color: "#ffc2db", icon: "sparkles", label: "미용" },
       "문화": { color: "#e6b8ef", icon: "clapperboard", label: "문화" },
       "문화생활": { color: "#e6b8ef", icon: "gamepad-2", label: "문화생활" },
@@ -2286,6 +2305,7 @@ function normalizeCategoryId(category, type = "") {
   else if (normalized === "의류") normalized = "미용";
   else if (normalized === "의류/잡화") normalized = "의류/잡화";
   else if (normalized === "교통비") normalized = "교통";
+  else if (normalized === "주유" || normalized === "기름값" || normalized === "유류비") normalized = "주유비";
   else if (normalized === "주거/공과금" || normalized === "집세") normalized = "주거비";
   else if (normalized === "생활용품") normalized = "생필품";
   else if (normalized === "여가/취미" || normalized === "오락" || normalized === "문화") normalized = "취미";
