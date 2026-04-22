@@ -8,6 +8,7 @@ const DB_NAME = "donnaga-db";
 const SYNC_INTERVAL_MS = 60_000;
 const SYNC_PUSH_BATCH_SIZE = 200;
 const CALENDAR_SWIPE_THRESHOLD = 42;
+const UPDATE_CHECK_ASSETS = ["./index.html", "./app.js", "./styles.css"];
 const MEMBERS = [
   { id: "정우", name: "정우" },
   { id: "솔이", name: "솔이" },
@@ -616,6 +617,32 @@ async function markUpdateChecked() {
   localStorage.setItem(LAST_UPDATE_CHECK_STORAGE_KEY, String(state.lastUpdateCheckedAt));
   await setMeta("lastUpdateCheckedAt", state.lastUpdateCheckedAt);
   syncUpdateTimestampUi();
+}
+
+async function detectCachedAssetUpdate() {
+  if (!("caches" in window)) return false;
+  for (const asset of UPDATE_CHECK_ASSETS) {
+    try {
+      const [cachedResponse, networkResponse] = await Promise.all([
+        caches.match(asset),
+        fetch(`${asset}${asset.includes("?") ? "&" : "?"}t=${Date.now()}`, { cache: "no-store" }),
+      ]);
+      if (!cachedResponse || !networkResponse.ok) continue;
+      const [cachedText, networkText] = await Promise.all([cachedResponse.text(), networkResponse.text()]);
+      if (cachedText !== networkText) {
+        return true;
+      }
+    } catch {
+      // Ignore transient update-check failures and keep current UI state.
+    }
+  }
+  return false;
+}
+
+async function clearAppCaches() {
+  if (!("caches" in window)) return;
+  const keys = await caches.keys();
+  await Promise.all(keys.map((key) => caches.delete(key)));
 }
 
 async function verifyPinOnServer(pin) {
@@ -2420,6 +2447,10 @@ async function registerServiceWorker() {
     if (registration.waiting) {
       setUpdateAvailable(true);
       await markUpdateChecked();
+    } else {
+      const hasAssetUpdate = await detectCachedAssetUpdate();
+      setUpdateAvailable(hasAssetUpdate);
+      await markUpdateChecked();
     }
     console.info("[PWA] service worker registered:", registration.scope);
   } catch (error) {
@@ -2430,7 +2461,7 @@ async function registerServiceWorker() {
 async function clearWebCacheAndReload() {
   updateSyncUI(state.updateAvailable ? "새 버전 적용 중" : "최신 버전 확인 중", "syncing");
   try {
-    await runButtonFeedback(
+    const result = await runButtonFeedback(
       refs.clearWebCacheButton,
       { idle: "업데이트", busy: "업데이트 확인 중...", done: "완료!" },
       async () => {
@@ -2438,7 +2469,7 @@ async function clearWebCacheAndReload() {
         if (shouldActivateWaitingWorker) {
           setUpdateAvailable(false);
           await markUpdateChecked();
-          return { shouldActivateWaitingWorker: true };
+          return { mode: "activate-waiting" };
         }
         if (swRegistrationRef) {
           await swRegistrationRef.update();
@@ -2446,22 +2477,40 @@ async function clearWebCacheAndReload() {
           if (swRegistrationRef.waiting) {
             setUpdateAvailable(true);
             updateSyncUI("새 버전이 준비됐어요", "success");
+            return { mode: "activate-waiting" };
+          }
+
+          const hasAssetUpdate = await detectCachedAssetUpdate();
+          if (hasAssetUpdate) {
+            setUpdateAvailable(true);
+            updateSyncUI("새 버전이 준비됐어요", "success");
+            return { mode: "clear-cache-reload" };
           } else {
+            setUpdateAvailable(false);
             updateSyncUI("이미 최신 버전입니다", "success");
           }
         }
-        return { shouldActivateWaitingWorker: false };
+        return { mode: "noop" };
       },
-    ).then((result) => {
-      if (result?.shouldActivateWaitingWorker && swRegistrationRef?.waiting) {
-        swRegistrationRef.waiting.postMessage({ type: "SKIP_WAITING" });
-        window.setTimeout(() => {
-          if (!reloadingForServiceWorker) {
-            window.location.reload();
-          }
-        }, 300);
-      }
-    });
+    );
+
+    if (result?.mode === "activate-waiting" && swRegistrationRef?.waiting) {
+      swRegistrationRef.waiting.postMessage({ type: "SKIP_WAITING" });
+      window.setTimeout(() => {
+        if (!reloadingForServiceWorker) {
+          window.location.reload();
+        }
+      }, 300);
+      return;
+    }
+
+    if (result?.mode === "clear-cache-reload") {
+      setUpdateAvailable(false);
+      await clearAppCaches();
+      window.location.reload();
+      return;
+    }
+
     syncUpdateUi();
   } catch (error) {
     console.error("[PWA] failed to apply update:", error);
