@@ -175,7 +175,6 @@ const refs = {
   cardSummaryList: document.querySelector("#card-summary-list"),
   openAnalysisButton: document.querySelector("#open-analysis-button"),
   closeAnalysisButton: document.querySelector("#close-analysis-button"),
-  openMemoButton: document.querySelector("#open-memo-button"),
   closeMemoButton: document.querySelector("#close-memo-button"),
   memoSearchButton: document.querySelector("#memo-search-button"),
   memoPrevMonthButton: document.querySelector("#memo-prev-month-button"),
@@ -323,7 +322,6 @@ function populateStaticOptions() {
 function bindEvents() {
   refs.openAnalysisButton.addEventListener("click", () => switchScreen("analysis"));
   refs.closeAnalysisButton.addEventListener("click", () => switchScreen("calendar"));
-  refs.openMemoButton.addEventListener("click", () => switchScreen("list"));
   refs.closeMemoButton.addEventListener("click", () => switchScreen("calendar"));
   refs.memoSearchButton.addEventListener("click", openSearchDialog);
   refs.memoAddButton.addEventListener("click", openEntryDialog);
