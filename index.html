@@ -55,24 +55,30 @@
               <button class="hero-member-filter__button" type="button" data-member-filter="정우">정우</button>
               <button class="hero-member-filter__button" type="button" data-member-filter="솔이">솔이</button>
             </div>
-            <div class="hero-summary__topline">
-              <article class="metric-block">
-                <span>수입</span>
-                <strong id="income-total">₩0</strong>
-              </article>
-              <article class="metric-block metric-block--right">
-                <span>지출</span>
-                <strong id="expense-total">₩0</strong>
-              </article>
-            </div>
-            <div class="hero-summary__bottomline">
-              <div class="balance-block">
-                <p>현금 잔액</p>
-                <strong id="balance-total">₩0</strong>
+            <div class="hero-summary__body">
+              <div class="hero-summary__flow">
+                <article class="metric-block metric-block--expense">
+                  <span>지출</span>
+                  <strong id="expense-total">₩0</strong>
+                </article>
+                <article class="metric-block metric-block--income">
+                  <span>수입</span>
+                  <strong id="income-total">₩0</strong>
+                </article>
+                <article class="metric-block metric-block--investment">
+                  <span>저축/투자</span>
+                  <strong id="savings-total">₩0</strong>
+                </article>
               </div>
-              <div class="breakdown-block">
-                <p><span>현금</span><strong id="cash-expense-total">₩0</strong></p>
-                <p><span>카드</span><strong id="card-expense-total">₩0</strong></p>
+              <div class="hero-summary__balance">
+                <div class="breakdown-block">
+                  <p><span>현금</span><strong id="cash-expense-total">₩0</strong></p>
+                  <p><span>카드</span><strong id="card-expense-total">₩0</strong></p>
+                </div>
+                <div class="balance-block">
+                  <p>현금 잔액</p>
+                  <strong id="balance-total">₩0</strong>
+                </div>
               </div>
             </div>
           </section>
@@ -151,6 +157,7 @@
             </div>
           </header>
           <section class="panel panel--budget-home">
+            <div id="asset-overview" class="budget-overview"></div>
             <div id="asset-list" class="asset-list"></div>
           </section>
         </section>

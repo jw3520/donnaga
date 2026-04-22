@@ -77,6 +77,7 @@ const BUDGET_GROUPS = [
       { id: "의료/건강", label: "의료/건강", color: "#b3dec1", icon: "heart-pulse" },
       { id: "선물", label: "선물", color: "#a8dff0", icon: "gift" },
       { id: "경조사", label: "경조사", color: "#f4b2ba", icon: "hand-heart" },
+      { id: "결혼준비", label: "결혼준비", color: "#f48fb1", icon: "gem" },
       { id: "의류/잡화", label: "의류/잡화", color: "#f6c4d1", icon: "shirt" },
       { id: "차량관리비", label: "차량관리비", color: "#b9d7fb", icon: "car-front" },
       { id: "술", label: "술", color: "#f4b2ba", icon: "wine" },
@@ -126,6 +127,7 @@ const refs = {
   monthTitleLabel: document.querySelector("#month-title-label"),
   incomeTotal: document.querySelector("#income-total"),
   expenseTotal: document.querySelector("#expense-total"),
+  savingsTotal: document.querySelector("#savings-total"),
   balanceTotal: document.querySelector("#balance-total"),
   cashExpenseTotal: document.querySelector("#cash-expense-total"),
   cardExpenseTotal: document.querySelector("#card-expense-total"),
@@ -153,6 +155,7 @@ const refs = {
   memoList: document.querySelector("#memo-list"),
   memoMonthLabel: document.querySelector("#memo-month-label"),
   memoAddButton: document.querySelector("#memo-add-button"),
+  assetOverview: document.querySelector("#asset-overview"),
   assetList: document.querySelector("#asset-list"),
   analysisMonthLabel: document.querySelector("#analysis-month-label"),
   analysisRangeLabel: document.querySelector("#analysis-range-label"),
@@ -900,6 +903,7 @@ function renderSummary() {
     .reduce((sum, item) => sum + item.amount, 0);
   refs.incomeTotal.textContent = formatCurrency(income);
   refs.expenseTotal.textContent = formatCurrency(expense);
+  refs.savingsTotal.textContent = formatCurrency(investment);
   refs.balanceTotal.textContent = formatCurrency(income - expense - investment);
   refs.cashExpenseTotal.textContent = formatCompactCurrency(cashExpense);
   refs.cardExpenseTotal.textContent = formatCompactCurrency(cardExpense);
@@ -1023,6 +1027,7 @@ function renderMemo() {
 
 function renderAssets() {
   const items = getFilteredMonthTransactions();
+  refs.assetOverview.innerHTML = renderBudgetOverview(items);
   refs.assetList.innerHTML = renderBudgetGroupCards(items, { variant: "asset" });
   renderIcons();
 }
@@ -1160,6 +1165,59 @@ function renderBudgetGroupCards(items, options = {}) {
       `;
     })
     .join("");
+}
+
+function renderBudgetOverview(items) {
+  const groups = budgetGroupsForItems(items);
+  const totalLimit = groups.reduce((sum, group) => sum + Math.max(group.limit, 0), 0);
+  const totalSpent = groups.reduce((sum, group) => sum + group.spent, 0);
+
+  const segments = groups.map((group) => {
+    const ratio = totalLimit > 0 ? (group.limit / totalLimit) * 100 : 0;
+    const usageRatio = group.limit > 0 ? Math.min(100, (group.spent / group.limit) * 100) : 0;
+    return {
+      ...group,
+      ratio,
+      usageRatio,
+      percentText: totalLimit > 0 ? ((group.limit / totalLimit) * 100).toFixed(1) : "0.0",
+    };
+  });
+
+  const segmentMarkup = segments.map((group) => `
+    <div class="budget-overview__segment" style="width:${Math.max(group.ratio, 0)}%">
+      <div class="budget-overview__segment-base" style="--segment-color:${group.color}; --segment-soft:${hexToRgba(group.color, 0.24)}">
+        <div class="budget-overview__segment-fill" style="width:${group.usageRatio}%; --segment-color:${group.color}"></div>
+      </div>
+    </div>
+  `).join("");
+
+  const legendMarkup = segments.map((group) => `
+    <article class="budget-overview__legend-item">
+      <div class="budget-overview__legend-head">
+        <span class="budget-overview__legend-dot" style="--segment-color:${group.color}"></span>
+        <strong>${group.fullLabel}</strong>
+        <em>${group.percentText}%</em>
+      </div>
+      <p>${formatCurrency(group.spent)} / ${formatCurrency(group.limit)}</p>
+    </article>
+  `).join("");
+
+  return `
+    <section class="budget-overview__card">
+      <div class="budget-overview__title-row">
+        <div class="stack">
+          <strong>전체 예산 현황</strong>
+          <p>총 예산 ${formatCurrency(totalLimit)} · 사용 ${formatCurrency(totalSpent)}</p>
+        </div>
+      </div>
+      <div class="budget-overview__bar" aria-label="예산 그룹별 사용량">
+        ${segmentMarkup}
+      </div>
+      <div class="budget-overview__legend">
+        ${legendMarkup}
+      </div>
+    </section>
+  `;
 }
 
 function renderRecordCollection(container, items, mode, sortOrder = "desc") {
@@ -2281,6 +2339,7 @@ function inferredCategoryMeta(category, type) {
       "교통": { color: "#ffb4bf", icon: "bus-front", label: "교통" },
       "주유비": { color: "#ffc46b", icon: "fuel", label: "주유비" },
       "하이패스": { color: "#8dc7ff", icon: "road", label: "하이패스" },
+      "결혼준비": { color: "#f48fb1", icon: "gem", label: "결혼준비" },
       "미용": { color: "#ffc2db", icon: "sparkles", label: "미용" },
       "문화": { color: "#e6b8ef", icon: "clapperboard", label: "문화" },
       "문화생활": { color: "#e6b8ef", icon: "gamepad-2", label: "문화생활" },
@@ -2314,6 +2373,7 @@ function normalizeCategoryId(category, type = "") {
   else if (normalized === "교통비") normalized = "교통";
   else if (normalized === "주유" || normalized === "기름값" || normalized === "유류비") normalized = "주유비";
   else if (normalized === "톨게이트비" || normalized === "통행료" || normalized === "하이패스비") normalized = "하이패스";
+  else if (normalized === "웨딩" || normalized === "결혼" || normalized === "웨딩준비") normalized = "결혼준비";
   else if (normalized === "주거/공과금" || normalized === "집세") normalized = "주거비";
   else if (normalized === "생활용품") normalized = "생필품";
   else if (normalized === "여가/취미" || normalized === "오락" || normalized === "문화") normalized = "취미";
