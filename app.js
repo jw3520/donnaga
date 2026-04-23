@@ -406,7 +406,7 @@ function bindEvents() {
     await clearWebCacheAndReload();
   });
   refs.applyUpdateBannerButton.addEventListener("click", async () => {
-    await clearWebCacheAndReload();
+    await openSettingsAndTriggerUpdate();
   });
   refs.dismissUpdateBannerButton.addEventListener("click", dismissMainUpdateBanner);
   refs.openInstallDialogButton.addEventListener("click", () => {
@@ -633,6 +633,13 @@ function dismissMainUpdateBanner() {
   const token = ensureUpdateToken();
   localStorage.setItem(UPDATE_BANNER_DISMISSED_STORAGE_KEY, token);
   syncUpdateUi();
+}
+
+async function openSettingsAndTriggerUpdate() {
+  await switchScreen("settings");
+  window.setTimeout(() => {
+    refs.clearWebCacheButton?.click();
+  }, 180);
 }
 
 function setUpdateAvailable(isAvailable) {
