@@ -1193,7 +1193,7 @@ function renderBudgetOverview(items) {
         <span class="budget-overview__legend-dot" style="--segment-color:${group.color}"></span>
         <strong>${group.fullLabel}</strong>
       </div>
-      <p>${formatCurrency(group.limit)} 할당 · ${group.percentText}%</p>
+      <p>${formatCurrency(group.limit)} · ${group.percentText}%</p>
     </article>
   `).join("");
 
