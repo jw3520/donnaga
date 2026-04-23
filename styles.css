@@ -910,6 +910,13 @@ button:active {
   padding: 10px 14px;
   border-radius: 18px;
   background: #f7f8fa;
+  cursor: pointer;
+  transition: transform 0.14s ease, opacity 0.14s ease, background 0.18s ease;
+}
+
+.analysis-category-row:active {
+  transform: scale(0.98);
+  opacity: 0.82;
 }
 
 .analysis-category-row__label,

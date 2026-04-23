@@ -268,6 +268,8 @@ const state = {
   analysisMode: "expense",
   listSortOrder: "desc",
   searchPeriod: "all",
+  searchQuickCategory: "",
+  searchQuickType: "",
   memberFilter: "all",
   filters: { types: ["income", "expense", "investment"], categories: [] },
   budgetLimits: {},
@@ -379,6 +381,17 @@ function bindEvents() {
     });
   });
   refs.searchDialog.addEventListener("close", syncSearchPeriodChips);
+  refs.analysisCategoryBreakdown.addEventListener("click", (event) => {
+    const row = event.target.closest("[data-analysis-category]");
+    if (!row) return;
+    openSearchDialog({
+      query: row.dataset.analysisCategoryLabel || row.dataset.analysisCategory || "",
+      period: "month",
+      category: row.dataset.analysisCategory || "",
+      type: row.dataset.analysisType || "",
+      autoSubmit: true,
+    });
+  });
 
   refs.openFilterButton.addEventListener("click", () => refs.filterDialog.showModal());
   refs.closeFilterButton.addEventListener("click", () => refs.filterDialog.close());
@@ -764,9 +777,22 @@ function bindBackdropClose(dialog) {
   });
 }
 
-function openSearchDialog() {
+function openSearchDialog(options = {}) {
+  state.searchQuickCategory = options.category || "";
+  state.searchQuickType = options.type || "";
+  if (typeof options.period === "string") {
+    state.searchPeriod = options.period;
+  }
+  if (typeof options.query === "string") {
+    refs.searchQuery.value = options.query;
+  } else if (!options.preserveQuery) {
+    refs.searchQuery.value = "";
+  }
   syncSearchPeriodChips();
   refs.searchDialog.showModal();
+  if (options.autoSubmit) {
+    void executeSearch();
+  }
 }
 
 function syncSearchPeriodChips() {
@@ -1399,11 +1425,19 @@ async function onFilterSubmit(event) {
 
 async function onSearchSubmit(event) {
   event.preventDefault();
+  await executeSearch();
+}
+
+async function executeSearch() {
   const query = refs.searchQuery.value.trim().toLowerCase();
   const filtered = filterBySearchPeriod(
-    state.transactions.filter((item) =>
-      `${item.note} ${categoryAppearance(item.category, item.type).label} ${item.memo || ""}`.toLowerCase().includes(query)
-    ),
+    state.transactions.filter((item) => {
+      const searchText = `${item.note} ${categoryAppearance(item.category, item.type).label} ${item.memo || ""}`.toLowerCase();
+      const normalizedCategory = normalizeCategoryId(item.category || "", item.type || "");
+      const quickCategoryMatches = !state.searchQuickCategory || normalizedCategory === state.searchQuickCategory;
+      const quickTypeMatches = !state.searchQuickType || normalizeTypeId(item.type || "") === state.searchQuickType;
+      return searchText.includes(query) && quickCategoryMatches && quickTypeMatches;
+    }),
     state.searchPeriod,
   );
   refs.searchIncomeTotal.textContent = formatCompactCurrency(sumByType(filtered, "income"));
@@ -2260,7 +2294,7 @@ function renderAnalysisDonut(items, mode = "expense") {
   refs.analysisDonutInner.textContent = `${grouped[0].percent.toFixed(1)}%`;
   refs.analysisCategoryBreakdown.innerHTML = grouped
     .map((item) => `
-      <article class="analysis-category-row">
+      <article class="analysis-category-row" data-analysis-category="${item.category}" data-analysis-category-label="${item.appearance.label}" data-analysis-type="${mode}">
         <div class="analysis-category-row__label">
           <span class="analysis-category-row__dot" style="background:${item.appearance.color}"></span>
           <strong>${item.appearance.label}</strong>
