@@ -1962,6 +1962,28 @@ select {
   padding-top: 16px;
 }
 
+.settings-footer {
+  margin-top: 18px;
+  padding: 6px 4px calc(env(safe-area-inset-bottom) + 18px);
+  text-align: center;
+}
+
+.settings-footer p {
+  margin: 0;
+  color: #8b95a1;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.settings-footer p + p {
+  margin-top: 4px;
+}
+
+.settings-footer strong {
+  color: #5d6874;
+  font-weight: 800;
+}
+
 .is-pulsing {
   background: linear-gradient(180deg, var(--mint) 0%, var(--mint-strong) 100%);
   color: #fff;
