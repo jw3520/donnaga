@@ -270,19 +270,28 @@ button:active {
   font-weight: 800;
 }
 
-#income-total,
+#income-total {
+  color: #efbd34;
+}
+
+#expense-total {
+  color: #ff7f95;
+}
+
+#savings-total {
+  color: #2fb8ad;
+}
+
 .record-card__amount.is-income,
 #search-income-total {
   color: var(--income);
 }
 
-#expense-total,
 .record-card__amount.is-expense,
 #search-expense-total {
   color: var(--expense);
 }
 
-#savings-total,
 .record-card__amount.is-investment {
   color: #6f92e8;
 }
