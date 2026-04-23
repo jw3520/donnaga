@@ -1174,20 +1174,16 @@ function renderBudgetOverview(items) {
 
   const segments = groups.map((group) => {
     const ratio = totalLimit > 0 ? (group.limit / totalLimit) * 100 : 0;
-    const usageRatio = group.limit > 0 ? Math.min(100, (group.spent / group.limit) * 100) : 0;
     return {
       ...group,
       ratio,
-      usageRatio,
       percentText: totalLimit > 0 ? ((group.limit / totalLimit) * 100).toFixed(1) : "0.0",
     };
   });
 
   const segmentMarkup = segments.map((group) => `
     <div class="budget-overview__segment" style="width:${Math.max(group.ratio, 0)}%">
-      <div class="budget-overview__segment-base" style="--segment-color:${group.color}; --segment-soft:${hexToRgba(group.color, 0.24)}">
-        <div class="budget-overview__segment-fill" style="width:${group.usageRatio}%; --segment-color:${group.color}"></div>
-      </div>
+      <div class="budget-overview__segment-base" style="--segment-color:${group.color}; --segment-soft:${hexToRgba(group.color, 0.24)}"></div>
     </div>
   `).join("");
 
@@ -1197,7 +1193,7 @@ function renderBudgetOverview(items) {
         <span class="budget-overview__legend-dot" style="--segment-color:${group.color}"></span>
         <strong>${group.fullLabel}</strong>
       </div>
-      <p>${formatCurrency(group.spent)} 사용 / 예산 ${formatCurrency(group.limit)} (전체의 ${group.percentText}%)</p>
+      <p>${formatCurrency(group.limit)} 할당 · 전체의 ${group.percentText}%</p>
     </article>
   `).join("");
 
