@@ -1196,9 +1196,8 @@ function renderBudgetOverview(items) {
       <div class="budget-overview__legend-head">
         <span class="budget-overview__legend-dot" style="--segment-color:${group.color}"></span>
         <strong>${group.fullLabel}</strong>
-        <em>${group.percentText}%</em>
       </div>
-      <p>${formatCurrency(group.spent)} / ${formatCurrency(group.limit)}</p>
+      <p>${formatCurrency(group.spent)} 사용 / 예산 ${formatCurrency(group.limit)} (전체의 ${group.percentText}%)</p>
     </article>
   `).join("");
 
