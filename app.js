@@ -1111,6 +1111,8 @@ function renderBudgetGroupCards(items, options = {}) {
       const overflowWidth = rawProgress > 100 ? ((rawProgress - 100) / rawProgress) * 100 : 0;
       const markerOffset = rawProgress > 100 ? withinBarWidth : Math.min(100, rawProgress);
       const categoryRows = group.categories
+        .slice()
+        .sort((left, right) => right.amount - left.amount || left.label.localeCompare(right.label, "ko-KR"))
         .map((category) => {
           const appearance = categoryAppearance(category.id, group.type);
           return `
