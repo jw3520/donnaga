@@ -4,6 +4,8 @@ const AUTH_PIN_STORAGE_KEY = "DONNAGA_PIN";
 const AUTH_ROLE_STORAGE_KEY = "DONNAGA_ROLE";
 const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
+const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
+const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
 const DB_NAME = "donnaga-db";
 const SYNC_INTERVAL_MS = 60_000;
 const SYNC_PUSH_BATCH_SIZE = 200;
@@ -131,6 +133,9 @@ const refs = {
   balanceTotal: document.querySelector("#balance-total"),
   cashExpenseTotal: document.querySelector("#cash-expense-total"),
   cardExpenseTotal: document.querySelector("#card-expense-total"),
+  mainUpdateBanner: document.querySelector("#main-update-banner"),
+  applyUpdateBannerButton: document.querySelector("#apply-update-banner-button"),
+  dismissUpdateBannerButton: document.querySelector("#dismiss-update-banner-button"),
   memberFilterButtons: [...document.querySelectorAll("[data-member-filter]")],
   syncDot: document.querySelector("#sync-dot"),
   syncStatusLabel: document.querySelector("#sync-status-label"),
@@ -274,6 +279,7 @@ const state = {
   syncMessage: "로컬 준비 중",
   lastSyncedAt: null,
   lastUpdateCheckedAt: null,
+  updateToken: "",
   syncDetailMessage: "",
   verifyingPin: false,
 };
@@ -399,6 +405,10 @@ function bindEvents() {
   refs.clearWebCacheButton.addEventListener("click", async () => {
     await clearWebCacheAndReload();
   });
+  refs.applyUpdateBannerButton.addEventListener("click", async () => {
+    await clearWebCacheAndReload();
+  });
+  refs.dismissUpdateBannerButton.addEventListener("click", dismissMainUpdateBanner);
   refs.openInstallDialogButton.addEventListener("click", () => {
     openInstallDialog();
   });
@@ -588,11 +598,41 @@ function logoutAndReload() {
 }
 
 function showUpdateAvailableUI() {
+  ensureUpdateToken();
   setUpdateAvailable(true);
 }
 
 function hideUpdateAvailableUI() {
+  state.updateToken = "";
+  localStorage.removeItem(UPDATE_BANNER_TOKEN_STORAGE_KEY);
+  localStorage.removeItem(UPDATE_BANNER_DISMISSED_STORAGE_KEY);
   setUpdateAvailable(false);
+}
+
+function ensureUpdateToken() {
+  if (state.updateToken) return state.updateToken;
+  const stored = localStorage.getItem(UPDATE_BANNER_TOKEN_STORAGE_KEY);
+  if (stored) {
+    state.updateToken = stored;
+    return stored;
+  }
+  const nextToken = `update-${Date.now()}`;
+  state.updateToken = nextToken;
+  localStorage.setItem(UPDATE_BANNER_TOKEN_STORAGE_KEY, nextToken);
+  return nextToken;
+}
+
+function shouldShowMainUpdateBanner() {
+  if (!state.updateAvailable) return false;
+  if (state.currentScreen !== "calendar") return false;
+  const dismissedToken = localStorage.getItem(UPDATE_BANNER_DISMISSED_STORAGE_KEY);
+  return !dismissedToken || dismissedToken !== state.updateToken;
+}
+
+function dismissMainUpdateBanner() {
+  const token = ensureUpdateToken();
+  localStorage.setItem(UPDATE_BANNER_DISMISSED_STORAGE_KEY, token);
+  syncUpdateUi();
 }
 
 function setUpdateAvailable(isAvailable) {
@@ -609,10 +649,14 @@ function syncUpdateUi() {
   if (refs.settingsUpdateBadge) {
     refs.settingsUpdateBadge.hidden = !state.updateAvailable;
   }
+  if (refs.mainUpdateBanner) {
+    refs.mainUpdateBanner.classList.toggle("is-hidden", !shouldShowMainUpdateBanner());
+  }
   if (!refs.clearWebCacheButton) return;
   refs.clearWebCacheButton.classList.toggle("primary-button", state.updateAvailable);
   refs.clearWebCacheButton.classList.toggle("secondary-button", !state.updateAvailable);
   refs.clearWebCacheButton.classList.toggle("is-pulsing", state.updateAvailable && state.currentScreen === "settings");
+  refs.applyUpdateBannerButton?.classList.toggle("is-pulsing", shouldShowMainUpdateBanner());
   syncUpdateTimestampUi();
 }
 
