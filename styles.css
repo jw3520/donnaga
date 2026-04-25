@@ -639,6 +639,7 @@ button:active {
 
 .record-card__content {
   flex: 1;
+  min-width: 0;
   gap: 2px;
 }
 
@@ -655,6 +656,9 @@ button:active {
 
 .record-card__meta {
   font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .record-card__amount {
