@@ -1967,6 +1967,13 @@ select {
   gap: 12px;
 }
 
+#clear-web-cache-button,
+#manual-sync-button {
+  min-width: 134px;
+  justify-content: center;
+  flex: 0 0 134px;
+}
+
 .settings-row--status {
   border: 1px solid rgba(77, 182, 172, 0.22);
   background: linear-gradient(180deg, #ffffff 0%, #f7fbfa 100%);
