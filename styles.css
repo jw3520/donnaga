@@ -1979,6 +1979,13 @@ select {
   background: linear-gradient(180deg, #ffffff 0%, #f7fbfa 100%);
 }
 
+#update-version-label {
+  font-size: 11px;
+  line-height: 1.25;
+  color: #99a2ad;
+  letter-spacing: 0.01em;
+}
+
 .settings-row--logout {
   margin-top: 4px;
   border-top: 1px dashed rgba(221, 229, 234, 0.95);
