@@ -514,7 +514,16 @@ button:active {
 }
 
 .calendar-day.is-today:not(.is-selected) .calendar-day__date {
-  background: #edf1f3;
+  background: linear-gradient(180deg, #f4f8fb 0%, #eaf1f5 100%);
+  border: 1px solid rgba(77, 182, 172, 0.28);
+  box-shadow: 0 4px 10px rgba(77, 182, 172, 0.12);
+  color: #2f6f74;
+  font-weight: 700;
+}
+
+.calendar-day.is-today:not(.is-selected) .calendar-day__amount {
+  color: #4d6f73;
+  font-weight: 600;
 }
 
 .calendar-day.is-sunday .calendar-day__date {
