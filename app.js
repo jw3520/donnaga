@@ -6,6 +6,8 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
+const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
+const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
 const DB_NAME = "donnaga-db";
 const SYNC_INTERVAL_MS = 60_000;
 const SYNC_PUSH_BATCH_SIZE = 200;
@@ -249,6 +251,8 @@ const refs = {
   loginGateInput: document.querySelector("#login-gate-input"),
   loginGateError: document.querySelector("#login-gate-error"),
   loginGateSubmit: document.querySelector(".login-gate__submit"),
+  settingsScreen: document.querySelector('.screen[data-screen="settings"]'),
+  settingsTabButton: document.querySelector('[data-screen-target="settings"]'),
   adminOnlyElements: [...document.querySelectorAll("[data-admin-only='true']")],
 };
 
@@ -274,7 +278,7 @@ const state = {
   filters: { types: ["income", "expense", "investment"], categories: [] },
   budgetLimits: {},
   authPin: "",
-  role: "guest",
+  role: "locked",
   updateAvailable: false,
   editingId: null,
   syncing: false,
@@ -291,6 +295,7 @@ let syncTimerId = null;
 let calendarTouchState = null;
 let swRegistrationRef = null;
 let reloadingForServiceWorker = false;
+let loginLockTimerId = null;
 await boot();
 
 async function boot() {
@@ -309,14 +314,19 @@ async function boot() {
   await purgeSeedTransactions();
   await loadUiMeta();
   await loadBudgetLimits();
+  if (isGuest()) {
+    await seedGuestSandboxIfNeeded();
+  }
   await loadTransactionsFromDb();
   render();
-  if (hasAccess()) {
+  if (canReadServer()) {
     updateSyncUI(navigator.onLine ? "초기 동기화 중" : "오프라인", navigator.onLine ? "syncing" : "offline");
     await pullFromServer();
-    if (navigator.onLine) {
+    if (navigator.onLine && canSyncServer()) {
       await pushPendingToServer();
     }
+  } else if (isGuest()) {
+    updateSyncUI("게스트 샌드박스", "offline");
   } else {
     updateSyncUI("비밀번호 입력 대기", "idle");
   }
@@ -414,7 +424,7 @@ function bindEvents() {
   });
 
   refs.manualSyncButton.addEventListener("click", async () => {
-    if (!canWrite()) return;
+    if (!isAdmin()) return;
     updateSyncUI("동기화 진행 중", "syncing");
     await runButtonFeedback(
       refs.manualSyncButton,
@@ -461,7 +471,7 @@ function bindEvents() {
   refs.entryForm.addEventListener("submit", onSubmitEntry);
   refs.resetFormButton.addEventListener("click", resetEntryForm);
   refs.entryDeleteButton.addEventListener("click", async () => {
-    if (!canWrite()) return;
+    if (!canEditLocally()) return;
     if (!state.editingId) return;
     refs.entryDialog.close();
     await deleteRecord(state.editingId);
@@ -529,7 +539,7 @@ function restoreAuthState() {
   const savedPin = localStorage.getItem(AUTH_PIN_STORAGE_KEY) || "";
   const savedRole = localStorage.getItem(AUTH_ROLE_STORAGE_KEY) || "";
   state.authPin = savedPin;
-  state.role = savedPin && (savedRole === "admin" || savedRole === "readonly") ? savedRole : "guest";
+  state.role = savedPin && (savedRole === "admin" || savedRole === "readonly" || savedRole === "guest") ? savedRole : "locked";
 }
 
 function persistAuthState(pin, role) {
@@ -543,22 +553,49 @@ function clearAuthState() {
   localStorage.removeItem(AUTH_PIN_STORAGE_KEY);
   localStorage.removeItem(AUTH_ROLE_STORAGE_KEY);
   state.authPin = "";
-  state.role = "guest";
+  state.role = "locked";
 }
 
-function canWrite() {
+function isAdmin() {
   return state.role === "admin";
 }
 
-function hasAccess() {
+function isGuest() {
+  return state.role === "guest";
+}
+
+function canEditLocally() {
+  return state.role === "admin" || state.role === "guest";
+}
+
+function canSyncServer() {
+  return state.role === "admin";
+}
+
+function canReadServer() {
   return state.role === "admin" || state.role === "readonly";
+}
+
+function hasAccess() {
+  return state.role === "admin" || state.role === "readonly" || state.role === "guest";
 }
 
 function applyRoleToUI() {
   refs.adminOnlyElements.forEach((element) => {
-    element.style.display = canWrite() ? "" : "none";
-    element.classList.toggle("is-hidden", !canWrite());
+    element.style.display = isAdmin() ? "" : "none";
+    element.classList.toggle("is-hidden", !isAdmin());
   });
+  if (isGuest() && state.currentScreen === "settings") {
+    state.currentScreen = "calendar";
+  }
+  if (refs.settingsTabButton) {
+    refs.settingsTabButton.style.display = isGuest() ? "none" : "";
+    refs.settingsTabButton.hidden = isGuest();
+  }
+  if (refs.settingsScreen) {
+    refs.settingsScreen.style.display = isGuest() ? "none" : "";
+    refs.settingsScreen.hidden = isGuest();
+  }
   document.body.dataset.role = state.role;
 }
 
@@ -568,17 +605,70 @@ function ensureLoginGate() {
   refs.loginGate.style.display = blocked ? "grid" : "none";
   refs.loginGate.setAttribute("aria-hidden", blocked ? "false" : "true");
   document.body.classList.toggle("is-auth-blocked", blocked);
+  syncLoginGateLockUi();
   if (blocked) {
     refs.loginGateInput.value = "";
-    refs.loginGateError.hidden = true;
+    if (getLoginLockRemainingMs() <= 0) {
+      refs.loginGateError.hidden = true;
+    }
     requestAnimationFrame(() => refs.loginGateInput.focus());
+  }
+}
+
+function getLoginLockRemainingMs() {
+  const lockUntil = Number(localStorage.getItem(LOGIN_LOCK_UNTIL_STORAGE_KEY) || 0);
+  return Math.max(0, lockUntil - Date.now());
+}
+
+function clearLoginFailures() {
+  localStorage.removeItem(LOGIN_FAILS_STORAGE_KEY);
+  localStorage.removeItem(LOGIN_LOCK_UNTIL_STORAGE_KEY);
+}
+
+function registerLoginFailure() {
+  const nextFails = Number(localStorage.getItem(LOGIN_FAILS_STORAGE_KEY) || 0) + 1;
+  if (nextFails >= 3) {
+    localStorage.setItem(LOGIN_FAILS_STORAGE_KEY, "0");
+    localStorage.setItem(LOGIN_LOCK_UNTIL_STORAGE_KEY, String(Date.now() + 60_000));
+    syncLoginGateLockUi();
+    return;
+  }
+  localStorage.setItem(LOGIN_FAILS_STORAGE_KEY, String(nextFails));
+  refs.loginGateError.textContent = `비밀번호가 틀렸습니다. (${nextFails}/3)`;
+  refs.loginGateError.hidden = false;
+}
+
+function syncLoginGateLockUi() {
+  const remainingMs = getLoginLockRemainingMs();
+  const isLocked = remainingMs > 0;
+  refs.loginGateInput.disabled = isLocked;
+  refs.loginGateSubmit.disabled = isLocked || state.verifyingPin;
+  if (loginLockTimerId) {
+    window.clearTimeout(loginLockTimerId);
+    loginLockTimerId = null;
+  }
+  if (isLocked) {
+    const remainingSeconds = Math.ceil(remainingMs / 1000);
+    refs.loginGateError.textContent = `3회 오류로 ${remainingSeconds}초 동안 잠깁니다.`;
+    refs.loginGateError.hidden = false;
+    loginLockTimerId = window.setTimeout(syncLoginGateLockUi, 1000);
+    return;
+  }
+  if (!refs.loginGateError.hidden && refs.loginGateError.textContent.includes("잠깁니다")) {
+    refs.loginGateError.hidden = true;
+    refs.loginGateError.textContent = "비밀번호가 틀렸습니다.";
   }
 }
 
 async function onSubmitLoginGate(event) {
   event.preventDefault();
   const pin = String(refs.loginGateInput.value || "").trim();
+  if (getLoginLockRemainingMs() > 0) {
+    syncLoginGateLockUi();
+    return;
+  }
   if (!pin) {
+    refs.loginGateError.textContent = "비밀번호를 입력해 주세요.";
     refs.loginGateError.hidden = false;
     refs.loginGateInput.select();
     return;
@@ -586,29 +676,42 @@ async function onSubmitLoginGate(event) {
   state.verifyingPin = true;
   setButtonBusy(refs.loginGateSubmit, true, { idleLabel: "입장하기", busyLabel: "확인 중" });
   refs.loginGateError.hidden = true;
+  let role = "";
   try {
-    const role = await verifyPinOnServer(pin);
+    if (pin === "0000") {
+      role = "guest";
+    } else {
+      role = await verifyPinOnServer(pin);
+    }
     persistAuthState(pin, role);
+    clearLoginFailures();
   } catch {
-    refs.loginGateError.hidden = false;
+    registerLoginFailure();
     refs.loginGateInput.select();
     return;
   } finally {
     state.verifyingPin = false;
     setButtonBusy(refs.loginGateSubmit, false, { idleLabel: "입장하기" });
+    syncLoginGateLockUi();
   }
   applyRoleToUI();
   ensureLoginGate();
+  if (isGuest()) {
+    await seedGuestSandboxIfNeeded();
+  }
+  await loadTransactionsFromDb();
   render();
-  if (navigator.onLine) {
+  if (canReadServer() && navigator.onLine) {
     try {
       await pullFromServer();
-      if (canWrite()) {
+      if (canSyncServer()) {
         await pushPendingToServer();
       }
     } catch {
       updateSyncUI("서버 연결 실패", "error");
     }
+  } else if (isGuest()) {
+    updateSyncUI("게스트 샌드박스", "offline");
   }
 }
 
@@ -656,6 +759,10 @@ function dismissMainUpdateBanner() {
 }
 
 async function openSettingsAndTriggerUpdate() {
+  if (isGuest()) {
+    await clearWebCacheAndReload();
+    return;
+  }
   await switchScreen("settings");
   window.setTimeout(() => {
     refs.clearWebCacheButton?.click();
@@ -868,6 +975,37 @@ async function purgeSeedTransactions() {
   state.syncDetailMessage = `기존 더미 데이터 ${seedRows.length}건을 정리했습니다.`;
 }
 
+async function seedGuestSandboxIfNeeded() {
+  const guestRows = await db.transactions.filter((item) => item.scope === "guest" && !item.deleted).toArray();
+  if (guestRows.length) return;
+  const module = await import("./guest/dummy-data.js");
+  const dummyTransactions = Array.isArray(module.dummyTransactions) ? module.dummyTransactions : [];
+  if (!dummyTransactions.length) return;
+  const seeded = dummyTransactions.map((item, index) =>
+    normalizeTransaction(
+      {
+        ...item,
+        id: item.id || `guest-${index + 1}`,
+        date: remapDateToCurrentMonth(item.date),
+        scope: "guest",
+        sync_status: "synced",
+        updated_at: Date.now() + index,
+      },
+      false,
+    ),
+  );
+  await db.transactions.bulkPut(seeded);
+}
+
+function remapDateToCurrentMonth(date) {
+  const currentMonth = monthKeyFromDate(new Date());
+  const [year, month] = currentMonth.split("-").map(Number);
+  const sourceDay = Number(String(date || "").slice(8, 10) || "1");
+  const lastDay = new Date(year, month, 0).getDate();
+  const safeDay = String(Math.min(Math.max(sourceDay, 1), lastDay)).padStart(2, "0");
+  return `${currentMonth}-${safeDay}`;
+}
+
 async function migrateLegacyMemberNames() {
   const migrated = await getMeta("legacyMemberNamesMigrated");
   if (migrated) return;
@@ -949,9 +1087,10 @@ async function persistBudgetLimits() {
 }
 
 async function loadTransactionsFromDb() {
-  state.transactions = await db.transactions.orderBy("date").reverse().toArray();
+  const allRows = await db.transactions.orderBy("date").reverse().toArray();
+  state.transactions = allRows.filter(matchesCurrentDataScope);
   refs.storageStatusLabel.textContent = `총 ${state.transactions.filter((item) => !item.deleted).length}건`;
-  refs.remoteStatusLabel.textContent = navigator.onLine ? "연결됨" : "오프라인";
+  refs.remoteStatusLabel.textContent = isGuest() ? "게스트 로컬" : (navigator.onLine ? "연결됨" : "오프라인");
   refs.syncDetailLabel.textContent = state.lastSyncedAt
     ? formatRelativeSyncTime(state.lastSyncedAt)
     : "아직 동기화 기록이 없어요.";
@@ -967,8 +1106,8 @@ function render() {
   renderAssets();
   renderAnalysis();
   renderFilterChips();
-  syncScreens();
   applyRoleToUI();
+  syncScreens();
   syncFilterForm();
   renderIcons();
 }
@@ -1195,7 +1334,7 @@ function renderAnalysis() {
 
 function renderBudgetGroupCards(items, options = {}) {
   const variant = options.variant || "asset";
-  const editable = canWrite();
+  const editable = isAdmin();
   return budgetGroupsForItems(items)
     .map((group) => {
       const rawProgress = Math.round((group.spent / Math.max(group.limit, 1)) * 100) || 0;
@@ -1350,12 +1489,12 @@ function createRecordElement(item) {
   amount.classList.add(`is-${item.type}`);
   fragment.querySelector(".record-card__meta").textContent = `${item.date} · ${accountName(item.account)}`;
   card.addEventListener("click", () => {
-    if (!canWrite()) return;
+    if (!canEditLocally()) return;
     startEdit(item.id);
   });
   fragment.querySelector(".record-delete-button").addEventListener("click", (event) => {
     event.stopPropagation();
-    if (!canWrite()) return;
+    if (!canEditLocally()) return;
     void deleteRecord(item.id);
   });
   return fragment;
@@ -1484,7 +1623,7 @@ async function executeSearch() {
 
 async function onSubmitEntry(event) {
   event.preventDefault();
-  if (!canWrite()) return;
+  if (!canEditLocally()) return;
   const editingId = String(refs.editingIdField.value || state.editingId || "");
   const existingTransaction = editingId ? state.transactions.find((item) => item.id === editingId) || null : null;
   const category = String(refs.categoryField.value || existingTransaction?.category || "");
@@ -1505,6 +1644,7 @@ async function onSubmitEntry(event) {
       account,
       date,
       note: note || existingTransaction?.note || defaultNote(category),
+      scope: existingTransaction?.scope || currentDataScope(),
     },
     true,
   );
@@ -1659,7 +1799,7 @@ function resetEntryForm() {
 }
 
 function openEntryDialog() {
-  if (!canWrite()) return;
+  if (!canEditLocally()) return;
   resetEntryForm();
   refs.dateField.value = state.selectedDateByUser && state.selectedDate ? state.selectedDate : todayISO();
   requestAnimationFrame(() => refs.entryDialog.showModal());
@@ -1686,7 +1826,7 @@ function startEdit(id) {
 }
 
 async function deleteRecord(id) {
-  if (!canWrite()) return;
+  if (!canEditLocally()) return;
   const transaction = state.transactions.find((item) => item.id === id);
   if (!transaction) return;
   const confirmed = window.confirm(
@@ -1707,7 +1847,12 @@ async function deleteRecord(id) {
 }
 
 async function switchScreen(screen) {
-  state.currentScreen = screen === "memo" ? "list" : screen;
+  const normalizedScreen = screen === "memo" ? "list" : screen;
+  if (isGuest() && normalizedScreen === "settings") {
+    state.currentScreen = "calendar";
+  } else {
+    state.currentScreen = normalizedScreen;
+  }
   await persistUiMeta();
   syncScreens();
   renderIcons();
@@ -1720,8 +1865,8 @@ function syncScreens() {
   refs.screenButtons.forEach((button) => {
     button.classList.toggle("is-active", button.dataset.screenTarget === state.currentScreen);
   });
-  refs.openEntryButton.classList.toggle("is-hidden", state.currentScreen === "memo" || state.currentScreen === "analysis" || !canWrite());
-  refs.memoAddButton.classList.toggle("is-hidden", state.currentScreen !== "memo" || !canWrite());
+  refs.openEntryButton.classList.toggle("is-hidden", state.currentScreen === "memo" || state.currentScreen === "analysis" || !canEditLocally());
+  refs.memoAddButton.classList.toggle("is-hidden", state.currentScreen !== "memo" || !canEditLocally());
   syncUpdateUi();
 }
 
@@ -1787,7 +1932,7 @@ function categoryTypeForBudget(category) {
 
 async function onBudgetLimitSubmit(event) {
   event.preventDefault();
-  if (!canWrite()) return;
+  if (!isAdmin()) return;
   const form = event.target.closest("[data-budget-group-form]");
   if (!form) return;
   const groupId = form.dataset.budgetGroupForm;
@@ -1866,9 +2011,21 @@ function normalizeTransaction(item, markPending) {
     updated_at: markPending ? Date.now() : Number(item.updated_at || Date.now()),
     sync_status: markPending ? "pending" : (item.sync_status || "synced"),
     deleted: item.deleted ? 1 : 0,
+    scope: item.scope === "guest" ? "guest" : "admin",
   };
   normalized.fingerprint = buildFingerprint(normalized);
   return normalized;
+}
+
+function currentDataScope() {
+  if (isGuest()) return "guest";
+  if (hasAccess()) return "admin";
+  return "locked";
+}
+
+function matchesCurrentDataScope(item) {
+  const scope = item?.scope === "guest" ? "guest" : "admin";
+  return currentDataScope() === scope;
 }
 
 function clearEntrySelections() {
@@ -1981,19 +2138,23 @@ function buildFingerprint(item) {
 }
 
 async function fullSyncCycle() {
-  if (canWrite()) {
+  if (canSyncServer()) {
     await pushPendingToServer();
   }
-  await pullFromServer();
+  if (canReadServer()) {
+    await pullFromServer();
+  }
 }
 
 async function pushPendingToServer() {
-  if (!canWrite()) return;
+  if (!canSyncServer()) return;
   if (!navigator.onLine) {
     updateSyncUI("오프라인", "offline");
     return;
   }
-  const pending = (await db.transactions.where("sync_status").equals("pending").toArray()).map((item) => ({
+  const pending = (await db.transactions.where("sync_status").equals("pending").toArray())
+    .filter((item) => (item.scope === "guest" ? "guest" : "admin") === "admin")
+    .map((item) => ({
     ...item,
     member: normalizeMemberId(item.member),
   }));
@@ -2044,6 +2205,7 @@ async function pushPendingToServer() {
 }
 
 async function pullFromServer() {
+  if (!canReadServer()) return;
   if (!navigator.onLine) {
     updateSyncUI("오프라인", "offline");
     return;
@@ -2081,8 +2243,12 @@ function updateSyncUI(message, status) {
   state.syncMessage = message;
   refs.syncStatusLabel.textContent = message;
   refs.syncDot.dataset.status = status;
-  refs.remoteStatusLabel.textContent =
-    status === "offline" ? "오프라인" : "연결됨";
+  if (isGuest()) {
+    refs.remoteStatusLabel.textContent = "게스트 로컬";
+    refs.syncDetailLabel.textContent = "이 기기에서만 체험 중";
+    return;
+  }
+  refs.remoteStatusLabel.textContent = status === "offline" ? "오프라인" : "연결됨";
   if (status === "error" && state.syncDetailMessage) {
     refs.syncDetailLabel.textContent = state.syncDetailMessage;
     return;

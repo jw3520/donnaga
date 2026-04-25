@@ -2155,6 +2155,11 @@ select {
   letter-spacing: 0.3em;
 }
 
+.login-gate__form input:disabled {
+  background: #f1f4f7;
+  color: #98a1ac;
+}
+
 .login-gate__error {
   color: #e15d69;
   font-size: 13px;

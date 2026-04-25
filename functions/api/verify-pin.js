@@ -8,8 +8,8 @@ function json(body, init = {}) {
 export async function onRequestPost(context) {
   const { env, request } = context;
   try {
-    if (!env.ADMIN_PIN || !env.READONLY_PIN) {
-      return json({ ok: false, error: "PIN environment variables are not configured" }, { status: 500 });
+    if (!env.ADMIN_PIN) {
+      return json({ ok: false, error: "ADMIN_PIN is not configured" }, { status: 500 });
     }
     const payload = await request.json();
     const pin = String(payload?.pin || "").trim();
@@ -19,7 +19,7 @@ export async function onRequestPost(context) {
     if (pin === env.ADMIN_PIN) {
       return json({ ok: true, role: "admin" });
     }
-    if (pin === env.READONLY_PIN) {
+    if (env.READONLY_PIN && pin === env.READONLY_PIN) {
       return json({ ok: true, role: "readonly" });
     }
     return json({ ok: false, error: "Unauthorized" }, { status: 401 });
