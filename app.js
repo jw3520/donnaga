@@ -6,7 +6,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "1.26.04.26.00";
+const APP_VERSION = "1.26.04.26.01";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -387,7 +387,7 @@ function bindEvents() {
     refs.monthPickerDialog.showModal();
   });
   refs.closeMonthPickerButton.addEventListener("click", () => refs.monthPickerDialog.close());
-  refs.yearSelect.addEventListener("change", renderMonthPicker);
+  refs.yearSelect.addEventListener("change", () => renderMonthPicker(refs.yearSelect.value));
 
   refs.openSearchButton.addEventListener("click", openSearchDialog);
   refs.closeSearchButton.addEventListener("click", () => refs.searchDialog.close());
@@ -1553,10 +1553,10 @@ function createRecordElement(item) {
   return fragment;
 }
 
-function renderMonthPicker() {
+function renderMonthPicker(selectedYearValue = state.currentMonth.slice(0, 4)) {
   const years = availableYears();
   refs.yearSelect.innerHTML = years.map((year) => `<option value="${year}">${year}년</option>`).join("");
-  refs.yearSelect.value = state.currentMonth.slice(0, 4);
+  refs.yearSelect.value = String(selectedYearValue || state.currentMonth.slice(0, 4));
   const currentYear = Number(state.currentMonth.slice(0, 4));
   const currentMonth = Number(state.currentMonth.slice(5, 7));
   const selectedYear = Number(refs.yearSelect.value);
