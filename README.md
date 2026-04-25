@@ -10,7 +10,17 @@
 
 ## 📺 프로젝트 시연
 > **Note:** 아래는 실제 앱 동작 화면입니다. (Guest 모드 더미 데이터 기준)
-![DonnaGa Demo](./image.png)
+
+<p align="center">
+  <img src="./planning/Screenshot1.jpg" width="32%" />
+  <img src="./planning/Screenshot2.jpg" width="32%" />
+  <img src="./planning/Screenshot3.jpg" width="32%" />
+  <br>
+  <br>
+  <img src="./planning/Screenshot4.jpg" width="32%" />
+  <img src="./planning/Screenshot5.jpg" width="32%" />
+  <img src="./planning/Screenshot6.jpg" width="32%" />
+</p>
 
 ---
 
