@@ -17,10 +17,10 @@ const MEMBERS = [
   { id: "정우", name: "정우" },
   { id: "솔이", name: "솔이" },
 ];
-const GUEST_MEMBER_ALIASES = {
-  정우: "철수",
-  솔이: "영희",
-};
+const GUEST_MEMBERS = [
+  { id: "철수", name: "철수" },
+  { id: "영희", name: "영희" },
+];
 
 const ACCOUNTS = [
   { id: "cash", name: "현금", type: "cash" },
@@ -320,6 +320,7 @@ async function boot() {
   await loadUiMeta();
   await loadBudgetLimits();
   if (isGuest()) {
+    await migrateGuestSandboxMembers();
     await seedGuestSandboxIfNeeded();
   }
   await loadTransactionsFromDb();
@@ -696,6 +697,7 @@ async function onSubmitLoginGate(event) {
   applyRoleToUI();
   ensureLoginGate();
   if (isGuest()) {
+    await migrateGuestSandboxMembers();
     await seedGuestSandboxIfNeeded();
   }
   await loadTransactionsFromDb();
@@ -992,6 +994,28 @@ async function seedGuestSandboxIfNeeded() {
   await db.transactions.bulkPut(seeded);
 }
 
+async function migrateGuestSandboxMembers() {
+  const guestRows = await db.transactions.filter((item) => item.scope === "guest").toArray();
+  if (!guestRows.length) return;
+  const rewritten = guestRows
+    .map((item) => {
+      const nextMember = item.member === "정우" ? "철수" : item.member === "솔이" ? "영희" : item.member;
+      if (nextMember === item.member) return null;
+      return normalizeTransaction(
+        {
+          ...item,
+          member: nextMember,
+          updated_at: Date.now(),
+          scope: "guest",
+        },
+        true,
+      );
+    })
+    .filter(Boolean);
+  if (!rewritten.length) return;
+  await db.transactions.bulkPut(rewritten);
+}
+
 function remapDateToCurrentMonth(date) {
   const currentMonth = monthKeyFromDate(new Date());
   const [year, month] = currentMonth.split("-").map(Number);
@@ -1041,7 +1065,7 @@ async function loadUiMeta() {
   state.selectedDateByUser = savedUi.selectedDateByUser || false;
   state.analysisTab = savedUi.analysisTab || state.analysisTab;
   state.analysisMode = savedUi.analysisMode || state.analysisMode;
-  state.memberFilter = ["all", "정우", "솔이"].includes(savedUi.memberFilter) ? savedUi.memberFilter : "all";
+  state.memberFilter = sanitizeMemberFilter(savedUi.memberFilter);
   state.filters = normalizeFilterState(savedUi.filters || state.filters);
   state.listSortOrder = savedUi.listSortOrder === "asc" ? "asc" : "desc";
   state.lastSyncedAt = (await getMeta("lastSyncedAt")) || null;
@@ -2050,30 +2074,58 @@ function normalizeFilterState(filters) {
 
 function normalizeMemberId(value) {
   if (value == null || value === "") return "";
-  if (value === "partner" || value === "솔이" || value === "예비신부") return "솔이";
-  if (value === "jw" || value === "정우" || value === "나" || value === "Default") return "정우";
-  return "정우";
+  const normalized = String(value).trim();
+  if (normalized === "영희") return "영희";
+  if (normalized === "철수") return "철수";
+  if (normalized === "partner" || normalized === "솔이" || normalized === "예비신부") return "솔이";
+  if (normalized === "jw" || normalized === "정우" || normalized === "나" || normalized === "Default") return "정우";
+  return normalized;
 }
 
 function memberDisplayName(id) {
   const normalized = normalizeMemberId(id);
-  if (isGuest()) {
-    return GUEST_MEMBER_ALIASES[normalized] || normalized;
-  }
-  return MEMBERS.find((member) => member.id === normalized)?.name || normalized;
+  return membersForCurrentRole().find((member) => member.id === normalized)?.name || normalized;
 }
 
 function syncMemberLabels() {
+  const activeMembers = membersForCurrentRole().slice();
   refs.memberFilterButtons.forEach((button) => {
-    const memberId = button.dataset.memberFilter || "";
-    if (!memberId || memberId === "all") return;
-    button.textContent = memberDisplayName(memberId);
+    if ((button.dataset.memberFilter || "") === "all") {
+      button.textContent = "전체";
+      return;
+    }
+    const member = activeMembers.shift();
+    if (!member) return;
+    button.dataset.memberFilter = member.id;
+    button.textContent = member.name;
   });
   refs.memberButtons.forEach((button) => {
-    const memberId = button.dataset.memberValue || "";
-    if (!memberId) return;
-    button.textContent = memberDisplayName(memberId);
+    const member = membersForCurrentRole()[refs.memberButtons.indexOf(button)];
+    if (!member) return;
+    button.dataset.memberValue = member.id;
+    button.textContent = member.name;
   });
+  state.memberFilter = sanitizeMemberFilter(state.memberFilter);
+  if (refs.memberField.value) {
+    refs.memberField.value = sanitizeMemberIdForCurrentRole(refs.memberField.value);
+  }
+}
+
+function membersForCurrentRole() {
+  return isGuest() ? GUEST_MEMBERS : MEMBERS;
+}
+
+function sanitizeMemberFilter(value) {
+  const normalized = normalizeMemberId(value);
+  const allowed = membersForCurrentRole().map((member) => member.id);
+  return normalized === "all" || allowed.includes(normalized) ? normalized : "all";
+}
+
+function sanitizeMemberIdForCurrentRole(value) {
+  const normalized = normalizeMemberId(value);
+  const allowed = membersForCurrentRole().map((member) => member.id);
+  if (allowed.includes(normalized)) return normalized;
+  return allowed[0] || "";
 }
 
 function normalizeAccountId(value) {
