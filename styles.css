@@ -1969,9 +1969,9 @@ select {
 
 #clear-web-cache-button,
 #manual-sync-button {
-  min-width: 168px;
+  min-width: 124px;
   justify-content: center;
-  flex: 0 0 168px;
+  flex: 0 0 124px;
 }
 
 .settings-row--status {
