@@ -514,15 +514,15 @@ button:active {
 }
 
 .calendar-day.is-today:not(.is-selected) .calendar-day__date {
-  background: linear-gradient(180deg, #f4f8fb 0%, #eaf1f5 100%);
-  border: 1px solid rgba(77, 182, 172, 0.28);
-  box-shadow: 0 4px 10px rgba(77, 182, 172, 0.12);
-  color: #2f6f74;
+  background: linear-gradient(180deg, #e9faf7 0%, #dff4f0 100%);
+  border: 1px solid rgba(77, 182, 172, 0.44);
+  box-shadow: 0 6px 14px rgba(77, 182, 172, 0.18);
+  color: #1f666b;
   font-weight: 700;
 }
 
 .calendar-day.is-today:not(.is-selected) .calendar-day__amount {
-  color: #4d6f73;
+  color: #356d71;
   font-weight: 600;
 }
 
