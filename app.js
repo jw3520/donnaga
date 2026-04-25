@@ -1663,7 +1663,7 @@ async function executeSearch() {
                 <div class="record-card__content">
                   <p class="record-card__category">${categoryAppearance(item.category, item.type).label}</p>
                   <h3 class="record-card__note">${item.note}</h3>
-                  <div class="record-card__meta">${item.date} · ${accountName(item.account)}</div>
+                  <div class="record-card__meta">${item.date} · ${memberName(item.member)} · ${accountName(item.account)}</div>
                 </div>
                 <strong class="record-card__amount is-${item.type}">${item.type === "income" ? "+" : "-"}${formatCurrency(item.amount)}</strong>
               </div>
