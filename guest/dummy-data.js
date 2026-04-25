@@ -26,6 +26,6 @@ export const dummyTransactions = [
   { id: "guest-026", type: "income", amount: 50000, category: "용돈", member: "영희", account: "cash", date: "2026-01-23", note: "용돈", memo: "" },
   { id: "guest-027", type: "expense", amount: 39000, category: "미용", member: "영희", account: "credit-card", date: "2026-01-24", note: "네일", memo: "" },
   { id: "guest-028", type: "expense", amount: 15800, category: "교통", member: "철수", account: "debit-card", date: "2026-01-25", note: "택시", memo: "야근 귀가" },
-  { id: "guest-007", type: "expense", amount: 800000, category: "주거비", member: "철수", account: "bank-transfer", date: "2026-01-30", note: "이자 납입", memo: "" },
-  { id: "guest-007", type: "expense", amount: 159000, category: "주거비", member: "철수", account: "bank-transfer", date: "2026-01-05", note: "관리비", memo: "" },
+  { id: "guest-029", type: "expense", amount: 800000, category: "주거비", member: "철수", account: "bank-transfer", date: "2026-01-30", note: "이자 납입", memo: "" },
+  { id: "guest-030", type: "expense", amount: 159000, category: "주거비", member: "철수", account: "bank-transfer", date: "2026-01-05", note: "관리비", memo: "" },
 ];

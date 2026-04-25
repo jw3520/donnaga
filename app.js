@@ -7,6 +7,7 @@ const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
 const APP_VERSION = "1.26.04.25.00";
+const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
 const DB_NAME = "donnaga-db";
@@ -324,7 +325,7 @@ async function boot() {
   await loadBudgetLimits();
   if (isGuest()) {
     await migrateGuestSandboxMembers();
-    await seedGuestSandboxIfNeeded();
+    await syncGuestSandboxSeed();
   }
   await loadTransactionsFromDb();
   render();
@@ -701,7 +702,7 @@ async function onSubmitLoginGate(event) {
   ensureLoginGate();
   if (isGuest()) {
     await migrateGuestSandboxMembers();
-    await seedGuestSandboxIfNeeded();
+    await syncGuestSandboxSeed();
   }
   await loadTransactionsFromDb();
   render();
@@ -978,12 +979,14 @@ async function purgeSeedTransactions() {
   state.syncDetailMessage = `기존 더미 데이터 ${seedRows.length}건을 정리했습니다.`;
 }
 
-async function seedGuestSandboxIfNeeded() {
-  const guestRows = await db.transactions.filter((item) => item.scope === "guest" && !item.deleted).toArray();
-  if (guestRows.length) return;
+async function syncGuestSandboxSeed() {
   const module = await import("./guest/dummy-data.js");
   const dummyTransactions = Array.isArray(module.dummyTransactions) ? module.dummyTransactions : [];
   if (!dummyTransactions.length) return;
+  const guestRows = await db.transactions.filter((item) => item.scope === "guest" && !item.deleted).toArray();
+  const nextSignature = buildGuestSeedSignature(dummyTransactions);
+  const currentSignature = String((await getMeta(GUEST_SEED_SIGNATURE_META_KEY)) || "");
+  if (guestRows.length && currentSignature === nextSignature) return;
   const seeded = dummyTransactions.map((item, index) =>
     normalizeTransaction(
       {
@@ -997,7 +1000,32 @@ async function seedGuestSandboxIfNeeded() {
       false,
     ),
   );
-  await db.transactions.bulkPut(seeded);
+  await db.transaction("rw", db.transactions, db.meta, async () => {
+    if (guestRows.length) {
+      const guestIds = guestRows.map((item) => item.id);
+      await db.transactions.bulkDelete(guestIds);
+    }
+    await db.transactions.bulkPut(seeded);
+    await setMeta(GUEST_SEED_SIGNATURE_META_KEY, nextSignature);
+  });
+}
+
+function buildGuestSeedSignature(items) {
+  return items
+    .map((item) =>
+      [
+        item.id || "",
+        item.type || "",
+        item.amount || 0,
+        item.category || "",
+        item.member || "",
+        item.account || "",
+        item.date || "",
+        item.note || "",
+        item.memo || "",
+      ].join("|"),
+    )
+    .join("::");
 }
 
 async function migrateGuestSandboxMembers() {
