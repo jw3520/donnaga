@@ -38,6 +38,7 @@ const INCOME_CATEGORY_META = [
   { id: "환급", label: "환급", color: "#d0c0f3", icon: "badge-percent" },
   { id: "기타", label: "기타", color: "#9edcc8", icon: "party-popper" },
 ];
+const DEFAULT_BUDGET_LIMIT = 2_000_000;
 
 const BUDGET_GROUPS = [
   {
@@ -45,7 +46,7 @@ const BUDGET_GROUPS = [
     label: "생활",
     fullLabel: "생활 지출",
     type: "expense",
-    limit: 1_500_000,
+    limit: DEFAULT_BUDGET_LIMIT,
     color: "#ffad6f",
     categories: [
       { id: "식비", label: "식비", color: "#ffd89b", icon: "utensils-crossed" },
@@ -63,7 +64,7 @@ const BUDGET_GROUPS = [
     label: "고정",
     fullLabel: "고정 지출",
     type: "expense",
-    limit: 1_000_000,
+    limit: DEFAULT_BUDGET_LIMIT,
     color: "#e9bd67",
     categories: [
       { id: "주거비", label: "주거비", color: "#f1d7a6", icon: "house" },
@@ -80,7 +81,7 @@ const BUDGET_GROUPS = [
     label: "변동",
     fullLabel: "변동 지출",
     type: "expense",
-    limit: 500_000,
+    limit: DEFAULT_BUDGET_LIMIT,
     color: "#ef8fa2",
     categories: [
       { id: "의료/건강", label: "의료/건강", color: "#b3dec1", icon: "heart-pulse" },
@@ -99,7 +100,7 @@ const BUDGET_GROUPS = [
     label: "저축",
     fullLabel: "저축",
     type: "investment",
-    limit: 3_000_000,
+    limit: DEFAULT_BUDGET_LIMIT,
     color: "#62d7b6",
     categories: [
       { id: "적금", label: "적금", color: "#f2de96", icon: "piggy-bank" },
@@ -113,7 +114,7 @@ const BUDGET_GROUPS = [
     label: "투자",
     fullLabel: "투자",
     type: "investment",
-    limit: 1_000_000,
+    limit: DEFAULT_BUDGET_LIMIT,
     color: "#289eaf",
     categories: [
       { id: "금", label: "금", color: "#f4c95d", icon: "badge-cent" },
