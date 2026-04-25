@@ -372,6 +372,10 @@ function bindEvents() {
   refs.openSearchButton.addEventListener("click", openSearchDialog);
   refs.closeSearchButton.addEventListener("click", () => refs.searchDialog.close());
   refs.searchForm.addEventListener("submit", onSearchSubmit);
+  refs.searchQuery.addEventListener("input", () => {
+    if (!state.searchQuickCategory && !state.searchQuickType) return;
+    clearSearchQuickFilters();
+  });
   refs.searchDialog.addEventListener("click", (event) => {
     const button = event.target.closest("[data-search-period]");
     if (!button) return;
@@ -380,7 +384,10 @@ function bindEvents() {
       item.classList.toggle("is-active", item === button);
     });
   });
-  refs.searchDialog.addEventListener("close", syncSearchPeriodChips);
+  refs.searchDialog.addEventListener("close", () => {
+    clearSearchQuickFilters();
+    syncSearchPeriodChips();
+  });
   refs.analysisCategoryBreakdown.addEventListener("click", (event) => {
     const row = event.target.closest("[data-analysis-category]");
     if (!row) return;
@@ -778,8 +785,12 @@ function bindBackdropClose(dialog) {
 }
 
 function openSearchDialog(options = {}) {
-  state.searchQuickCategory = options.category || "";
-  state.searchQuickType = options.type || "";
+  if (options.category || options.type) {
+    state.searchQuickCategory = options.category || "";
+    state.searchQuickType = options.type || "";
+  } else {
+    clearSearchQuickFilters();
+  }
   if (typeof options.period === "string") {
     state.searchPeriod = options.period;
   }
@@ -793,6 +804,11 @@ function openSearchDialog(options = {}) {
   if (options.autoSubmit) {
     void executeSearch();
   }
+}
+
+function clearSearchQuickFilters() {
+  state.searchQuickCategory = "";
+  state.searchQuickType = "";
 }
 
 function syncSearchPeriodChips() {
