@@ -17,6 +17,10 @@ const MEMBERS = [
   { id: "정우", name: "정우" },
   { id: "솔이", name: "솔이" },
 ];
+const GUEST_MEMBER_ALIASES = {
+  정우: "철수",
+  솔이: "영희",
+};
 
 const ACCOUNTS = [
   { id: "cash", name: "현금", type: "cash" },
@@ -253,6 +257,7 @@ const refs = {
   loginGateSubmit: document.querySelector(".login-gate__submit"),
   settingsScreen: document.querySelector('.screen[data-screen="settings"]'),
   settingsTabButton: document.querySelector('[data-screen-target="settings"]'),
+  guestHiddenSettingsRows: [...document.querySelectorAll("[data-guest-hidden='true']")],
   adminOnlyElements: [...document.querySelectorAll("[data-admin-only='true']")],
 };
 
@@ -585,17 +590,11 @@ function applyRoleToUI() {
     element.style.display = isAdmin() ? "" : "none";
     element.classList.toggle("is-hidden", !isAdmin());
   });
-  if (isGuest() && state.currentScreen === "settings") {
-    state.currentScreen = "calendar";
-  }
-  if (refs.settingsTabButton) {
-    refs.settingsTabButton.style.display = isGuest() ? "none" : "";
-    refs.settingsTabButton.hidden = isGuest();
-  }
-  if (refs.settingsScreen) {
-    refs.settingsScreen.style.display = isGuest() ? "none" : "";
-    refs.settingsScreen.hidden = isGuest();
-  }
+  refs.guestHiddenSettingsRows.forEach((element) => {
+    element.style.display = isGuest() ? "none" : "";
+    element.hidden = isGuest();
+  });
+  syncMemberLabels();
   document.body.dataset.role = state.role;
 }
 
@@ -759,10 +758,6 @@ function dismissMainUpdateBanner() {
 }
 
 async function openSettingsAndTriggerUpdate() {
-  if (isGuest()) {
-    await clearWebCacheAndReload();
-    return;
-  }
   await switchScreen("settings");
   window.setTimeout(() => {
     refs.clearWebCacheButton?.click();
@@ -1848,11 +1843,7 @@ async function deleteRecord(id) {
 
 async function switchScreen(screen) {
   const normalizedScreen = screen === "memo" ? "list" : screen;
-  if (isGuest() && normalizedScreen === "settings") {
-    state.currentScreen = "calendar";
-  } else {
-    state.currentScreen = normalizedScreen;
-  }
+  state.currentScreen = normalizedScreen;
   await persistUiMeta();
   syncScreens();
   renderIcons();
@@ -1980,7 +1971,7 @@ function syncMemberFilterButtons() {
 }
 
 function memberFilterLabel() {
-  return state.memberFilter === "all" ? "전체" : state.memberFilter;
+  return state.memberFilter === "all" ? "전체" : memberName(state.memberFilter);
 }
 
 function filterBySearchPeriod(items, period) {
@@ -2062,6 +2053,27 @@ function normalizeMemberId(value) {
   if (value === "partner" || value === "솔이" || value === "예비신부") return "솔이";
   if (value === "jw" || value === "정우" || value === "나" || value === "Default") return "정우";
   return "정우";
+}
+
+function memberDisplayName(id) {
+  const normalized = normalizeMemberId(id);
+  if (isGuest()) {
+    return GUEST_MEMBER_ALIASES[normalized] || normalized;
+  }
+  return MEMBERS.find((member) => member.id === normalized)?.name || normalized;
+}
+
+function syncMemberLabels() {
+  refs.memberFilterButtons.forEach((button) => {
+    const memberId = button.dataset.memberFilter || "";
+    if (!memberId || memberId === "all") return;
+    button.textContent = memberDisplayName(memberId);
+  });
+  refs.memberButtons.forEach((button) => {
+    const memberId = button.dataset.memberValue || "";
+    if (!memberId) return;
+    button.textContent = memberDisplayName(memberId);
+  });
 }
 
 function normalizeAccountId(value) {
@@ -2577,7 +2589,7 @@ function allCategoryIds() {
 }
 
 function memberName(id) {
-  return MEMBERS.find((member) => member.id === id)?.name || id;
+  return memberDisplayName(id);
 }
 
 function accountName(id) {
