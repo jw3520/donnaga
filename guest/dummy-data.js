@@ -1,6 +1,6 @@
 export const dummyTransactions = [
-  { id: "guest-001", type: "income", amount: 3200000, category: "월급", member: "철수", account: "bank-transfer", date: "2026-01-01", note: "월급", memo: "" },
-  { id: "guest-002", type: "income", amount: 1800000, category: "월급", member: "영희", account: "bank-transfer", date: "2026-01-02", note: "급여", memo: "" },
+  { id: "guest-001", type: "income", amount: 5500000, category: "월급", member: "철수", account: "bank-transfer", date: "2026-01-01", note: "월급", memo: "" },
+  { id: "guest-002", type: "income", amount: 4500000, category: "월급", member: "영희", account: "bank-transfer", date: "2026-01-10", note: "월급", memo: "" },
   { id: "guest-003", type: "income", amount: 120000, category: "당근", member: "철수", account: "bank-transfer", date: "2026-01-05", note: "중고 판매", memo: "책장 판매" },
   { id: "guest-004", type: "expense", amount: 18600, category: "식비", member: "철수", account: "credit-card", date: "2026-01-03", note: "점심", memo: "회사 근처 국밥" },
   { id: "guest-005", type: "expense", amount: 12800, category: "카페", member: "영희", account: "credit-card", date: "2026-01-03", note: "커피", memo: "라떼 2잔" },
