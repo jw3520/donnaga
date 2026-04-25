@@ -6,6 +6,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
+const APP_VERSION = "1.26.04.25.00";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
 const DB_NAME = "donnaga-db";
@@ -149,6 +150,7 @@ const refs = {
   remoteStatusLabel: document.querySelector("#remote-status-label"),
   syncDetailLabel: document.querySelector("#sync-detail-label"),
   updateTimeLabel: document.querySelector("#update-time-label"),
+  updateVersionLabel: document.querySelector("#update-version-label"),
   manualSyncButton: document.querySelector("#manual-sync-button"),
   clearWebCacheButton: document.querySelector("#clear-web-cache-button"),
   settingsUpdateBadge: document.querySelector("#settings-update-badge"),
@@ -792,6 +794,9 @@ function syncUpdateUi() {
 }
 
 function syncUpdateTimestampUi() {
+  if (refs.updateVersionLabel) {
+    refs.updateVersionLabel.textContent = `버전: ver ${APP_VERSION}`;
+  }
   if (!refs.updateTimeLabel) return;
   refs.updateTimeLabel.textContent = state.lastUpdateCheckedAt
     ? `마지막 확인: ${formatRelativeSyncTime(state.lastUpdateCheckedAt)}`
