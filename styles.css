@@ -1427,6 +1427,21 @@ select {
 .search-form {
   display: grid;
   gap: 14px;
+  padding-top: 8px;
+}
+
+#search-query {
+  transition:
+    box-shadow 0.16s ease,
+    background-color 0.16s ease;
+}
+
+#search-query:focus {
+  outline: none;
+  background: #fff;
+  box-shadow:
+    0 0 0 2px rgba(77, 182, 172, 0.16),
+    inset 0 0 0 1px rgba(77, 182, 172, 0.48);
 }
 
 .search-date-label {
