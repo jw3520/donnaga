@@ -6,7 +6,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "1.26.04.25.03";
+const APP_VERSION = "1.26.04.25.04";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -1661,9 +1661,9 @@ async function executeSearch() {
                   ${renderIconMarkup(categoryAppearance(item.category, item.type).icon)}
                 </div>
                 <div class="record-card__content">
-                  <p class="record-card__category">${categoryAppearance(item.category, item.type).label}</p>
+                  <p class="record-card__category">${memberName(item.member)} · ${categoryAppearance(item.category, item.type).label}</p>
                   <h3 class="record-card__note">${item.note}</h3>
-                  <div class="record-card__meta">${item.date} · ${memberName(item.member)} · ${accountName(item.account)}</div>
+                  <div class="record-card__meta">${item.date} · ${accountName(item.account)}</div>
                 </div>
                 <strong class="record-card__amount is-${item.type}">${item.type === "income" ? "+" : "-"}${formatCurrency(item.amount)}</strong>
               </div>
