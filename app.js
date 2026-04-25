@@ -2894,7 +2894,7 @@ async function clearWebCacheAndReload() {
   try {
     const result = await runButtonFeedback(
       refs.clearWebCacheButton,
-      { idle: "업데이트", busy: "업데이트 확인 중...", done: "완료!" },
+      { idle: "업데이트", busy: "확인 중...", done: "완료!" },
       async () => {
         const shouldActivateWaitingWorker = state.updateAvailable && Boolean(swRegistrationRef?.waiting);
         if (shouldActivateWaitingWorker) {
