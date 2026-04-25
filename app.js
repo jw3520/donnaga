@@ -795,7 +795,7 @@ function syncUpdateUi() {
 
 function syncUpdateTimestampUi() {
   if (refs.updateVersionLabel) {
-    refs.updateVersionLabel.textContent = `버전: ver ${APP_VERSION}`;
+    refs.updateVersionLabel.textContent = `ver ${APP_VERSION}`;
   }
   if (!refs.updateTimeLabel) return;
   refs.updateTimeLabel.textContent = state.lastUpdateCheckedAt
