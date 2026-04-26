@@ -6,7 +6,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "1.26.04.26.01";
+const APP_VERSION = "1.26.04.26.02";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -322,6 +322,7 @@ async function boot() {
   await migrateLegacySavingsOtherCleanup();
   await purgeSeedTransactions();
   await loadUiMeta();
+  await resetCalendarSelectionToToday();
   await loadBudgetLimits();
   if (isGuest()) {
     await migrateGuestSandboxMembers();
@@ -1105,6 +1106,14 @@ async function loadUiMeta() {
   state.lastSyncedAt = (await getMeta("lastSyncedAt")) || null;
   state.lastUpdateCheckedAt = Number(localStorage.getItem(LAST_UPDATE_CHECK_STORAGE_KEY) || 0) || (await getMeta("lastUpdateCheckedAt")) || null;
   syncUpdateTimestampUi();
+}
+
+async function resetCalendarSelectionToToday() {
+  const today = todayISO();
+  state.currentMonth = today.slice(0, 7);
+  state.selectedDate = today;
+  state.selectedDateByUser = false;
+  await persistUiMeta();
 }
 
 function defaultBudgetLimits() {
