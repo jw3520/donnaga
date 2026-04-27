@@ -6,7 +6,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "1.26.04.27.02";
+const APP_VERSION = "1.26.04.27.03";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -30,6 +30,7 @@ const ACCOUNTS = [
   { id: "debit-card", name: "체크카드", type: "debit" },
   { id: "credit-card", name: "신용카드", type: "credit" },
   { id: "bank-transfer", name: "계좌이체", type: "bank" },
+  { id: "local-currency", name: "지역화폐", type: "local-currency" },
   { id: "other", name: "기타", type: "other" },
 ];
 
@@ -193,7 +194,9 @@ const refs = {
   cardTotalAmount: document.querySelector("#card-total-amount"),
   debitTotalAmount: document.querySelector("#debit-total-amount"),
   cardSummaryList: document.querySelector("#card-summary-list"),
+  openYearEndTaxButton: document.querySelector("#open-year-end-tax-button"),
   openAnalysisButton: document.querySelector("#open-analysis-button"),
+  closeYearEndTaxButton: document.querySelector("#close-year-end-tax-button"),
   closeAnalysisButton: document.querySelector("#close-analysis-button"),
   closeMemoButton: document.querySelector("#close-memo-button"),
   memoSearchButton: document.querySelector("#memo-search-button"),
@@ -354,7 +357,9 @@ function populateStaticOptions() {
 }
 
 function bindEvents() {
+  refs.openYearEndTaxButton.addEventListener("click", () => switchScreen("year-end-tax"));
   refs.openAnalysisButton.addEventListener("click", () => switchScreen("analysis"));
+  refs.closeYearEndTaxButton.addEventListener("click", () => switchScreen("calendar"));
   refs.closeAnalysisButton.addEventListener("click", () => switchScreen("calendar"));
   refs.closeMemoButton.addEventListener("click", () => switchScreen("calendar"));
   refs.memoSearchButton.addEventListener("click", openSearchDialog);
@@ -1932,7 +1937,13 @@ function syncScreens() {
   refs.screenButtons.forEach((button) => {
     button.classList.toggle("is-active", button.dataset.screenTarget === state.currentScreen);
   });
-  refs.openEntryButton.classList.toggle("is-hidden", state.currentScreen === "memo" || state.currentScreen === "analysis" || !canEditLocally());
+  refs.openEntryButton.classList.toggle(
+    "is-hidden",
+    state.currentScreen === "memo"
+      || state.currentScreen === "analysis"
+      || state.currentScreen === "year-end-tax"
+      || !canEditLocally(),
+  );
   refs.memoAddButton.classList.toggle("is-hidden", state.currentScreen !== "memo" || !canEditLocally());
   syncUpdateUi();
 }
@@ -2183,11 +2194,14 @@ function sanitizeMemberIdForCurrentRole(value) {
 function normalizeAccountId(value) {
   if (value == null || value === "") return "";
   const normalized = String(value).trim();
-  if (["cash", "debit-card", "credit-card", "bank-transfer", "other"].includes(normalized)) return normalized;
+  if (["cash", "debit-card", "credit-card", "bank-transfer", "local-currency", "other"].includes(normalized)) {
+    return normalized;
+  }
   if (normalized === "현금") return "cash";
   if (normalized === "체크카드" || normalized === "debit" || normalized === "check-card") return "debit-card";
   if (normalized === "신용카드" || normalized === "credit" || normalized === "card") return "credit-card";
   if (normalized === "계좌이체" || normalized === "transfer" || normalized === "bank") return "bank-transfer";
+  if (normalized === "지역화폐" || normalized === "local" || normalized === "local-currency") return "local-currency";
   return "other";
 }
 

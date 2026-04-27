@@ -732,7 +732,8 @@ button:active {
 .panel--settings,
 .panel--budget-home,
 .panel--memo,
-.analysis-body {
+.analysis-body,
+.year-end-tax-body {
   min-height: calc(100dvh - 150px);
 }
 
@@ -777,6 +778,35 @@ button:active {
 .analysis-body {
   padding: 0 16px 96px;
   background: #fff;
+}
+
+.year-end-tax-body {
+  display: grid;
+  place-items: center;
+  padding: 24px 16px 96px;
+  background: #fff;
+}
+
+.year-end-tax-placeholder {
+  width: min(100%, 280px);
+  padding: 28px 24px;
+  border-radius: 28px;
+  text-align: center;
+  background: linear-gradient(180deg, #ffffff 0%, #f4fbfa 100%);
+  box-shadow: 0 14px 30px rgba(24, 34, 45, 0.08);
+}
+
+.year-end-tax-placeholder strong {
+  display: block;
+  font-size: 26px;
+  font-weight: 800;
+  color: #2f3943;
+}
+
+.year-end-tax-placeholder p {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--muted);
 }
 
 .analysis-panel {

@@ -29,6 +29,9 @@
         <section class="screen screen--active" data-screen="calendar">
           <header class="topbar">
             <div class="topbar__icons">
+              <button class="top-icon" id="open-year-end-tax-button" type="button" aria-label="연말정산">
+                <i data-lucide="receipt-text"></i>
+              </button>
               <button class="top-icon" id="open-analysis-button" type="button" aria-label="통계">
                 <i data-lucide="chart-column"></i>
               </button>
@@ -182,7 +185,7 @@
               <article class="settings-row settings-row--danger">
                 <div class="stack">
                   <strong>앱 최신버전 업데이트</strong>
-                  <p id="update-version-label">ver 1.26.04.27.02</p>
+                  <p id="update-version-label">ver 1.26.04.27.03</p>
                   <p id="update-time-label">마지막 확인: 아직 기록이 없어요.</p>
                 </div>
                 <button class="secondary-button" id="clear-web-cache-button" type="button">업데이트</button>
@@ -318,6 +321,23 @@
               <span>카드</span>
             </button>
           </nav>
+        </section>
+
+        <section class="screen" data-screen="year-end-tax">
+          <header class="sheet-header">
+            <button class="header-icon-button" id="close-year-end-tax-button" type="button" aria-label="닫기">
+              <i data-lucide="x"></i>
+            </button>
+            <strong>연말정산</strong>
+            <span class="sheet-header__spacer"></span>
+          </header>
+
+          <section class="year-end-tax-body">
+            <div class="year-end-tax-placeholder">
+              <strong>Soon</strong>
+              <p>개발 준비 중입니다.</p>
+            </div>
+          </section>
         </section>
 
         <button class="fab" id="open-entry-button" type="button" aria-label="내역 추가">
