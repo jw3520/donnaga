@@ -6,7 +6,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "1.26.04.27.01";
+const APP_VERSION = "1.26.04.27.02";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -2715,28 +2715,28 @@ function inferredCategoryMeta(category, type) {
   const inferred = {
     expense: {
       "가전": { color: "#a8dff0", icon: "smartphone", label: "가전" },
-      "건강": { color: "#b7e4c7", icon: "heart-pulse", label: "건강" },
-      "교통": { color: "#ffb4bf", icon: "bus-front", label: "교통" },
-      "주유비": { color: "#ffc46b", icon: "fuel", label: "주유비" },
-      "하이패스": { color: "#8dc7ff", icon: "road", label: "하이패스" },
-      "결혼준비": { color: "#f48fb1", icon: "gem", label: "결혼준비" },
-      "미용": { color: "#ffc2db", icon: "sparkles", label: "미용" },
-      "문화": { color: "#e6b8ef", icon: "clapperboard", label: "문화" },
-      "문화생활": { color: "#e6b8ef", icon: "gamepad-2", label: "문화생활" },
-      "술": { color: "#f4b2ba", icon: "wine", label: "술" },
-      "오락": { color: "#d8c8ff", icon: "ticket", label: "오락" },
-      "자동차": { color: "#b9d7fb", icon: "car-front", label: "차량관리비" },
-      "자동차유지비": { color: "#b9d7fb", icon: "car-front", label: "차량관리비" },
-      "차량관리비": { color: "#b9d7fb", icon: "car-front", label: "차량관리비" },
-      "경조사": { color: "#f4b2ba", icon: "hand-heart", label: "경조사" },
-      "주거비": { color: "#f1d7a6", icon: "house", label: "주거비" },
-      "생활용품": { color: "#f3c6a1", icon: "shopping-basket", label: "생필품" },
-      "쇼핑": { color: "#a8dff0", icon: "gift", label: "선물" },
-      "취미": { color: "#d6c8ff", icon: "palette", label: "취미" },
-      "여가/취미": { color: "#e6b8ef", icon: "gamepad-2", label: "취미" },
-      "카페": { color: "#c7b29b", icon: "coffee", label: "카페" },
-      "편의점": { color: "#c9ddb0", icon: "store", label: "편의점" },
-      "주거/공과금": { color: "#f1d7a6", icon: "house", label: "주거비" },
+      "건강": { color: "#7fd0a7", icon: "heart-pulse", label: "의료/건강" },
+      "교통": { color: "#7fc0ff", icon: "bus-front", label: "교통" },
+      "주유비": { color: "#ff9f5b", icon: "fuel", label: "주유비" },
+      "하이패스": { color: "#67b8ff", icon: "road", label: "하이패스" },
+      "결혼준비": { color: "#d989ff", icon: "gem", label: "결혼준비" },
+      "미용": { color: "#ff8bc2", icon: "sparkles", label: "미용" },
+      "문화": { color: "#ba9bf3", icon: "clapperboard", label: "문화생활" },
+      "문화생활": { color: "#ba9bf3", icon: "gamepad-2", label: "문화생활" },
+      "술": { color: "#b772d9", icon: "wine", label: "술" },
+      "오락": { color: "#ba9bf3", icon: "ticket", label: "문화생활" },
+      "자동차": { color: "#8fa2ff", icon: "car-front", label: "차량관리비" },
+      "자동차유지비": { color: "#8fa2ff", icon: "car-front", label: "차량관리비" },
+      "차량관리비": { color: "#8fa2ff", icon: "car-front", label: "차량관리비" },
+      "경조사": { color: "#f27d93", icon: "hand-heart", label: "경조사" },
+      "주거비": { color: "#f4bf7f", icon: "house", label: "주거비" },
+      "생활용품": { color: "#9fd5b3", icon: "shopping-basket", label: "생필품" },
+      "쇼핑": { color: "#ffb36a", icon: "gift", label: "선물" },
+      "취미": { color: "#7fd5cf", icon: "palette", label: "취미" },
+      "여가/취미": { color: "#7fd5cf", icon: "gamepad-2", label: "취미" },
+      "카페": { color: "#c7a27d", icon: "coffee", label: "카페" },
+      "편의점": { color: "#b7df75", icon: "store", label: "편의점" },
+      "주거/공과금": { color: "#f4bf7f", icon: "house", label: "주거비" },
     },
     income: {},
     investment: {},
