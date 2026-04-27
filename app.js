@@ -6,7 +6,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "1.26.04.27.00";
+const APP_VERSION = "1.26.04.27.01";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -52,13 +52,13 @@ const BUDGET_GROUPS = [
     color: "#ffad6f",
     categories: [
       { id: "식비", label: "식비", color: "#ffd89b", icon: "utensils-crossed" },
-      { id: "생필품", label: "생필품", color: "#f3c6a1", icon: "shopping-basket" },
-      { id: "교통", label: "교통", color: "#ffb4bf", icon: "bus-front" },
-      { id: "카페", label: "카페", color: "#c7b29b", icon: "coffee" },
-      { id: "편의점", label: "편의점", color: "#c9ddb0", icon: "store" },
-      { id: "반려동물", label: "반려동물", color: "#c9d7ff", icon: "paw-print" },
-      { id: "문화생활", label: "문화생활", color: "#e6b8ef", icon: "gamepad-2" },
-      { id: "취미", label: "취미", color: "#d6c8ff", icon: "palette" },
+      { id: "생필품", label: "생필품", color: "#9fd5b3", icon: "shopping-basket" },
+      { id: "교통", label: "교통", color: "#7fc0ff", icon: "bus-front" },
+      { id: "카페", label: "카페", color: "#c7a27d", icon: "coffee" },
+      { id: "편의점", label: "편의점", color: "#b7df75", icon: "store" },
+      { id: "반려동물", label: "반려동물", color: "#ffb3c7", icon: "paw-print" },
+      { id: "문화생활", label: "문화생활", color: "#ba9bf3", icon: "gamepad-2" },
+      { id: "취미", label: "취미", color: "#7fd5cf", icon: "palette" },
     ],
   },
   {
@@ -69,13 +69,13 @@ const BUDGET_GROUPS = [
     limit: DEFAULT_BUDGET_LIMIT,
     color: "#e9bd67",
     categories: [
-      { id: "주거비", label: "주거비", color: "#f1d7a6", icon: "house" },
-      { id: "주유비", label: "주유비", color: "#ffc46b", icon: "fuel" },
-      { id: "하이패스", label: "하이패스", color: "#8dc7ff", icon: "road" },
-      { id: "통신비", label: "통신비", color: "#a8dff0", icon: "smartphone" },
-      { id: "보험", label: "보험", color: "#c7e7a5", icon: "shield-check" },
-      { id: "구독", label: "구독", color: "#f8c8a7", icon: "krw-note" },
-      { id: "교육", label: "교육", color: "#d0c0f3", icon: "book-open-text" },
+      { id: "주거비", label: "주거비", color: "#f4bf7f", icon: "house" },
+      { id: "주유비", label: "주유비", color: "#ff9f5b", icon: "fuel" },
+      { id: "하이패스", label: "하이패스", color: "#67b8ff", icon: "road" },
+      { id: "통신비", label: "통신비", color: "#5fd4d8", icon: "smartphone" },
+      { id: "보험", label: "보험", color: "#8fd36d", icon: "shield-check" },
+      { id: "구독", label: "구독", color: "#f29aa0", icon: "krw-note" },
+      { id: "교육", label: "교육", color: "#a690f1", icon: "book-open-text" },
     ],
   },
   {
@@ -86,15 +86,15 @@ const BUDGET_GROUPS = [
     limit: DEFAULT_BUDGET_LIMIT,
     color: "#ef8fa2",
     categories: [
-      { id: "의료/건강", label: "의료/건강", color: "#b3dec1", icon: "heart-pulse" },
-      { id: "선물", label: "선물", color: "#a8dff0", icon: "gift" },
-      { id: "경조사", label: "경조사", color: "#f4b2ba", icon: "hand-heart" },
-      { id: "결혼준비", label: "결혼준비", color: "#f48fb1", icon: "gem" },
-      { id: "의류/잡화", label: "의류/잡화", color: "#f6c4d1", icon: "shirt" },
-      { id: "차량관리비", label: "차량관리비", color: "#b9d7fb", icon: "car-front" },
-      { id: "술", label: "술", color: "#f4b2ba", icon: "wine" },
-      { id: "미용", label: "미용", color: "#ffc2db", icon: "sparkles" },
-      { id: "variable-other", label: "기타", color: "#d8c8ff", icon: "sparkles" },
+      { id: "의료/건강", label: "의료/건강", color: "#7fd0a7", icon: "heart-pulse" },
+      { id: "선물", label: "선물", color: "#ffb36a", icon: "gift" },
+      { id: "경조사", label: "경조사", color: "#f27d93", icon: "hand-heart" },
+      { id: "결혼준비", label: "결혼준비", color: "#d989ff", icon: "gem" },
+      { id: "의류/잡화", label: "의류/잡화", color: "#6fb6ff", icon: "shirt" },
+      { id: "차량관리비", label: "차량관리비", color: "#8fa2ff", icon: "car-front" },
+      { id: "술", label: "술", color: "#b772d9", icon: "wine" },
+      { id: "미용", label: "미용", color: "#ff8bc2", icon: "sparkles" },
+      { id: "variable-other", label: "기타", color: "#9cb0c7", icon: "sparkles" },
     ],
   },
   {
@@ -105,10 +105,10 @@ const BUDGET_GROUPS = [
     limit: DEFAULT_BUDGET_LIMIT,
     color: "#62d7b6",
     categories: [
-      { id: "적금", label: "적금", color: "#f2de96", icon: "piggy-bank" },
-      { id: "청약", label: "청약", color: "#efc2a8", icon: "building-2" },
-      { id: "비상금", label: "비상금", color: "#c8e58f", icon: "wallet" },
-      { id: "기타", label: "기타", color: "#d9d4a8", icon: "circle-ellipsis" },
+      { id: "적금", label: "적금", color: "#ffd36e", icon: "piggy-bank" },
+      { id: "청약", label: "청약", color: "#ffab8f", icon: "building-2" },
+      { id: "비상금", label: "비상금", color: "#68cf95", icon: "wallet" },
+      { id: "기타", label: "기타", color: "#87c9d8", icon: "circle-ellipsis" },
     ],
   },
   {
@@ -120,11 +120,11 @@ const BUDGET_GROUPS = [
     color: "#289eaf",
     categories: [
       { id: "금", label: "금", color: "#f4c95d", icon: "badge-cent" },
-      { id: "국내주식", label: "국내 주식", color: "#8ec5ff", icon: "chart-candlestick" },
-      { id: "해외주식", label: "해외 주식", color: "#74b5ff", icon: "globe" },
-      { id: "ETF", label: "ETF", color: "#9bb6ff", icon: "chart-column-big" },
-      { id: "가상자산", label: "가상자산", color: "#b08cff", icon: "coins" },
-      { id: "investment-other", label: "기타", color: "#b7c2d0", icon: "circle-ellipsis" },
+      { id: "국내주식", label: "국내 주식", color: "#4fa8ff", icon: "chart-candlestick" },
+      { id: "해외주식", label: "해외 주식", color: "#5bdbd2", icon: "globe" },
+      { id: "ETF", label: "ETF", color: "#7b91ff", icon: "chart-column-big" },
+      { id: "가상자산", label: "가상자산", color: "#b65cff", icon: "coins" },
+      { id: "investment-other", label: "기타", color: "#8ea0b7", icon: "circle-ellipsis" },
     ],
   },
 ];
