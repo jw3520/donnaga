@@ -6,10 +6,11 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "1.26.04.26.02";
+const APP_VERSION = "1.26.04.27.00";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
+const LOGIN_LOCK_DURATION_MS = 180_000;
 const DB_NAME = "donnaga-db";
 const SYNC_INTERVAL_MS = 60_000;
 const SYNC_PUSH_BATCH_SIZE = 200;
@@ -634,7 +635,7 @@ function registerLoginFailure() {
   const nextFails = Number(localStorage.getItem(LOGIN_FAILS_STORAGE_KEY) || 0) + 1;
   if (nextFails >= 3) {
     localStorage.setItem(LOGIN_FAILS_STORAGE_KEY, "0");
-    localStorage.setItem(LOGIN_LOCK_UNTIL_STORAGE_KEY, String(Date.now() + 60_000));
+    localStorage.setItem(LOGIN_LOCK_UNTIL_STORAGE_KEY, String(Date.now() + LOGIN_LOCK_DURATION_MS));
     syncLoginGateLockUi();
     return;
   }
@@ -653,8 +654,7 @@ function syncLoginGateLockUi() {
     loginLockTimerId = null;
   }
   if (isLocked) {
-    const remainingSeconds = Math.ceil(remainingMs / 1000);
-    refs.loginGateError.textContent = `3회 오류로 ${remainingSeconds}초 동안 잠깁니다.`;
+    refs.loginGateError.textContent = `3회 오류로 ${formatLockRemainingTime(remainingMs)} 동안 잠깁니다.`;
     refs.loginGateError.hidden = false;
     loginLockTimerId = window.setTimeout(syncLoginGateLockUi, 1000);
     return;
@@ -663,6 +663,15 @@ function syncLoginGateLockUi() {
     refs.loginGateError.hidden = true;
     refs.loginGateError.textContent = "비밀번호가 틀렸습니다.";
   }
+}
+
+function formatLockRemainingTime(remainingMs) {
+  const remainingSeconds = Math.ceil(remainingMs / 1000);
+  const minutes = Math.floor(remainingSeconds / 60);
+  const seconds = remainingSeconds % 60;
+  if (!minutes) return `${remainingSeconds}초`;
+  if (!seconds) return `${minutes}분`;
+  return `${minutes}분 ${seconds}초`;
 }
 
 async function onSubmitLoginGate(event) {
