@@ -14,7 +14,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "1.26.04.30.09";
+const APP_VERSION = "1.26.04.30.10";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -1540,9 +1540,9 @@ function renderYearEndTax() {
     <article class="year-end-tax-card year-end-tax-card--hero">
       <div class="year-end-tax-card__eyebrow">
         <span class="year-end-tax-badge ${snapshot.source === "mock" ? "is-mock" : "is-real"}">${sourceLabel}</span>
-        <span>${snapshot.year}년 기준</span>
+        <span>${snapshot.year}년</span>
       </div>
-      <strong>${snapshot.member}님의 연말정산 진행도</strong>
+      <strong>${snapshot.member}님의 연말정산 기준</strong>
       <p>${helperLabel}</p>
       <div class="year-end-tax-hero-actions">
         <button class="secondary-button" id="year-end-tax-open-input-button" type="button">${inputButtonLabel}</button>
