@@ -1930,22 +1930,25 @@ select {
 }
 
 .entry-sheet__header {
-  padding: 22px 18px 0;
+  padding: 14px 18px 0;
   display: grid;
   gap: 10px;
-  justify-items: center;
-  position: relative;
+  justify-items: stretch;
   background: #fff;
 }
 
+.entry-sheet__header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .sheet-close {
-  position: absolute;
-  top: 18px;
-  left: 16px;
   border: 0;
   width: 36px;
   height: 36px;
   border-radius: 50%;
+  margin-left: auto;
   background: #f3f5f7;
   font-size: 24px;
   color: #5d6670;
@@ -1957,16 +1960,17 @@ select {
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.04em;
+  text-align: center;
 }
 
 .entry-sheet__amount-box {
   width: 100%;
-  min-height: 88px;
+  min-height: 76px;
   display: flex;
   align-items: baseline;
   justify-content: center;
   gap: 7px;
-  padding: 22px 18px 16px;
+  padding: 18px 18px 14px;
   border-radius: 30px;
   background: linear-gradient(180deg, #fff8f9 0%, #fff 100%);
   border: 1px solid rgba(255, 153, 188, 0.16);
@@ -1982,7 +1986,7 @@ select {
   border-radius: 0;
   background: transparent;
   padding: 0;
-  font-size: 40px;
+  font-size: 34px;
   line-height: 1;
   font-weight: 800;
   color: #2e3640;

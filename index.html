@@ -185,7 +185,7 @@
               <article class="settings-row settings-row--danger">
                 <div class="stack">
                   <strong>앱 최신버전 업데이트</strong>
-                  <p id="update-version-label">ver 1.26.04.30.01</p>
+                  <p id="update-version-label">ver 1.26.04.30.02</p>
                   <p id="update-time-label">마지막 확인: 아직 기록이 없어요.</p>
                 </div>
                 <button class="secondary-button" id="clear-web-cache-button" type="button">업데이트</button>
@@ -473,7 +473,10 @@
         <input type="password" autocomplete="new-password" tabindex="-1" aria-hidden="true" class="autofill-decoy" />
         <input name="editing_id" id="editing-id-field" type="hidden" value="" />
         <div class="entry-sheet__header">
-          <button class="sheet-close" id="close-entry-button" type="button">×</button>
+          <div class="entry-sheet__header-top">
+            <span class="sheet-header__spacer"></span>
+            <button class="sheet-close" id="close-entry-button" type="button" aria-label="닫기">×</button>
+          </div>
           <p class="entry-sheet__amount-label" id="entry-type-label">내역 추가</p>
           <div class="entry-sheet__amount-box" id="entry-amount-box">
             <input
