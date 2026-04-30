@@ -14,7 +14,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "1.26.04.30.04";
+const APP_VERSION = "1.26.04.30.06";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -1536,31 +1536,29 @@ function renderYearEndTax() {
     <article class="year-end-tax-card">
       <div class="year-end-tax-card__headline">
         <strong>소득 직접 입력</strong>
-        <p>입력한 값이 있으면 자동 추정 대신 그 값을 우선 사용합니다.</p>
+        <p>입력한 값이 있으면 자동 추정 대신 그 값을 우선 사용하며, 사용자별로 기기 내 DB에 저장됩니다.</p>
       </div>
       <form class="year-end-tax-form" id="year-end-tax-input-form">
         <label class="year-end-tax-field">
           <span>계약 연봉</span>
           <input
             name="contractAnnualSalary"
-            type="number"
-            min="0"
-            step="100000"
+            type="text"
             inputmode="numeric"
             placeholder="예: 52000000"
             value="${snapshot.contractAnnualSalary || ""}"
+            autocomplete="off"
           />
         </label>
         <label class="year-end-tax-field">
-          <span>건강보험 월 보수액</span>
+          <span>건강보험 보수월액</span>
           <input
             name="healthInsuranceMonthlySalary"
-            type="number"
-            min="0"
-            step="10000"
+            type="text"
             inputmode="numeric"
             placeholder="예: 4300000"
             value="${snapshot.healthInsuranceMonthlySalary || ""}"
+            autocomplete="off"
           />
         </label>
         <div class="year-end-tax-form__actions">
@@ -2432,7 +2430,8 @@ function normalizeFilterState(filters) {
 }
 
 function sanitizePositiveNumber(value) {
-  const normalized = Math.max(0, Number(value || 0));
+  const digitsOnly = String(value ?? "").replace(/[^\d]/g, "");
+  const normalized = Math.max(0, Number(digitsOnly || 0));
   return Number.isFinite(normalized) ? normalized : 0;
 }
 
