@@ -59,11 +59,31 @@ function estimateTakeHomeRatio(monthlyNetSalary = 0) {
   return 0.9;
 }
 
-export function estimateAnnualIncomeFromMonthlyNet(monthlyNetSalary = 0) {
+function estimateTakeHomeRatioFromGross(monthlyGrossSalary = 0) {
+  if (monthlyGrossSalary >= 7_000_000) return 0.8;
+  if (monthlyGrossSalary >= 5_000_000) return 0.84;
+  if (monthlyGrossSalary >= 3_000_000) return 0.87;
+  return 0.9;
+}
+
+export function estimateAnnualIncome({
+  monthlyNetSalary = 0,
+  contractAnnualSalary = 0,
+  healthInsuranceMonthlySalary = 0,
+} = {}) {
   const safeMonthlyNet = Math.max(0, Number(monthlyNetSalary || 0));
-  const annualNet = safeMonthlyNet * 12;
-  const takeHomeRatio = estimateTakeHomeRatio(safeMonthlyNet);
-  const annualGross = takeHomeRatio ? Math.round(annualNet / takeHomeRatio) : annualNet;
+  const safeContractAnnualSalary = Math.max(0, Number(contractAnnualSalary || 0));
+  const safeHealthInsuranceMonthlySalary = Math.max(0, Number(healthInsuranceMonthlySalary || 0));
+  const annualNetFromTransactions = safeMonthlyNet * 12;
+  const inferredGrossFromNet = safeMonthlyNet
+    ? Math.round(annualNetFromTransactions / estimateTakeHomeRatio(safeMonthlyNet))
+    : 0;
+  const annualGross = safeContractAnnualSalary || safeHealthInsuranceMonthlySalary * 12 || inferredGrossFromNet;
+  const grossMonthlyEstimate = annualGross ? annualGross / 12 : 0;
+  const takeHomeRatio = safeMonthlyNet
+    ? estimateTakeHomeRatio(safeMonthlyNet)
+    : estimateTakeHomeRatioFromGross(grossMonthlyEstimate);
+  const annualNet = annualNetFromTransactions || Math.round(annualGross * takeHomeRatio);
   const estimatedTaxAndInsurance = Math.max(0, annualGross - annualNet);
   return {
     monthlyNetSalary: safeMonthlyNet,
@@ -71,6 +91,9 @@ export function estimateAnnualIncomeFromMonthlyNet(monthlyNetSalary = 0) {
     annualGross,
     estimatedTaxAndInsurance,
     takeHomeRatio,
+    contractAnnualSalary: safeContractAnnualSalary,
+    healthInsuranceMonthlySalary: safeHealthInsuranceMonthlySalary,
+    usedDirectInput: Boolean(safeContractAnnualSalary || safeHealthInsuranceMonthlySalary),
   };
 }
 
@@ -114,10 +137,16 @@ export function buildYearEndTaxSnapshot({
   transactions = [],
   year = "",
   monthlyNetSalary = 0,
+  contractAnnualSalary = 0,
+  healthInsuranceMonthlySalary = 0,
 }) {
   const salarySource = salaryMonthsFromTransactions(transactions, year);
   const resolvedMonthlyNetSalary = Math.max(0, Number(monthlyNetSalary || salarySource.averageMonthlyNetSalary || 0));
-  const incomeEstimate = estimateAnnualIncomeFromMonthlyNet(resolvedMonthlyNetSalary);
+  const incomeEstimate = estimateAnnualIncome({
+    monthlyNetSalary: resolvedMonthlyNetSalary,
+    contractAnnualSalary,
+    healthInsuranceMonthlySalary,
+  });
   const deductionThreshold = Math.round(incomeEstimate.annualGross * 0.25);
   const qualifiedTransactions = normalizeQualifiedTransactions(transactions, year);
   const spending = spendingByAccount(qualifiedTransactions);
@@ -139,6 +168,9 @@ export function buildYearEndTaxSnapshot({
     annualGross: incomeEstimate.annualGross,
     estimatedTaxAndInsurance: incomeEstimate.estimatedTaxAndInsurance,
     takeHomeRatio: incomeEstimate.takeHomeRatio,
+    contractAnnualSalary: incomeEstimate.contractAnnualSalary,
+    healthInsuranceMonthlySalary: incomeEstimate.healthInsuranceMonthlySalary,
+    usedDirectInput: incomeEstimate.usedDirectInput,
     deductionThreshold,
     totalQualifiedSpend,
     remainingToThreshold,

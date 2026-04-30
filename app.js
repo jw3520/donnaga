@@ -14,7 +14,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "1.26.04.30.03";
+const APP_VERSION = "1.26.04.30.04";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -331,6 +331,7 @@ const state = {
   searchQuickType: "",
   memberFilter: "all",
   currentYearEndTaxUser: defaultYearEndTaxUser(),
+  yearEndTaxInputs: {},
   filters: { types: ["income", "expense", "investment"], categories: [] },
   budgetLimits: {},
   authPin: "",
@@ -413,6 +414,26 @@ function bindEvents() {
     await persistUiMeta();
     renderYearEndTax();
     renderIcons();
+  });
+  refs.yearEndTaxContent.addEventListener("submit", async (event) => {
+    const form = event.target.closest("#year-end-tax-input-form");
+    if (!form) return;
+    event.preventDefault();
+    const currentUser = normalizeYearEndTaxUser(state.currentYearEndTaxUser, state.role);
+    state.yearEndTaxInputs[currentUser] = {
+      contractAnnualSalary: sanitizePositiveNumber(form.elements.contractAnnualSalary.value),
+      healthInsuranceMonthlySalary: sanitizePositiveNumber(form.elements.healthInsuranceMonthlySalary.value),
+    };
+    await persistUiMeta();
+    renderYearEndTax();
+  });
+  refs.yearEndTaxContent.addEventListener("click", async (event) => {
+    const resetButton = event.target.closest("#year-end-tax-reset-button");
+    if (!resetButton) return;
+    const currentUser = normalizeYearEndTaxUser(state.currentYearEndTaxUser, state.role);
+    delete state.yearEndTaxInputs[currentUser];
+    await persistUiMeta();
+    renderYearEndTax();
   });
   refs.closeMemoButton.addEventListener("click", () => switchScreen("calendar"));
   refs.memoSearchButton.addEventListener("click", openSearchDialog);
@@ -1169,6 +1190,7 @@ async function loadUiMeta() {
   state.analysisMode = savedUi.analysisMode || state.analysisMode;
   state.memberFilter = sanitizeMemberFilter(savedUi.memberFilter);
   state.currentYearEndTaxUser = normalizeYearEndTaxUser(savedUi.currentYearEndTaxUser, state.role);
+  state.yearEndTaxInputs = normalizeYearEndTaxInputs(savedUi.yearEndTaxInputs);
   state.filters = normalizeFilterState(savedUi.filters || state.filters);
   state.listSortOrder = savedUi.listSortOrder === "asc" ? "asc" : "desc";
   state.lastSyncedAt = (await getMeta("lastSyncedAt")) || null;
@@ -1208,6 +1230,7 @@ async function persistUiMeta() {
     analysisMode: state.analysisMode,
     memberFilter: state.memberFilter,
     currentYearEndTaxUser: state.currentYearEndTaxUser,
+    yearEndTaxInputs: state.yearEndTaxInputs,
     filters: state.filters,
     listSortOrder: state.listSortOrder,
   });
@@ -1485,7 +1508,9 @@ function renderYearEndTax() {
     ? `${formatCurrency(snapshot.overThresholdAmount)} 초과`
     : `${formatCurrency(snapshot.remainingToThreshold)} 남음`;
   const sourceLabel = snapshot.source === "mock" ? "데모 데이터" : "실제 기록 기준";
-  const helperLabel = snapshot.source === "mock"
+  const helperLabel = snapshot.usedDirectInput
+    ? "직접 입력한 소득 기준을 우선 적용했습니다."
+    : snapshot.source === "mock"
     ? "화면 확인용 하드코딩 데이터입니다."
     : snapshot.salaryMonthCount
       ? `월급 ${snapshot.salaryMonthCount}개월 평균으로 추정했습니다.`
@@ -1508,7 +1533,43 @@ function renderYearEndTax() {
       <strong>${snapshot.member}님의 연말정산 진행도</strong>
       <p>${helperLabel}</p>
     </article>
-    ${snapshot.monthlyNetSalary
+    <article class="year-end-tax-card">
+      <div class="year-end-tax-card__headline">
+        <strong>소득 직접 입력</strong>
+        <p>입력한 값이 있으면 자동 추정 대신 그 값을 우선 사용합니다.</p>
+      </div>
+      <form class="year-end-tax-form" id="year-end-tax-input-form">
+        <label class="year-end-tax-field">
+          <span>계약 연봉</span>
+          <input
+            name="contractAnnualSalary"
+            type="number"
+            min="0"
+            step="100000"
+            inputmode="numeric"
+            placeholder="예: 52000000"
+            value="${snapshot.contractAnnualSalary || ""}"
+          />
+        </label>
+        <label class="year-end-tax-field">
+          <span>건강보험 월 보수액</span>
+          <input
+            name="healthInsuranceMonthlySalary"
+            type="number"
+            min="0"
+            step="10000"
+            inputmode="numeric"
+            placeholder="예: 4300000"
+            value="${snapshot.healthInsuranceMonthlySalary || ""}"
+          />
+        </label>
+        <div class="year-end-tax-form__actions">
+          <button class="secondary-button" id="year-end-tax-reset-button" type="button">초기화</button>
+          <button class="primary-button" type="submit">적용</button>
+        </div>
+      </form>
+    </article>
+    ${snapshot.annualGross
       ? `
         <article class="year-end-tax-card">
           <div class="year-end-tax-progress-head">
@@ -1527,7 +1588,7 @@ function renderYearEndTax() {
           <div class="year-end-tax-grid">
             <div>
               <span>월 실수령액</span>
-              <strong>${formatCurrency(snapshot.monthlyNetSalary)}</strong>
+              <strong>${snapshot.monthlyNetSalary ? formatCurrency(snapshot.monthlyNetSalary) : "-"}</strong>
             </div>
             <div>
               <span>연 실수령액 추정</span>
@@ -1567,7 +1628,7 @@ function renderYearEndTax() {
         <article class="year-end-tax-card year-end-tax-card--empty">
           <strong>월급 데이터가 필요합니다.</strong>
           <p>${snapshot.source === "real"
-            ? "선택한 사용자의 수입 내역에 '월급'이 기록되면 연 소득과 공제 기준을 계산할 수 있습니다."
+            ? "선택한 사용자의 수입 내역에 '월급'이 기록되거나, 위 폼에 소득 값을 직접 입력하면 계산할 수 있습니다."
             : "데모 데이터 구성이 비어 있습니다."}</p>
         </article>
       `}
@@ -1614,6 +1675,8 @@ function buildYearEndTaxViewModel(member) {
       source: "mock",
       year,
       monthlyNetSalary: mockProfile?.monthlyNetSalary || 0,
+      contractAnnualSalary: state.yearEndTaxInputs[member]?.contractAnnualSalary || 0,
+      healthInsuranceMonthlySalary: state.yearEndTaxInputs[member]?.healthInsuranceMonthlySalary || 0,
       transactions: (mockProfile?.transactions || []).map((item, index) => ({
         id: `${member}-mock-${index}`,
         deleted: 0,
@@ -1635,6 +1698,8 @@ function buildYearEndTaxViewModel(member) {
     member,
     source: "real",
     year,
+    contractAnnualSalary: state.yearEndTaxInputs[member]?.contractAnnualSalary || 0,
+    healthInsuranceMonthlySalary: state.yearEndTaxInputs[member]?.healthInsuranceMonthlySalary || 0,
     transactions,
   });
 }
@@ -2364,6 +2429,24 @@ function normalizeFilterState(filters) {
     types: normalizedTypes.length ? normalizedTypes : ["income", "expense", "investment"],
     categories: (filters?.categories || []).map((category) => normalizeCategoryId(category)).filter(Boolean),
   };
+}
+
+function sanitizePositiveNumber(value) {
+  const normalized = Math.max(0, Number(value || 0));
+  return Number.isFinite(normalized) ? normalized : 0;
+}
+
+function normalizeYearEndTaxInputs(value) {
+  if (!value || typeof value !== "object") return {};
+  return Object.fromEntries(
+    Object.entries(value).map(([member, inputs]) => [
+      member,
+      {
+        contractAnnualSalary: sanitizePositiveNumber(inputs?.contractAnnualSalary),
+        healthInsuranceMonthlySalary: sanitizePositiveNumber(inputs?.healthInsuranceMonthlySalary),
+      },
+    ]),
+  );
 }
 
 function normalizeMemberId(value) {
