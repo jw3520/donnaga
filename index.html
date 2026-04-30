@@ -185,7 +185,7 @@
               <article class="settings-row settings-row--danger">
                 <div class="stack">
                   <strong>앱 최신버전 업데이트</strong>
-                  <p id="update-version-label">ver 1.26.04.27.04</p>
+                  <p id="update-version-label">ver 1.26.04.30.01</p>
                   <p id="update-time-label">마지막 확인: 아직 기록이 없어요.</p>
                 </div>
                 <button class="secondary-button" id="clear-web-cache-button" type="button">업데이트</button>
@@ -238,14 +238,7 @@
         </section>
 
         <section class="screen" data-screen="analysis">
-          <header class="sheet-header">
-            <button class="header-icon-button" id="close-analysis-button" type="button" aria-label="닫기">
-              <i data-lucide="x"></i>
-            </button>
-            <div class="sheet-header__center">
-              <strong id="analysis-month-label">4월</strong>
-              <p id="analysis-range-label">4.1 - 4.30</p>
-            </div>
+          <header class="sheet-header sheet-header--balanced">
             <div class="analysis-header-right">
               <div class="analysis-mode-switch" id="analysis-mode-switch">
                 <button class="analysis-mode-button is-active" type="button" data-analysis-mode="expense">지출</button>
@@ -257,6 +250,13 @@
                 <button class="analysis-card-button" type="button">계좌 출금일 기준</button>
               </div>
             </div>
+            <div class="sheet-header__center">
+              <strong id="analysis-month-label">4월</strong>
+              <p id="analysis-range-label">4.1 - 4.30</p>
+            </div>
+            <button class="header-icon-button" id="close-analysis-button" type="button" aria-label="닫기">
+              <i data-lucide="x"></i>
+            </button>
           </header>
 
           <section class="analysis-body">
@@ -325,25 +325,17 @@
 
         <section class="screen" data-screen="year-end-tax">
           <header class="sheet-header">
+            <span class="sheet-header__spacer"></span>
+            <strong>연말정산</strong>
             <button class="header-icon-button" id="close-year-end-tax-button" type="button" aria-label="닫기">
               <i data-lucide="x"></i>
             </button>
-            <strong>연말정산</strong>
-            <span class="sheet-header__spacer"></span>
           </header>
 
           <section class="year-end-tax-body">
-            <div class="year-end-tax-placeholder">
-              <div class="year-end-tax-animation" aria-hidden="true">
-                <div class="year-end-tax-animation__track">
-                  <div class="year-end-tax-worker">
-                    <span class="year-end-tax-worker__emoji">👷</span>
-                    <span class="year-end-tax-worker__tool">🔧</span>
-                  </div>
-                </div>
-              </div>
-              <strong>Soon</strong>
-              <p>개발 준비 중입니다.</p>
+            <div class="year-end-tax-panel">
+              <div class="hero-member-filter year-end-tax-user-tabs" id="year-end-tax-user-tabs"></div>
+              <div class="year-end-tax-content" id="year-end-tax-content"></div>
             </div>
           </section>
         </section>
@@ -392,6 +384,7 @@
     <dialog class="sheet-dialog" id="search-dialog">
       <div class="sheet-content">
         <header class="sheet-header">
+          <span class="sheet-header__spacer"></span>
           <strong>검색</strong>
           <button class="header-icon-button" id="close-search-button" type="button" aria-label="닫기">
             <i data-lucide="x"></i>
@@ -425,6 +418,7 @@
     <dialog class="sheet-dialog" id="filter-dialog">
       <div class="sheet-content">
         <header class="sheet-header">
+          <span class="sheet-header__spacer"></span>
           <strong>필터</strong>
           <button class="header-icon-button" id="close-filter-button" type="button" aria-label="닫기">
             <i data-lucide="x"></i>

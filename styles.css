@@ -743,6 +743,16 @@ button:active {
   z-index: 5;
 }
 
+.sheet-header--balanced {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.sheet-header--balanced > :last-child {
+  justify-self: end;
+}
+
 .sheet-header__center {
   text-align: center;
 }
@@ -773,6 +783,7 @@ button:active {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .analysis-body {
@@ -781,19 +792,87 @@ button:active {
 }
 
 .year-end-tax-body {
-  display: grid;
-  place-items: center;
   padding: 24px 16px 96px;
   background: #fff;
 }
 
-.year-end-tax-placeholder {
-  width: min(100%, 280px);
-  padding: 28px 24px;
-  border-radius: 28px;
-  text-align: center;
+.year-end-tax-panel {
+  width: min(100%, 398px);
+  margin: 0 auto;
+}
+
+.year-end-tax-user-tabs {
+  margin-bottom: 14px;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.year-end-tax-user-tabs .hero-member-filter__button {
+  width: 100%;
+}
+
+.year-end-tax-content {
+  display: grid;
+  gap: 14px;
+}
+
+.year-end-tax-card {
+  padding: 18px 18px 20px;
+  border-radius: 24px;
   background: linear-gradient(180deg, #ffffff 0%, #f4fbfa 100%);
   box-shadow: 0 14px 30px rgba(24, 34, 45, 0.08);
+}
+
+.year-end-tax-card--hero {
+  text-align: center;
+}
+
+.year-end-tax-card--empty {
+  text-align: center;
+}
+
+.year-end-tax-card strong {
+  color: #2f3943;
+}
+
+.year-end-tax-card p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.year-end-tax-card__eyebrow,
+.year-end-tax-progress-head,
+.year-end-tax-method-row__top,
+.year-end-tax-method-row__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.year-end-tax-card__eyebrow {
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.year-end-tax-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.year-end-tax-badge.is-mock {
+  background: #ecf7ff;
+  color: #2575a7;
+}
+
+.year-end-tax-badge.is-real {
+  background: #eef8f3;
+  color: #2f8c63;
 }
 
 .year-end-tax-animation {
@@ -845,17 +924,97 @@ button:active {
   animation: year-end-tax-tool 0.55s ease-in-out infinite;
 }
 
-.year-end-tax-placeholder strong {
-  display: block;
-  font-size: 26px;
-  font-weight: 800;
-  color: #2f3943;
+.year-end-tax-progress-head {
+  margin-bottom: 12px;
 }
 
-.year-end-tax-placeholder p {
-  margin: 8px 0 0;
-  font-size: 14px;
+.year-end-tax-progress-head strong:last-child {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.year-end-tax-progress {
+  position: relative;
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e7eeed;
+}
+
+.year-end-tax-progress__bar {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #32b8a7 0%, #61d5bd 100%);
+}
+
+.year-end-tax-status {
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.year-end-tax-status.is-pending {
+  color: #ce6e3d;
+}
+
+.year-end-tax-status.is-complete {
+  color: #2f8c63;
+}
+
+.year-end-tax-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 12px;
+}
+
+.year-end-tax-grid span,
+.year-end-tax-method-row__meta span {
+  font-size: 12px;
   color: var(--muted);
+}
+
+.year-end-tax-grid strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.year-end-tax-card__headline {
+  margin-bottom: 12px;
+}
+
+.year-end-tax-card__headline strong {
+  display: block;
+}
+
+.year-end-tax-method-list {
+  display: grid;
+  gap: 12px;
+}
+
+.year-end-tax-method-row__bar {
+  height: 8px;
+  margin: 8px 0 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edf2f4;
+}
+
+.year-end-tax-method-row__fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #9ddfd4 0%, #4db6ac 100%);
+}
+
+.year-end-tax-deduction {
+  display: grid;
+  gap: 4px;
+}
+
+.year-end-tax-deduction strong {
+  font-size: 30px;
+  font-weight: 800;
 }
 
 @keyframes year-end-tax-walk {

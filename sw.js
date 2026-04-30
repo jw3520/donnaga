@@ -1,9 +1,10 @@
-const CACHE_NAME = "donnaga-cache-v5";
+const CACHE_NAME = "donnaga-cache-v6";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./year-end-tax-utils.js",
   "./manifest.webmanifest",
   "./icons/icon.svg",
   "./icons/icon-192.svg",

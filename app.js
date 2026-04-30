@@ -1,3 +1,11 @@
+import {
+  YEAR_END_TAX_DEDUCTION_RATES,
+  buildYearEndTaxSnapshot,
+  defaultYearEndTaxUser,
+  normalizeYearEndTaxUser,
+  yearEndTaxUsersForRole,
+} from "./year-end-tax-utils.js";
+
 const STORAGE_KEY_V3 = "donnaga-state-v3";
 const STORAGE_KEY_V4 = "donnaga-state-v4";
 const AUTH_PIN_STORAGE_KEY = "DONNAGA_PIN";
@@ -6,7 +14,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "1.26.04.27.04";
+const APP_VERSION = "1.26.04.30.01";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -15,7 +23,7 @@ const DB_NAME = "donnaga-db";
 const SYNC_INTERVAL_MS = 60_000;
 const SYNC_PUSH_BATCH_SIZE = 200;
 const CALENDAR_SWIPE_THRESHOLD = 42;
-const UPDATE_CHECK_ASSETS = ["./index.html", "./app.js", "./styles.css"];
+const UPDATE_CHECK_ASSETS = ["./index.html", "./app.js", "./styles.css", "./year-end-tax-utils.js"];
 const MEMBERS = [
   { id: "정우", name: "정우" },
   { id: "솔이", name: "솔이" },
@@ -24,6 +32,38 @@ const GUEST_MEMBERS = [
   { id: "철수", name: "철수" },
   { id: "영희", name: "영희" },
 ];
+const YEAR_END_TAX_MOCK_DATA = {
+  철수: {
+    monthlyNetSalary: 5_500_000,
+    transactions: [
+      { type: "expense", amount: 2_860_000, account: "credit-card", date: "2026-01-19" },
+      { type: "expense", amount: 1_140_000, account: "credit-card", date: "2026-02-10" },
+      { type: "expense", amount: 420_000, account: "debit-card", date: "2026-02-14" },
+      { type: "expense", amount: 310_000, account: "cash", date: "2026-03-04" },
+      { type: "expense", amount: 280_000, account: "local-currency", date: "2026-03-28" },
+      { type: "expense", amount: 190_000, account: "bank-transfer", date: "2026-04-05" },
+      { type: "income", amount: 5_500_000, category: "월급", date: "2026-01-25" },
+      { type: "income", amount: 5_500_000, category: "월급", date: "2026-02-25" },
+      { type: "income", amount: 5_500_000, category: "월급", date: "2026-03-25" },
+      { type: "income", amount: 5_500_000, category: "월급", date: "2026-04-25" },
+    ],
+  },
+  영희: {
+    monthlyNetSalary: 4_500_000,
+    transactions: [
+      { type: "expense", amount: 1_980_000, account: "credit-card", date: "2026-01-23" },
+      { type: "expense", amount: 690_000, account: "credit-card", date: "2026-02-12" },
+      { type: "expense", amount: 640_000, account: "debit-card", date: "2026-03-09" },
+      { type: "expense", amount: 220_000, account: "cash", date: "2026-03-18" },
+      { type: "expense", amount: 510_000, account: "local-currency", date: "2026-04-01" },
+      { type: "expense", amount: 340_000, account: "bank-transfer", date: "2026-04-05" },
+      { type: "income", amount: 4_500_000, category: "월급", date: "2026-01-20" },
+      { type: "income", amount: 4_500_000, category: "월급", date: "2026-02-20" },
+      { type: "income", amount: 4_500_000, category: "월급", date: "2026-03-20" },
+      { type: "income", amount: 4_500_000, category: "월급", date: "2026-04-20" },
+    ],
+  },
+};
 
 const ACCOUNTS = [
   { id: "cash", name: "현금", type: "cash" },
@@ -267,6 +307,8 @@ const refs = {
   settingsTabButton: document.querySelector('[data-screen-target="settings"]'),
   guestHiddenSettingsRows: [...document.querySelectorAll("[data-guest-hidden='true']")],
   adminOnlyElements: [...document.querySelectorAll("[data-admin-only='true']")],
+  yearEndTaxUserTabs: document.querySelector("#year-end-tax-user-tabs"),
+  yearEndTaxContent: document.querySelector("#year-end-tax-content"),
 };
 
 const db = new window.Dexie(DB_NAME);
@@ -288,6 +330,7 @@ const state = {
   searchQuickCategory: "",
   searchQuickType: "",
   memberFilter: "all",
+  currentYearEndTaxUser: defaultYearEndTaxUser(),
   filters: { types: ["income", "expense", "investment"], categories: [] },
   budgetLimits: {},
   authPin: "",
@@ -361,6 +404,16 @@ function bindEvents() {
   refs.openAnalysisButton.addEventListener("click", () => switchScreen("analysis"));
   refs.closeYearEndTaxButton.addEventListener("click", () => switchScreen("calendar"));
   refs.closeAnalysisButton.addEventListener("click", () => switchScreen("calendar"));
+  refs.yearEndTaxUserTabs.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-year-end-tax-user]");
+    if (!button) return;
+    const nextUser = normalizeYearEndTaxUser(button.dataset.yearEndTaxUser, state.role);
+    if (nextUser === state.currentYearEndTaxUser) return;
+    state.currentYearEndTaxUser = nextUser;
+    await persistUiMeta();
+    renderYearEndTax();
+    renderIcons();
+  });
   refs.closeMemoButton.addEventListener("click", () => switchScreen("calendar"));
   refs.memoSearchButton.addEventListener("click", openSearchDialog);
   refs.memoAddButton.addEventListener("click", openEntryDialog);
@@ -1115,6 +1168,7 @@ async function loadUiMeta() {
   state.analysisTab = savedUi.analysisTab || state.analysisTab;
   state.analysisMode = savedUi.analysisMode || state.analysisMode;
   state.memberFilter = sanitizeMemberFilter(savedUi.memberFilter);
+  state.currentYearEndTaxUser = normalizeYearEndTaxUser(savedUi.currentYearEndTaxUser, state.role);
   state.filters = normalizeFilterState(savedUi.filters || state.filters);
   state.listSortOrder = savedUi.listSortOrder === "asc" ? "asc" : "desc";
   state.lastSyncedAt = (await getMeta("lastSyncedAt")) || null;
@@ -1153,6 +1207,7 @@ async function persistUiMeta() {
     analysisTab: state.analysisTab,
     analysisMode: state.analysisMode,
     memberFilter: state.memberFilter,
+    currentYearEndTaxUser: state.currentYearEndTaxUser,
     filters: state.filters,
     listSortOrder: state.listSortOrder,
   });
@@ -1181,6 +1236,7 @@ function render() {
   renderMemo();
   renderAssets();
   renderAnalysis();
+  renderYearEndTax();
   renderFilterChips();
   applyRoleToUI();
   syncScreens();
@@ -1406,6 +1462,181 @@ function renderAnalysis() {
     button.classList.toggle("is-active", button.dataset.analysisTabTarget === state.analysisTab);
   });
   renderIcons();
+}
+
+function renderYearEndTax() {
+  if (!refs.yearEndTaxUserTabs || !refs.yearEndTaxContent) return;
+  const visibleUsers = yearEndTaxUsersForRole(state.role);
+  const currentUser = normalizeYearEndTaxUser(state.currentYearEndTaxUser, state.role);
+  const snapshot = buildYearEndTaxViewModel(currentUser);
+  refs.yearEndTaxUserTabs.innerHTML = visibleUsers.map((user) => `
+    <button
+      class="hero-member-filter__button ${user.id === currentUser ? "is-active" : ""}"
+      type="button"
+      data-year-end-tax-user="${user.id}"
+    >
+      ${user.label}
+    </button>
+  `).join("");
+
+  const thresholdPercent = Math.round((snapshot.progressRatio || 0) * 100);
+  const statusTone = snapshot.overThresholdAmount > 0 ? "is-complete" : "is-pending";
+  const statusLabel = snapshot.overThresholdAmount > 0
+    ? `${formatCurrency(snapshot.overThresholdAmount)} 초과`
+    : `${formatCurrency(snapshot.remainingToThreshold)} 남음`;
+  const sourceLabel = snapshot.source === "mock" ? "데모 데이터" : "실제 기록 기준";
+  const helperLabel = snapshot.source === "mock"
+    ? "화면 확인용 하드코딩 데이터입니다."
+    : snapshot.salaryMonthCount
+      ? `월급 ${snapshot.salaryMonthCount}개월 평균으로 추정했습니다.`
+      : "월급 데이터가 없어서 계산을 완료하지 못했습니다.";
+
+  refs.yearEndTaxContent.innerHTML = `
+    <article class="year-end-tax-card year-end-tax-card--hero">
+      <div class="year-end-tax-card__eyebrow">
+        <span class="year-end-tax-badge ${snapshot.source === "mock" ? "is-mock" : "is-real"}">${sourceLabel}</span>
+        <span>${snapshot.year}년 기준</span>
+      </div>
+      <div class="year-end-tax-animation" aria-hidden="true">
+        <div class="year-end-tax-animation__track">
+          <div class="year-end-tax-worker">
+            <span class="year-end-tax-worker__emoji">👷</span>
+            <span class="year-end-tax-worker__tool">🔧</span>
+          </div>
+        </div>
+      </div>
+      <strong>${snapshot.member}님의 연말정산 진행도</strong>
+      <p>${helperLabel}</p>
+    </article>
+    ${snapshot.monthlyNetSalary
+      ? `
+        <article class="year-end-tax-card">
+          <div class="year-end-tax-progress-head">
+            <div class="stack">
+              <strong>소득공제 25% 기준 추정</strong>
+              <p>${formatCurrency(snapshot.totalQualifiedSpend)} / ${formatCurrency(snapshot.deductionThreshold)}</p>
+            </div>
+            <strong>${thresholdPercent}%</strong>
+          </div>
+          <div class="year-end-tax-progress">
+            <div class="year-end-tax-progress__bar" style="width:${Math.min(thresholdPercent, 100)}%"></div>
+          </div>
+          <p class="year-end-tax-status ${statusTone}">${statusLabel}</p>
+        </article>
+        <article class="year-end-tax-card">
+          <div class="year-end-tax-grid">
+            <div>
+              <span>월 실수령액</span>
+              <strong>${formatCurrency(snapshot.monthlyNetSalary)}</strong>
+            </div>
+            <div>
+              <span>연 실수령액 추정</span>
+              <strong>${formatCurrency(snapshot.annualNet)}</strong>
+            </div>
+            <div>
+              <span>연 총급여 추정</span>
+              <strong>${formatCurrency(snapshot.annualGross)}</strong>
+            </div>
+            <div>
+              <span>세금·4대보험 추정</span>
+              <strong>${formatCurrency(snapshot.estimatedTaxAndInsurance)}</strong>
+            </div>
+          </div>
+        </article>
+        <article class="year-end-tax-card">
+          <div class="year-end-tax-card__headline">
+            <strong>결제수단별 사용액</strong>
+            <p>신용카드는 15%, 체크/현금/지역화폐는 30% 기준으로 추정합니다.</p>
+          </div>
+          <div class="year-end-tax-method-list">
+            ${renderYearEndTaxMethodRows(snapshot)}
+          </div>
+        </article>
+        <article class="year-end-tax-card">
+          <div class="year-end-tax-card__headline">
+            <strong>예상 공제 가능 금액</strong>
+            <p>25% 초과분을 기준으로 결제수단별 공제율을 적용한 추정치입니다.</p>
+          </div>
+          <div class="year-end-tax-deduction">
+            <strong>${formatCurrency(snapshot.estimatedDeduction)}</strong>
+            <p>${snapshot.qualifiedTransactionCount}건의 공제 대상 지출을 반영했습니다.</p>
+          </div>
+        </article>
+      `
+      : `
+        <article class="year-end-tax-card year-end-tax-card--empty">
+          <strong>월급 데이터가 필요합니다.</strong>
+          <p>${snapshot.source === "real"
+            ? "선택한 사용자의 수입 내역에 '월급'이 기록되면 연 소득과 공제 기준을 계산할 수 있습니다."
+            : "데모 데이터 구성이 비어 있습니다."}</p>
+        </article>
+      `}
+  `;
+}
+
+function renderYearEndTaxMethodRows(snapshot) {
+  const methodLabels = {
+    "credit-card": "신용카드",
+    "debit-card": "체크카드",
+    cash: "현금",
+    "local-currency": "지역화폐",
+  };
+  const maxSpend = Math.max(...Object.values(snapshot.spending), 1);
+  return Object.keys(YEAR_END_TAX_DEDUCTION_RATES).map((account) => {
+    const amount = snapshot.spending[account] || 0;
+    const deductibleBase = snapshot.deductibleBaseByAccount[account] || 0;
+    const rate = YEAR_END_TAX_DEDUCTION_RATES[account];
+    const width = amount ? Math.max(8, Math.round((amount / maxSpend) * 100)) : 0;
+    return `
+      <div class="year-end-tax-method-row">
+        <div class="year-end-tax-method-row__top">
+          <strong>${methodLabels[account]}</strong>
+          <span>${formatCurrency(amount)}</span>
+        </div>
+        <div class="year-end-tax-method-row__bar">
+          <div class="year-end-tax-method-row__fill" style="width:${width}%"></div>
+        </div>
+        <div class="year-end-tax-method-row__meta">
+          <span>공제율 ${Math.round(rate * 100)}%</span>
+          <span>공제 반영 ${formatCurrency(deductibleBase)}</span>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function buildYearEndTaxViewModel(member) {
+  const year = state.currentMonth.slice(0, 4);
+  if (member === "철수" || member === "영희") {
+    const mockProfile = YEAR_END_TAX_MOCK_DATA[member];
+    return buildYearEndTaxSnapshot({
+      member,
+      source: "mock",
+      year,
+      monthlyNetSalary: mockProfile?.monthlyNetSalary || 0,
+      transactions: (mockProfile?.transactions || []).map((item, index) => ({
+        id: `${member}-mock-${index}`,
+        deleted: 0,
+        member,
+        category: item.category || "",
+        ...item,
+      })),
+    });
+  }
+
+  const transactions = state.transactions
+    .filter((item) => !item.deleted && normalizeMemberId(item.member) === member)
+    .map((item) => ({
+      ...item,
+      account: normalizeAccountId(item.account || item.payment_method || ""),
+    }));
+
+  return buildYearEndTaxSnapshot({
+    member,
+    source: "real",
+    year,
+    transactions,
+  });
 }
 
 function renderBudgetGroupCards(items, options = {}) {
