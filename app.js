@@ -14,7 +14,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "1.26.04.30.08";
+const APP_VERSION = "1.26.04.30.09";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -1522,7 +1522,12 @@ function renderYearEndTax() {
     : snapshot.usedDirectInput
       ? "소득 입력 기준"
       : "가계부 기록 기준";
-  const inputButtonLabel = state.yearEndTaxInputOpen ? "입력 닫기" : "소득 직접 입력";
+  const hasSavedIncomeInput = Boolean(snapshot.contractAnnualSalary || snapshot.healthInsuranceMonthlySalary);
+  const inputButtonLabel = state.yearEndTaxInputOpen
+    ? "입력 닫기"
+    : hasSavedIncomeInput
+      ? "소득 수정"
+      : "소득 직접 입력";
   const helperLabel = snapshot.usedDirectInput
     ? "직접 입력한 소득 기준을 우선 적용했습니다."
     : snapshot.source === "mock"
