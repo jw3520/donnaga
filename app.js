@@ -14,7 +14,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "1.26.04.30.07";
+const APP_VERSION = "1.26.04.30.08";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -1517,14 +1517,18 @@ function renderYearEndTax() {
   const statusLabel = snapshot.overThresholdAmount > 0
     ? `${formatCurrency(snapshot.overThresholdAmount)} 초과`
     : `${formatCurrency(snapshot.remainingToThreshold)} 남음`;
-  const sourceLabel = snapshot.source === "mock" ? "데모 데이터" : "실제 기록 기준";
+  const sourceLabel = snapshot.source === "mock"
+    ? "데모 데이터"
+    : snapshot.usedDirectInput
+      ? "소득 입력 기준"
+      : "가계부 기록 기준";
   const inputButtonLabel = state.yearEndTaxInputOpen ? "입력 닫기" : "소득 직접 입력";
   const helperLabel = snapshot.usedDirectInput
     ? "직접 입력한 소득 기준을 우선 적용했습니다."
     : snapshot.source === "mock"
     ? "화면 확인용 하드코딩 데이터입니다."
     : snapshot.salaryMonthCount
-      ? `월급 ${snapshot.salaryMonthCount}개월 평균으로 추정했습니다.`
+      ? `월급 ${snapshot.salaryMonthCount}개월 평균을 기준으로 계산했습니다.`
       : "월급 데이터가 없어서 계산을 완료하지 못했습니다.";
 
   refs.yearEndTaxContent.innerHTML = `
@@ -1582,7 +1586,7 @@ function renderYearEndTax() {
         <article class="year-end-tax-card">
           <div class="year-end-tax-progress-head">
             <div class="stack">
-              <strong>소득공제 25% 기준 추정</strong>
+              <strong>소득공제 25% 기준</strong>
               <p>${formatCurrency(snapshot.totalQualifiedSpend)} / ${formatCurrency(snapshot.deductionThreshold)}</p>
             </div>
             <strong>${thresholdPercent}%</strong>
@@ -1599,15 +1603,15 @@ function renderYearEndTax() {
               <strong>${snapshot.monthlyNetSalary ? formatCurrency(snapshot.monthlyNetSalary) : "-"}</strong>
             </div>
             <div>
-              <span>연 실수령액 추정</span>
+              <span>연 실수령액</span>
               <strong>${formatCurrency(snapshot.annualNet)}</strong>
             </div>
             <div>
-              <span>연 총급여 추정</span>
+              <span>연 총급여</span>
               <strong>${formatCurrency(snapshot.annualGross)}</strong>
             </div>
             <div>
-              <span>세금·4대보험 추정</span>
+              <span>세금·4대보험</span>
               <strong>${formatCurrency(snapshot.estimatedTaxAndInsurance)}</strong>
             </div>
           </div>
@@ -1615,7 +1619,7 @@ function renderYearEndTax() {
         <article class="year-end-tax-card">
           <div class="year-end-tax-card__headline">
             <strong>결제수단별 사용액</strong>
-            <p>신용카드는 15%, 체크/현금/지역화폐는 30% 기준으로 추정합니다.</p>
+            <p>신용카드는 15%, 체크/현금/지역화폐는 30% 기준으로 반영합니다.</p>
           </div>
           <div class="year-end-tax-method-list">
             ${renderYearEndTaxMethodRows(snapshot)}
@@ -1624,7 +1628,7 @@ function renderYearEndTax() {
         <article class="year-end-tax-card">
           <div class="year-end-tax-card__headline">
             <strong>예상 공제 가능 금액</strong>
-            <p>25% 초과분을 기준으로 결제수단별 공제율을 적용한 추정치입니다.</p>
+            <p>25% 초과분을 기준으로 결제수단별 공제율을 적용한 값입니다.</p>
           </div>
           <div class="year-end-tax-deduction">
             <strong>${formatCurrency(snapshot.estimatedDeduction)}</strong>
