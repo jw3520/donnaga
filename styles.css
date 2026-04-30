@@ -1938,9 +1938,10 @@ select {
 }
 
 .entry-sheet__header-top {
-  display: flex;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 36px;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
 }
 
 .sheet-close {
@@ -1954,12 +1955,11 @@ select {
   color: #5d6670;
 }
 
-.entry-sheet__amount-label {
+.entry-sheet__title {
   margin: 0;
-  color: #8e97a2;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
+  color: #2f3943;
+  font-size: 17px;
+  font-weight: 700;
   text-align: center;
 }
 
