@@ -14,7 +14,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "1.26.04.30.06";
+const APP_VERSION = "1.26.04.30.07";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -332,6 +332,7 @@ const state = {
   memberFilter: "all",
   currentYearEndTaxUser: defaultYearEndTaxUser(),
   yearEndTaxInputs: {},
+  yearEndTaxInputOpen: false,
   filters: { types: ["income", "expense", "investment"], categories: [] },
   budgetLimits: {},
   authPin: "",
@@ -411,6 +412,7 @@ function bindEvents() {
     const nextUser = normalizeYearEndTaxUser(button.dataset.yearEndTaxUser, state.role);
     if (nextUser === state.currentYearEndTaxUser) return;
     state.currentYearEndTaxUser = nextUser;
+    state.yearEndTaxInputOpen = false;
     await persistUiMeta();
     renderYearEndTax();
     renderIcons();
@@ -424,14 +426,22 @@ function bindEvents() {
       contractAnnualSalary: sanitizePositiveNumber(form.elements.contractAnnualSalary.value),
       healthInsuranceMonthlySalary: sanitizePositiveNumber(form.elements.healthInsuranceMonthlySalary.value),
     };
+    state.yearEndTaxInputOpen = false;
     await persistUiMeta();
     renderYearEndTax();
   });
   refs.yearEndTaxContent.addEventListener("click", async (event) => {
+    const openButton = event.target.closest("#year-end-tax-open-input-button");
+    if (openButton) {
+      state.yearEndTaxInputOpen = !state.yearEndTaxInputOpen;
+      renderYearEndTax();
+      return;
+    }
     const resetButton = event.target.closest("#year-end-tax-reset-button");
     if (!resetButton) return;
     const currentUser = normalizeYearEndTaxUser(state.currentYearEndTaxUser, state.role);
     delete state.yearEndTaxInputs[currentUser];
+    state.yearEndTaxInputOpen = false;
     await persistUiMeta();
     renderYearEndTax();
   });
@@ -1508,6 +1518,7 @@ function renderYearEndTax() {
     ? `${formatCurrency(snapshot.overThresholdAmount)} 초과`
     : `${formatCurrency(snapshot.remainingToThreshold)} 남음`;
   const sourceLabel = snapshot.source === "mock" ? "데모 데이터" : "실제 기록 기준";
+  const inputButtonLabel = state.yearEndTaxInputOpen ? "입력 닫기" : "소득 직접 입력";
   const helperLabel = snapshot.usedDirectInput
     ? "직접 입력한 소득 기준을 우선 적용했습니다."
     : snapshot.source === "mock"
@@ -1522,50 +1533,49 @@ function renderYearEndTax() {
         <span class="year-end-tax-badge ${snapshot.source === "mock" ? "is-mock" : "is-real"}">${sourceLabel}</span>
         <span>${snapshot.year}년 기준</span>
       </div>
-      <div class="year-end-tax-animation" aria-hidden="true">
-        <div class="year-end-tax-animation__track">
-          <div class="year-end-tax-worker">
-            <span class="year-end-tax-worker__emoji">👷</span>
-            <span class="year-end-tax-worker__tool">🔧</span>
-          </div>
-        </div>
-      </div>
       <strong>${snapshot.member}님의 연말정산 진행도</strong>
       <p>${helperLabel}</p>
-    </article>
-    <article class="year-end-tax-card">
-      <div class="year-end-tax-card__headline">
-        <strong>소득 직접 입력</strong>
-        <p>입력한 값이 있으면 자동 추정 대신 그 값을 우선 사용하며, 사용자별로 기기 내 DB에 저장됩니다.</p>
+      <div class="year-end-tax-hero-actions">
+        <button class="secondary-button" id="year-end-tax-open-input-button" type="button">${inputButtonLabel}</button>
       </div>
-      <form class="year-end-tax-form" id="year-end-tax-input-form">
-        <label class="year-end-tax-field">
-          <span>계약 연봉</span>
-          <input
-            name="contractAnnualSalary"
-            type="text"
-            inputmode="numeric"
-            placeholder="예: 52000000"
-            value="${snapshot.contractAnnualSalary || ""}"
-            autocomplete="off"
-          />
-        </label>
-        <label class="year-end-tax-field">
-          <span>건강보험 보수월액</span>
-          <input
-            name="healthInsuranceMonthlySalary"
-            type="text"
-            inputmode="numeric"
-            placeholder="예: 4300000"
-            value="${snapshot.healthInsuranceMonthlySalary || ""}"
-            autocomplete="off"
-          />
-        </label>
-        <div class="year-end-tax-form__actions">
-          <button class="secondary-button" id="year-end-tax-reset-button" type="button">초기화</button>
-          <button class="primary-button" type="submit">적용</button>
-        </div>
-      </form>
+      ${state.yearEndTaxInputOpen
+        ? `
+          <div class="year-end-tax-input-panel">
+            <div class="year-end-tax-card__headline">
+              <strong>소득 직접 입력</strong>
+              <p>입력한 값이 있으면 자동 추정 대신 그 값을 우선 사용하며, 사용자별로 기기 내 DB에 저장됩니다.</p>
+            </div>
+            <form class="year-end-tax-form" id="year-end-tax-input-form">
+              <label class="year-end-tax-field">
+                <span>계약 연봉</span>
+                <input
+                  name="contractAnnualSalary"
+                  type="text"
+                  inputmode="numeric"
+                  placeholder="예: 52000000"
+                  value="${snapshot.contractAnnualSalary || ""}"
+                  autocomplete="off"
+                />
+              </label>
+              <label class="year-end-tax-field">
+                <span>건강보험 보수월액</span>
+                <input
+                  name="healthInsuranceMonthlySalary"
+                  type="text"
+                  inputmode="numeric"
+                  placeholder="예: 4300000"
+                  value="${snapshot.healthInsuranceMonthlySalary || ""}"
+                  autocomplete="off"
+                />
+              </label>
+              <div class="year-end-tax-form__actions">
+                <button class="secondary-button" id="year-end-tax-reset-button" type="button">초기화</button>
+                <button class="primary-button" type="submit">적용</button>
+              </div>
+            </form>
+          </div>
+        `
+        : ""}
     </article>
     ${snapshot.annualGross
       ? `

@@ -840,6 +840,19 @@ button:active {
   color: var(--muted);
 }
 
+.year-end-tax-hero-actions {
+  margin-top: 14px;
+}
+
+.year-end-tax-input-panel {
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 20px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: inset 0 0 0 1px rgba(221, 227, 232, 0.8);
+}
+
 .year-end-tax-card__eyebrow,
 .year-end-tax-progress-head,
 .year-end-tax-method-row__top,
