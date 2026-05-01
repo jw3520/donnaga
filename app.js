@@ -14,7 +14,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "1.26.04.30.11";
+const APP_VERSION = "1.26.05.01.02";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -131,6 +131,7 @@ const BUDGET_GROUPS = [
       { id: "선물", label: "선물", color: "#ffb36a", icon: "gift" },
       { id: "경조사", label: "경조사", color: "#f27d93", icon: "hand-heart" },
       { id: "결혼준비", label: "결혼준비", color: "#d989ff", icon: "gem" },
+      { id: "여행", label: "여행", color: "#73c4ff", icon: "backpack" },
       { id: "의류/잡화", label: "의류/잡화", color: "#6fb6ff", icon: "shirt" },
       { id: "차량관리비", label: "차량관리비", color: "#8fa2ff", icon: "car-front" },
       { id: "술", label: "술", color: "#b772d9", icon: "wine" },
@@ -3112,7 +3113,7 @@ function normalizeCategoryId(category, type = "") {
   else if (normalized === "해외 주식") normalized = "해외주식";
   else if (normalized === "코인" || normalized === "가상 화폐") normalized = "가상자산";
   else if (normalized === "자동차유지비" || normalized === "자동차") normalized = "차량관리비";
-  else if (["가전", "기부", "여행"].includes(normalized)) normalized = "variable-other";
+  else if (["가전", "기부"].includes(normalized)) normalized = "variable-other";
 
   const normalizedType = normalizeTypeId(type);
   if (normalizedType && CATEGORY_META[normalizedType]?.some((item) => item.id === normalized)) {
