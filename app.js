@@ -189,6 +189,7 @@ const refs = {
   applyUpdateBannerButton: document.querySelector("#apply-update-banner-button"),
   dismissUpdateBannerButton: document.querySelector("#dismiss-update-banner-button"),
   memberFilterButtons: [...document.querySelectorAll("[data-member-filter]")],
+  homeMetricBlocks: [...document.querySelectorAll(".hero-summary__flow .metric-block")],
   syncDot: document.querySelector("#sync-dot"),
   syncStatusLabel: document.querySelector("#sync-status-label"),
   storageStatusLabel: document.querySelector("#storage-status-label"),
@@ -330,6 +331,7 @@ const state = {
   searchPeriod: "all",
   searchQuickCategory: "",
   searchQuickType: "",
+  homeMetricFilter: null,
   memberFilter: "all",
   currentYearEndTaxUser: defaultYearEndTaxUser(),
   yearEndTaxInputs: {},
@@ -471,6 +473,16 @@ function bindEvents() {
       renderAnalysis();
       await persistUiMeta();
       renderIcons();
+    });
+  });
+
+  refs.homeMetricBlocks.forEach((block) => {
+    block.addEventListener("click", () => {
+      const type = homeMetricBlockType(block);
+      if (!type) return;
+      state.homeMetricFilter = state.homeMetricFilter === type ? null : type;
+      updateHomeMetricBlockStyles();
+      renderDailyRecords();
     });
   });
 
@@ -1388,10 +1400,32 @@ function renderCalendar() {
 }
 
 function renderDailyRecords() {
-  const items = getMemberScopedMonthTransactions().filter((item) => item.date === state.selectedDate);
+  let items = getMemberScopedMonthTransactions().filter((item) => item.date === state.selectedDate);
+  if (state.homeMetricFilter) {
+    items = items.filter((item) => item.type === state.homeMetricFilter);
+  }
   refs.selectedDateTitle.textContent = displaySelectedDate(state.selectedDate);
-  refs.recordsCaption.textContent = items.length ? `${items.length}건의 내역` : "지출 내역이 없어요.";
+  refs.recordsCaption.textContent = items.length ? `${items.length}건의 내역` : "내역이 없어요.";
   renderRecordCollection(refs.recordsList, items, "daily");
+}
+
+function homeMetricBlockType(block) {
+  if (block.classList.contains("metric-block--expense")) return "expense";
+  if (block.classList.contains("metric-block--income")) return "income";
+  if (block.classList.contains("metric-block--investment")) return "investment";
+  return "";
+}
+
+function updateHomeMetricBlockStyles() {
+  refs.homeMetricBlocks.forEach((block) => {
+    const type = homeMetricBlockType(block);
+    if (state.homeMetricFilter) {
+      block.classList.toggle("is-active", state.homeMetricFilter === type);
+      block.classList.toggle("is-dimmed", state.homeMetricFilter !== type);
+      return;
+    }
+    block.classList.remove("is-active", "is-dimmed");
+  });
 }
 
 function renderListRecords() {

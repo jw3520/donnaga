@@ -264,6 +264,20 @@ button:active {
   gap: 2px;
 }
 
+.hero-summary__flow .metric-block {
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hero-summary__flow .metric-block.is-dimmed {
+  opacity: 0.4;
+}
+
+.hero-summary__flow .metric-block.is-active {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
 .hero-summary__body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(136px, 0.92fr);
