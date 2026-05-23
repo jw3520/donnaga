@@ -183,10 +183,14 @@
           <section class="panel panel--settings">
             <div class="settings-list">
               <article class="settings-row settings-row--danger">
-                <div class="stack">
-                  <strong>앱 최신버전 업데이트</strong>
-                  <p id="update-version-label">ver 26.05.16.00</p>
+                <div class="stack settings-update-stack">
+                  <div class="settings-update-title-row">
+                    <strong>앱 최신버전 업데이트</strong>
+                    <button class="update-info-button" id="settings-update-info-button" type="button" aria-label="업데이트 변경 사항 보기" aria-expanded="false" aria-controls="settings-update-info-tooltip">i</button>
+                  </div>
+                  <p id="update-version-label">ver 26.05.24.1</p>
                   <p id="update-time-label">마지막 확인: 아직 기록이 없어요.</p>
+                  <div class="update-info-tooltip" id="settings-update-info-tooltip" role="tooltip" hidden></div>
                 </div>
                 <button class="secondary-button" id="clear-web-cache-button" type="button">업데이트</button>
               </article>

@@ -14,7 +14,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "26.05.16.00";
+const APP_VERSION = "26.05.24.1";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -24,6 +24,30 @@ const SYNC_INTERVAL_MS = 60_000;
 const SYNC_PUSH_BATCH_SIZE = 200;
 const CALENDAR_SWIPE_THRESHOLD = 42;
 const UPDATE_CHECK_ASSETS = ["./index.html", "./app.js", "./styles.css", "./year-end-tax-utils.js"];
+const RELEASE_NOTES = [
+  {
+    "version": "26.05.24.1",
+    "items": [
+      "요약 영역을 선택하면 해당 월 전체 내역을 유형별로 볼 수 있어요.",
+      "요약 영역 선택 후 내역 목록 위치로 자동 이동하도록 조정했어요.",
+      "설정 탭 업데이트 항목에서 변경 사항을 확인할 수 있어요.",
+    ],
+  },
+  {
+    "version": "26.05.16.1",
+    "items": [
+      "연말정산 미리보기와 예산 화면의 월간 요약을 다듬었어요.",
+      "게스트 샌드박스 데이터와 동기화 상태 표시를 안정화했어요.",
+    ],
+  },
+  {
+    "version": "26.05.16.0",
+    "items": [
+      "앱 업데이트 확인과 캐시 새로고침 흐름을 추가했어요.",
+      "설정 탭에서 현재 앱 버전과 마지막 확인 시간을 볼 수 있어요.",
+    ],
+  },
+];
 const MEMBERS = [
   { id: "정우", name: "정우" },
   { id: "솔이", name: "솔이" },
@@ -197,6 +221,8 @@ const refs = {
   syncDetailLabel: document.querySelector("#sync-detail-label"),
   updateTimeLabel: document.querySelector("#update-time-label"),
   updateVersionLabel: document.querySelector("#update-version-label"),
+  settingsUpdateInfoButton: document.querySelector("#settings-update-info-button"),
+  settingsUpdateInfoTooltip: document.querySelector("#settings-update-info-tooltip"),
   manualSyncButton: document.querySelector("#manual-sync-button"),
   clearWebCacheButton: document.querySelector("#clear-web-cache-button"),
   settingsUpdateBadge: document.querySelector("#settings-update-badge"),
@@ -348,6 +374,9 @@ const state = {
   lastSyncedAt: null,
   lastUpdateCheckedAt: null,
   updateToken: "",
+  latestVersion: "",
+  releaseNotes: [],
+  isUpdateInfoOpen: false,
   syncDetailMessage: "",
   verifyingPin: false,
 };
@@ -551,6 +580,7 @@ function bindEvents() {
   refs.clearWebCacheButton.addEventListener("click", async () => {
     await clearWebCacheAndReload();
   });
+  refs.settingsUpdateInfoButton?.addEventListener("click", toggleUpdateInfoTooltip);
   refs.applyUpdateBannerButton.addEventListener("click", async () => {
     await openSettingsAndTriggerUpdate();
   });
@@ -906,7 +936,44 @@ function syncUpdateUi() {
   refs.clearWebCacheButton.classList.toggle("secondary-button", !state.updateAvailable);
   refs.clearWebCacheButton.classList.toggle("is-pulsing", state.updateAvailable && state.currentScreen === "settings");
   refs.applyUpdateBannerButton?.classList.toggle("is-pulsing", shouldShowMainUpdateBanner());
+  renderUpdateInfoTooltip();
   syncUpdateTimestampUi();
+}
+
+function renderUpdateInfoTooltip() {
+  const tooltip = refs.settingsUpdateInfoTooltip;
+  const infoButton = refs.settingsUpdateInfoButton;
+  if (!tooltip || !infoButton) return;
+
+  const shouldShow = state.isUpdateInfoOpen;
+  tooltip.hidden = !shouldShow;
+  infoButton.setAttribute("aria-expanded", shouldShow ? "true" : "false");
+  if (!shouldShow) return;
+
+  const latestVersion = state.latestVersion || "최신 버전";
+  const notes = state.releaseNotes.length > 0 ? state.releaseNotes : RELEASE_NOTES.slice(0, 3);
+  tooltip.innerHTML = notes
+    .map((note) => {
+      const items = (note.items || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+      return `
+        <div class="update-info-version-row">
+          <strong>v${escapeHtml(note.version || latestVersion)}</strong>
+          <ul>${items}</ul>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function toggleUpdateInfoTooltip() {
+  state.isUpdateInfoOpen = !state.isUpdateInfoOpen;
+  renderUpdateInfoTooltip();
+}
+
+function setLatestUpdateInfo(latestVersion = "", releaseNotes = []) {
+  state.latestVersion = latestVersion || "";
+  state.releaseNotes = releaseNotes;
+  renderUpdateInfoTooltip();
 }
 
 function syncUpdateTimestampUi() {
@@ -926,7 +993,73 @@ async function markUpdateChecked() {
   syncUpdateTimestampUi();
 }
 
+function compareVersions(versionA, versionB) {
+  const partsA = String(versionA || "")
+    .split(".")
+    .map((part) => Number.parseInt(part, 10) || 0);
+  const partsB = String(versionB || "")
+    .split(".")
+    .map((part) => Number.parseInt(part, 10) || 0);
+  const length = Math.max(partsA.length, partsB.length);
+
+  for (let index = 0; index < length; index += 1) {
+    const diff = (partsA[index] || 0) - (partsB[index] || 0);
+    if (diff !== 0) return diff > 0 ? 1 : -1;
+  }
+
+  return 0;
+}
+
+function parseAppVersionFromText(source) {
+  const match = String(source || "").match(/const\s+APP_VERSION\s*=\s*"([^"]+)"/);
+  return match?.[1] || "";
+}
+
+function parseReleaseNotesFromText(source) {
+  const match = String(source || "").match(/const\s+RELEASE_NOTES\s*=\s*(\[[\s\S]*?\]);\s*const\s+MEMBERS/);
+  if (!match) return [];
+
+  try {
+    const parsed = JSON.parse(match[1].replace(/,\s*([}\]])/g, "$1"));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function getReleaseNotesBetween(currentVersion, latestVersion, notes = RELEASE_NOTES) {
+  return notes
+    .filter((note) => {
+      const version = note?.version || "";
+      return compareVersions(version, currentVersion) > 0 && compareVersions(version, latestVersion) <= 0;
+    })
+    .sort((left, right) => compareVersions(right.version, left.version));
+}
+
 async function detectCachedAssetUpdate() {
+  let latestVersion = "";
+  let networkReleaseNotes = [];
+
+  try {
+    const appResponse = await fetch(`./app.js?t=${Date.now()}`, { cache: "no-store" });
+    if (appResponse.ok) {
+      const appSource = await appResponse.text();
+      latestVersion = parseAppVersionFromText(appSource);
+      networkReleaseNotes = parseReleaseNotesFromText(appSource);
+    }
+  } catch {
+    // Fall back to cached asset comparison below if the version probe fails.
+  }
+
+  if (latestVersion) {
+    const hasVersionUpdate = compareVersions(latestVersion, APP_VERSION) > 0;
+    setLatestUpdateInfo(
+      latestVersion,
+      hasVersionUpdate ? getReleaseNotesBetween(APP_VERSION, latestVersion, networkReleaseNotes) : [],
+    );
+    return hasVersionUpdate;
+  }
+
   if (!("caches" in window)) return false;
   for (const asset of UPDATE_CHECK_ASSETS) {
     try {
@@ -937,6 +1070,7 @@ async function detectCachedAssetUpdate() {
       if (!cachedResponse || !networkResponse.ok) continue;
       const [cachedText, networkText] = await Promise.all([cachedResponse.text(), networkResponse.text()]);
       if (cachedText !== networkText) {
+        setLatestUpdateInfo("", []);
         return true;
       }
     } catch {
@@ -3003,6 +3137,15 @@ function renderAnalysisDonut(items, mode = "expense") {
 function displaySelectedDate(date) {
   const parsed = new Date(`${date}T00:00:00`);
   return `${parsed.getMonth() + 1}월 ${parsed.getDate()}일`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 function sumByType(items, type) {
