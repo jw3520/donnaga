@@ -204,6 +204,7 @@ const refs = {
   logoutButton: document.querySelector("#logout-button"),
   calendarCard: document.querySelector("#calendar-card"),
   calendarGrid: document.querySelector("#calendar-grid"),
+  dailyRecordsPanel: document.querySelector(".list-panel--daily"),
   selectedDateTitle: document.querySelector("#selected-date-title"),
   recordsList: document.querySelector("#records-list"),
   recordsCaption: document.querySelector("#records-caption"),
@@ -483,6 +484,7 @@ function bindEvents() {
       state.homeMetricFilter = state.homeMetricFilter === type ? null : type;
       updateHomeMetricBlockStyles();
       renderDailyRecords();
+      if (state.homeMetricFilter) scrollDailyRecordsIntoView();
     });
   });
 
@@ -1391,19 +1393,25 @@ function renderCalendar() {
     button.addEventListener("click", async () => {
       state.selectedDate = button.dataset.date;
       state.selectedDateByUser = true;
+      state.homeMetricFilter = null;
       await persistUiMeta();
       renderCalendar();
       renderDailyRecords();
+      updateHomeMetricBlockStyles();
       renderIcons();
     });
   });
 }
 
 function renderDailyRecords() {
-  let items = getMemberScopedMonthTransactions().filter((item) => item.date === state.selectedDate);
   if (state.homeMetricFilter) {
-    items = items.filter((item) => item.type === state.homeMetricFilter);
+    const items = getMemberScopedMonthTransactions().filter((item) => item.type === state.homeMetricFilter);
+    refs.selectedDateTitle.textContent = `${shortMonthLabel(state.currentMonth)} ${typeLabel(state.homeMetricFilter)}`;
+    refs.recordsCaption.textContent = items.length ? `이번 달 ${items.length}건의 내역` : "내역이 없어요.";
+    renderRecordCollection(refs.recordsList, items, "daily");
+    return;
   }
+  const items = getMemberScopedMonthTransactions().filter((item) => item.date === state.selectedDate);
   refs.selectedDateTitle.textContent = displaySelectedDate(state.selectedDate);
   refs.recordsCaption.textContent = items.length ? `${items.length}건의 내역` : "내역이 없어요.";
   renderRecordCollection(refs.recordsList, items, "daily");
@@ -1426,6 +1434,10 @@ function updateHomeMetricBlockStyles() {
     }
     block.classList.remove("is-active", "is-dimmed");
   });
+}
+
+function scrollDailyRecordsIntoView() {
+  refs.dailyRecordsPanel?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function renderListRecords() {
