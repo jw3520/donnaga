@@ -308,6 +308,8 @@ const refs = {
   typeLabel: document.querySelector("#entry-type-label"),
   typeChips: [...document.querySelectorAll(".type-chip")],
   amountInput: document.querySelector(".amount-input"),
+  noteInput: document.querySelector("#entry-form input[name='note']"),
+  entryNoteSuggestions: document.querySelector("#entry-note-suggestions"),
   categoryField: document.querySelector("#category-field"),
   memberField: document.querySelector("#member-field"),
   accountField: document.querySelector("#account-field"),
@@ -387,6 +389,7 @@ let calendarTouchState = null;
 let swRegistrationRef = null;
 let reloadingForServiceWorker = false;
 let loginLockTimerId = null;
+let entryNoteSuggestions = [];
 await boot();
 
 async function boot() {
@@ -642,6 +645,17 @@ function bindEvents() {
     if (!button) return;
     event.preventDefault();
     setEntryCategory(button.dataset.categoryValue);
+  });
+  refs.noteInput.addEventListener("input", renderEntryNoteSuggestions);
+  refs.noteInput.addEventListener("focus", renderEntryNoteSuggestions);
+  refs.noteInput.addEventListener("blur", () => {
+    window.setTimeout(hideEntryNoteSuggestions, 120);
+  });
+  refs.entryNoteSuggestions.addEventListener("pointerdown", (event) => {
+    const button = event.target.closest("[data-note-suggestion]");
+    if (!button) return;
+    event.preventDefault();
+    applyEntryNoteSuggestion(Number(button.dataset.noteSuggestion));
   });
   refs.assetList.addEventListener("submit", onBudgetLimitSubmit);
   refs.budgetList.addEventListener("submit", onBudgetLimitSubmit);
@@ -2251,6 +2265,7 @@ function setEntryType(type) {
     setEntryCategory("");
   } else {
     syncEntrySelectionUI();
+    renderEntryNoteSuggestions();
   }
 }
 
@@ -2332,6 +2347,7 @@ function setEntryCategory(category) {
     refs.budgetGroupField.value = budgetGroupForCategory(category, refs.typeField.value)?.id || refs.budgetGroupField.value;
   }
   syncEntrySelectionUI();
+  renderEntryNoteSuggestions();
 }
 
 function setEntryBudgetGroup(groupId) {
@@ -2342,6 +2358,7 @@ function setEntryBudgetGroup(groupId) {
     refs.categoryField.value = "";
   }
   syncEntrySelectionUI();
+  renderEntryNoteSuggestions();
 }
 
 function setEntryMember(member) {
@@ -2359,13 +2376,104 @@ function setAmountValue(value) {
   refs.amountInput.value = digits;
 }
 
+function renderEntryNoteSuggestions() {
+  const suggestions = getEntryNoteSuggestions();
+  if (!suggestions.length) {
+    hideEntryNoteSuggestions();
+    return;
+  }
+  entryNoteSuggestions = suggestions;
+  refs.entryNoteSuggestions.innerHTML = suggestions.map((item, index) => `
+    <button class="entry-note-suggestion" type="button" role="option" data-note-suggestion="${index}">
+      <span>${escapeHtml(item.note)}</span>
+      <small>${escapeHtml(item.meta)}</small>
+    </button>
+  `).join("");
+  refs.entryNoteSuggestions.classList.remove("is-hidden");
+}
+
+function hideEntryNoteSuggestions() {
+  entryNoteSuggestions = [];
+  refs.entryNoteSuggestions.classList.add("is-hidden");
+  refs.entryNoteSuggestions.innerHTML = "";
+}
+
+function applyEntryNoteSuggestion(index) {
+  refs.noteInput.value = entryNoteSuggestions[index]?.note || "";
+  hideEntryNoteSuggestions();
+  refs.noteInput.focus();
+}
+
+function getEntryNoteSuggestions() {
+  const query = normalizeSuggestionText(refs.noteInput.value);
+  const type = normalizeTypeId(refs.typeField.value || "");
+  const category = normalizeCategoryId(refs.categoryField.value || "", type);
+  const budgetGroupId = refs.budgetGroupField.value || "";
+  if (!query || !type || !category) return [];
+
+  const grouped = state.transactions.reduce((acc, item) => {
+    if (item.deleted || item.id === state.editingId) return acc;
+    const note = String(item.note || "").trim();
+    if (!note) return acc;
+    const itemType = normalizeTypeId(item.type || "");
+    const itemCategory = normalizeCategoryId(item.category || "", itemType);
+    if (itemType !== type || itemCategory !== category) return acc;
+    if (type !== "income" && !budgetGroupMatchesCategory(budgetGroupId, itemCategory, itemType)) return acc;
+
+    const normalizedNote = normalizeSuggestionText(note);
+    const score = suggestionScore(normalizedNote, query);
+    if (score <= 0 || normalizedNote === query) return acc;
+
+    acc[note] ??= {
+      note,
+      count: 0,
+      score,
+      latestDate: "",
+      categoryLabel: categoryAppearance(itemCategory, itemType).label,
+    };
+    acc[note].count += 1;
+    acc[note].score = Math.max(acc[note].score, score);
+    if (String(item.date || "") > acc[note].latestDate) acc[note].latestDate = String(item.date || "");
+    return acc;
+  }, {});
+
+  return Object.values(grouped)
+    .sort((left, right) => {
+      if (right.score !== left.score) return right.score - left.score;
+      if (right.count !== left.count) return right.count - left.count;
+      return right.latestDate.localeCompare(left.latestDate);
+    })
+    .slice(0, 3)
+    .map((item) => ({
+      ...item,
+      meta: item.count > 1 ? `${item.categoryLabel} · ${item.count}회` : item.categoryLabel,
+    }));
+}
+
+function normalizeSuggestionText(value) {
+  return String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("ko-KR");
+}
+
+function suggestionScore(candidate, query) {
+  if (!candidate || !query) return 0;
+  if (candidate.startsWith(query)) return 100 + query.length;
+  if (candidate.includes(query)) return 70 + query.length;
+  let queryIndex = 0;
+  for (const char of candidate) {
+    if (char === query[queryIndex]) queryIndex += 1;
+    if (queryIndex === query.length) return 35 + query.length;
+  }
+  return 0;
+}
+
 function resetEntryForm() {
   state.editingId = null;
   refs.editingIdField.value = "";
   refs.entryDeleteButton.classList.add("is-hidden");
   refs.entrySubmitButton.textContent = "저장";
   clearEntrySelections();
-  refs.entryForm.elements.note.value = "";
+  refs.noteInput.value = "";
+  hideEntryNoteSuggestions();
 }
 
 function openEntryDialog() {
@@ -2391,7 +2499,8 @@ function startEdit(id) {
   setEntryMember(transaction.member);
   setEntryAccount(normalizeAccountId(transaction.account || transaction.payment_method || ""));
   refs.dateField.value = transaction.date;
-  refs.entryForm.elements.note.value = transaction.note || "";
+  refs.noteInput.value = transaction.note || "";
+  hideEntryNoteSuggestions();
   requestAnimationFrame(() => refs.entryDialog.showModal());
 }
 

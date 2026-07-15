@@ -2434,6 +2434,47 @@ select {
   background: #fff;
 }
 
+.entry-note-suggestions {
+  display: grid;
+  gap: 6px;
+  padding: 7px;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid rgba(77, 182, 172, 0.18);
+  box-shadow: 0 12px 26px rgba(47, 54, 64, 0.11);
+}
+
+.entry-note-suggestion {
+  width: 100%;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 0;
+  border-radius: 13px;
+  background: #f6f9f9;
+  color: #2f3943;
+  text-align: left;
+}
+
+.entry-note-suggestion span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.entry-note-suggestion small {
+  flex: 0 0 auto;
+  color: #8a949e;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .entry-form__actions {
   gap: 10px;
   padding-top: 4px;
