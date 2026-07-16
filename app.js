@@ -14,7 +14,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "26.07.15.1";
+const APP_VERSION = "26.07.16.1";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -25,6 +25,12 @@ const SYNC_PUSH_BATCH_SIZE = 200;
 const CALENDAR_SWIPE_THRESHOLD = 42;
 const UPDATE_CHECK_ASSETS = ["./index.html", "./app.js", "./styles.css", "./year-end-tax-utils.js"];
 const RELEASE_NOTES = [
+  {
+    "version": "26.07.16.1",
+    "items": [
+      "메모 입력칸에 포커스만 해도 같은 분류에서 자주 쓴 메모 상위 3개를 추천해요.",
+    ],
+  },
   {
     "version": "26.07.15.1",
     "items": [
@@ -2416,7 +2422,7 @@ function getEntryNoteSuggestions() {
   const type = normalizeTypeId(refs.typeField.value || "");
   const category = normalizeCategoryId(refs.categoryField.value || "", type);
   const budgetGroupId = refs.budgetGroupField.value || "";
-  if (!query || !type || !category) return [];
+  if (!type || !category) return [];
 
   const grouped = state.transactions.reduce((acc, item) => {
     if (item.deleted || item.id === state.editingId) return acc;
@@ -2428,8 +2434,8 @@ function getEntryNoteSuggestions() {
     if (type !== "income" && !budgetGroupMatchesCategory(budgetGroupId, itemCategory, itemType)) return acc;
 
     const normalizedNote = normalizeSuggestionText(note);
-    const score = suggestionScore(normalizedNote, query);
-    if (score <= 0 || normalizedNote === query) return acc;
+    const score = query ? suggestionScore(normalizedNote, query) : 1;
+    if (score <= 0 || (query && normalizedNote === query)) return acc;
 
     acc[note] ??= {
       note,
