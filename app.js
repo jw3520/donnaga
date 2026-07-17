@@ -14,7 +14,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "26.07.17.1";
+const APP_VERSION = "26.07.17.2";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -25,6 +25,12 @@ const SYNC_PUSH_BATCH_SIZE = 200;
 const CALENDAR_SWIPE_THRESHOLD = 42;
 const UPDATE_CHECK_ASSETS = ["./index.html", "./app.js", "./styles.css", "./year-end-tax-utils.js"];
 const RELEASE_NOTES = [
+  {
+    "version": "26.07.17.2",
+    "items": [
+      "메모 자동완성 선택 터치가 아래 입력 항목으로 전달되지 않도록 조정했어요.",
+    ],
+  },
   {
     "version": "26.07.17.1",
     "items": [
@@ -409,6 +415,7 @@ let swRegistrationRef = null;
 let reloadingForServiceWorker = false;
 let loginLockTimerId = null;
 let entryNoteSuggestions = [];
+let entryNoteSuggestionPointerId = null;
 await boot();
 
 async function boot() {
@@ -672,6 +679,18 @@ function bindEvents() {
     const button = event.target.closest("[data-note-suggestion]");
     if (!button) return;
     event.preventDefault();
+    event.stopPropagation();
+    entryNoteSuggestionPointerId = event.pointerId;
+    refs.entryNoteSuggestions.setPointerCapture?.(event.pointerId);
+    applyEntryNoteSuggestion(Number(button.dataset.noteSuggestion), true);
+  });
+  refs.entryNoteSuggestions.addEventListener("pointerup", finishEntryNoteSuggestionPointer);
+  refs.entryNoteSuggestions.addEventListener("pointercancel", finishEntryNoteSuggestionPointer);
+  refs.entryNoteSuggestions.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-note-suggestion]");
+    if (!button) return;
+    event.preventDefault();
+    event.stopPropagation();
     applyEntryNoteSuggestion(Number(button.dataset.noteSuggestion));
   });
   refs.assetList.addEventListener("submit", onBudgetLimitSubmit);
@@ -2420,10 +2439,21 @@ function hideEntryNoteSuggestions() {
   refs.entryNoteSuggestions.innerHTML = "";
 }
 
-function applyEntryNoteSuggestion(index) {
+function applyEntryNoteSuggestion(index, keepSuggestionsOpen = false) {
   refs.noteInput.value = entryNoteSuggestions[index]?.note || "";
-  hideEntryNoteSuggestions();
+  if (!keepSuggestionsOpen) hideEntryNoteSuggestions();
   refs.noteInput.focus();
+}
+
+function finishEntryNoteSuggestionPointer(event) {
+  if (event.pointerId !== entryNoteSuggestionPointerId) return;
+  event.preventDefault();
+  event.stopPropagation();
+  if (refs.entryNoteSuggestions.hasPointerCapture?.(event.pointerId)) {
+    refs.entryNoteSuggestions.releasePointerCapture(event.pointerId);
+  }
+  entryNoteSuggestionPointerId = null;
+  hideEntryNoteSuggestions();
 }
 
 function getEntryNoteSuggestions() {
