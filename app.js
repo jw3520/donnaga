@@ -661,9 +661,7 @@ function bindEvents() {
   });
   refs.noteInput.addEventListener("input", renderEntryNoteSuggestions);
   refs.noteInput.addEventListener("focus", renderEntryNoteSuggestions);
-  refs.noteInput.addEventListener("blur", () => {
-    window.setTimeout(hideEntryNoteSuggestions, 120);
-  });
+  refs.noteInput.addEventListener("blur", hideEntryNoteSuggestions);
   refs.entryNoteSuggestions.addEventListener("pointerdown", (event) => {
     const button = event.target.closest("[data-note-suggestion]");
     if (!button) return;
@@ -2390,6 +2388,11 @@ function setAmountValue(value) {
 }
 
 function renderEntryNoteSuggestions() {
+  if (document.activeElement !== refs.noteInput) {
+    hideEntryNoteSuggestions();
+    return;
+  }
+
   const suggestions = getEntryNoteSuggestions();
   if (!suggestions.length) {
     hideEntryNoteSuggestions();
