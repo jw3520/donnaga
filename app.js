@@ -14,7 +14,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "26.07.16.1";
+const APP_VERSION = "26.07.17.1";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -25,6 +25,12 @@ const SYNC_PUSH_BATCH_SIZE = 200;
 const CALENDAR_SWIPE_THRESHOLD = 42;
 const UPDATE_CHECK_ASSETS = ["./index.html", "./app.js", "./styles.css", "./year-end-tax-utils.js"];
 const RELEASE_NOTES = [
+  {
+    "version": "26.07.17.1",
+    "items": [
+      "메모 자동완성 추천은 최근 1년 내에 입력한 기록만 반영해요.",
+    ],
+  },
   {
     "version": "26.07.16.1",
     "items": [
@@ -2425,10 +2431,12 @@ function getEntryNoteSuggestions() {
   const type = normalizeTypeId(refs.typeField.value || "");
   const category = normalizeCategoryId(refs.categoryField.value || "", type);
   const budgetGroupId = refs.budgetGroupField.value || "";
+  const suggestionStartDate = oneYearAgoISO();
   if (!type || !category) return [];
 
   const grouped = state.transactions.reduce((acc, item) => {
     if (item.deleted || item.id === state.editingId) return acc;
+    if (String(item.date || "") < suggestionStartDate) return acc;
     const note = String(item.note || "").trim();
     if (!note) return acc;
     const itemType = normalizeTypeId(item.type || "");
@@ -2480,6 +2488,15 @@ function suggestionScore(candidate, query) {
     if (queryIndex === query.length) return 35 + query.length;
   }
   return 0;
+}
+
+function oneYearAgoISO() {
+  const date = new Date(`${todayISO()}T12:00:00`);
+  date.setFullYear(date.getFullYear() - 1);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function resetEntryForm() {
