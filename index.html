@@ -188,7 +188,7 @@
                     <strong>앱 최신버전 업데이트</strong>
                     <button class="update-info-button" id="settings-update-info-button" type="button" aria-label="업데이트 변경 사항 보기" aria-expanded="false" aria-controls="settings-update-info-tooltip">i</button>
                   </div>
-                  <p id="update-version-label">ver 26.07.17.2</p>
+                  <p id="update-version-label">ver 26.07.17.3</p>
                   <p id="update-time-label">마지막 확인: 아직 기록이 없어요.</p>
                   <div class="update-info-tooltip" id="settings-update-info-tooltip" role="tooltip" hidden></div>
                 </div>
@@ -542,17 +542,22 @@
           <div class="entry-form__row entry-form__row--meta">
             <label class="entry-inline-field">
               <span>메모</span>
-              <input
-                name="note"
-                type="text"
-                maxlength="80"
-                placeholder="예: 점심, 관리비, 선물"
-                autocomplete="off"
-                autocorrect="off"
-                autocapitalize="off"
-                spellcheck="false"
-                data-lpignore="true"
-              />
+              <div class="entry-note-input-wrap">
+                <input
+                  name="note"
+                  type="text"
+                  maxlength="80"
+                  placeholder="예: 점심, 관리비, 선물"
+                  autocomplete="off"
+                  autocorrect="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  data-lpignore="true"
+                />
+                <button class="entry-note-clear-button is-hidden" id="entry-note-clear-button" type="button" aria-label="메모 지우기">
+                  <i data-lucide="x"></i>
+                </button>
+              </div>
               <div class="entry-note-suggestions is-hidden" id="entry-note-suggestions" role="listbox" aria-label="메모 추천"></div>
             </label>
             <label class="entry-inline-field">

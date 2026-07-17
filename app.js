@@ -14,7 +14,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "26.07.17.2";
+const APP_VERSION = "26.07.17.3";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -25,6 +25,13 @@ const SYNC_PUSH_BATCH_SIZE = 200;
 const CALENDAR_SWIPE_THRESHOLD = 42;
 const UPDATE_CHECK_ASSETS = ["./index.html", "./app.js", "./styles.css", "./year-end-tax-utils.js"];
 const RELEASE_NOTES = [
+  {
+    "version": "26.07.17.3",
+    "items": [
+      "메모 자동완성 선택 뒤에 발생하는 터치가 다른 입력 버튼으로 전달되지 않게 막았어요.",
+      "메모 입력칸에서 X 버튼으로 메모만 바로 지울 수 있어요.",
+    ],
+  },
   {
     "version": "26.07.17.2",
     "items": [
@@ -334,6 +341,7 @@ const refs = {
   typeChips: [...document.querySelectorAll(".type-chip")],
   amountInput: document.querySelector(".amount-input"),
   noteInput: document.querySelector("#entry-form input[name='note']"),
+  entryNoteClearButton: document.querySelector("#entry-note-clear-button"),
   entryNoteSuggestions: document.querySelector("#entry-note-suggestions"),
   categoryField: document.querySelector("#category-field"),
   memberField: document.querySelector("#member-field"),
@@ -416,6 +424,8 @@ let reloadingForServiceWorker = false;
 let loginLockTimerId = null;
 let entryNoteSuggestions = [];
 let entryNoteSuggestionPointerId = null;
+let suppressEntrySuggestionClick = false;
+let suppressEntrySuggestionClickTimer = null;
 await boot();
 
 async function boot() {
@@ -672,9 +682,15 @@ function bindEvents() {
     event.preventDefault();
     setEntryCategory(button.dataset.categoryValue);
   });
-  refs.noteInput.addEventListener("input", renderEntryNoteSuggestions);
+  refs.noteInput.addEventListener("input", () => {
+    syncEntryNoteClearButton();
+    renderEntryNoteSuggestions();
+  });
   refs.noteInput.addEventListener("focus", renderEntryNoteSuggestions);
   refs.noteInput.addEventListener("blur", hideEntryNoteSuggestions);
+  refs.entryNoteClearButton.addEventListener("pointerdown", (event) => event.preventDefault());
+  refs.entryNoteClearButton.addEventListener("click", clearEntryNote);
+  document.addEventListener("click", suppressEntrySuggestionClickEvent, true);
   refs.entryNoteSuggestions.addEventListener("pointerdown", (event) => {
     const button = event.target.closest("[data-note-suggestion]");
     if (!button) return;
@@ -2441,6 +2457,7 @@ function hideEntryNoteSuggestions() {
 
 function applyEntryNoteSuggestion(index, keepSuggestionsOpen = false) {
   refs.noteInput.value = entryNoteSuggestions[index]?.note || "";
+  syncEntryNoteClearButton();
   if (!keepSuggestionsOpen) hideEntryNoteSuggestions();
   refs.noteInput.focus();
 }
@@ -2453,7 +2470,36 @@ function finishEntryNoteSuggestionPointer(event) {
     refs.entryNoteSuggestions.releasePointerCapture(event.pointerId);
   }
   entryNoteSuggestionPointerId = null;
+  suppressNextEntrySuggestionClick();
   hideEntryNoteSuggestions();
+}
+
+function suppressNextEntrySuggestionClick() {
+  suppressEntrySuggestionClick = true;
+  window.clearTimeout(suppressEntrySuggestionClickTimer);
+  suppressEntrySuggestionClickTimer = window.setTimeout(() => {
+    suppressEntrySuggestionClick = false;
+  }, 500);
+}
+
+function suppressEntrySuggestionClickEvent(event) {
+  if (!suppressEntrySuggestionClick) return;
+  suppressEntrySuggestionClick = false;
+  window.clearTimeout(suppressEntrySuggestionClickTimer);
+  event.preventDefault();
+  event.stopImmediatePropagation();
+}
+
+function clearEntryNote(event) {
+  event.preventDefault();
+  refs.noteInput.value = "";
+  syncEntryNoteClearButton();
+  hideEntryNoteSuggestions();
+  refs.noteInput.focus();
+}
+
+function syncEntryNoteClearButton() {
+  refs.entryNoteClearButton.classList.toggle("is-hidden", !refs.noteInput.value);
 }
 
 function getEntryNoteSuggestions() {
@@ -2536,6 +2582,7 @@ function resetEntryForm() {
   refs.entrySubmitButton.textContent = "저장";
   clearEntrySelections();
   refs.noteInput.value = "";
+  syncEntryNoteClearButton();
   hideEntryNoteSuggestions();
 }
 
@@ -2563,6 +2610,7 @@ function startEdit(id) {
   setEntryAccount(normalizeAccountId(transaction.account || transaction.payment_method || ""));
   refs.dateField.value = transaction.date;
   refs.noteInput.value = transaction.note || "";
+  syncEntryNoteClearButton();
   hideEntryNoteSuggestions();
   requestAnimationFrame(() => refs.entryDialog.showModal());
 }
