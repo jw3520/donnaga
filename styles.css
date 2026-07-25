@@ -1922,6 +1922,36 @@ select {
   gap: 10px;
 }
 
+.search-form__actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.search-member-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.search-member-filter label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #59656f;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.search-member-filter input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #4db6ac;
+}
+
 .search-submit,
 .apply-button,
 .primary-button,
@@ -1935,8 +1965,8 @@ select {
 }
 
 .search-submit {
-  width: 140px;
-  margin: 0 auto;
+  width: 112px;
+  margin: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;

@@ -406,10 +406,16 @@
             <p><span>카테고리</span><strong id="search-category-summary">전체 카테고리</strong></p>
             <p><span>지불방식</span><strong id="search-account-summary">전체</strong></p>
           </div>
-          <button class="search-submit" type="submit">
-            <i data-lucide="search"></i>
-            <span>검색</span>
-          </button>
+          <div class="search-form__actions">
+            <div class="search-member-filter" aria-label="검색 사용자">
+              <label><input type="checkbox" data-search-member value="정우" checked /><span>정우</span></label>
+              <label><input type="checkbox" data-search-member value="솔이" checked /><span>솔이</span></label>
+            </div>
+            <button class="search-submit" type="submit">
+              <i data-lucide="search"></i>
+              <span>검색</span>
+            </button>
+          </div>
         </form>
         <div class="search-totals">
           <article><span>수입</span><strong id="search-income-total">0</strong></article>

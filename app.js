@@ -14,7 +14,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "26.07.17.3";
+const APP_VERSION = "26.07.25.1";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -25,6 +25,12 @@ const SYNC_PUSH_BATCH_SIZE = 200;
 const CALENDAR_SWIPE_THRESHOLD = 42;
 const UPDATE_CHECK_ASSETS = ["./index.html", "./app.js", "./styles.css", "./year-end-tax-utils.js"];
 const RELEASE_NOTES = [
+  {
+    "version": "26.07.25.1",
+    "items": [
+      "검색할 때 사용자별 체크박스로 결과를 따로 볼 수 있어요.",
+    ],
+  },
   {
     "version": "26.07.17.3",
     "items": [
@@ -313,6 +319,7 @@ const refs = {
   closeSearchButton: document.querySelector("#close-search-button"),
   searchForm: document.querySelector("#search-form"),
   searchQuery: document.querySelector("#search-query"),
+  searchMemberInputs: [...document.querySelectorAll("[data-search-member]")],
   searchDateLabel: document.querySelector("#search-date-label"),
   searchCategorySummary: document.querySelector("#search-category-summary"),
   searchAccountSummary: document.querySelector("#search-account-summary"),
@@ -2221,13 +2228,17 @@ async function onSearchSubmit(event) {
 
 async function executeSearch() {
   const query = refs.searchQuery.value.trim().toLowerCase();
+  const selectedMembers = refs.searchMemberInputs
+    .filter((input) => input.checked)
+    .map((input) => normalizeMemberId(input.value));
   const filtered = filterBySearchPeriod(
     state.transactions.filter((item) => {
       const searchText = `${item.note} ${categoryAppearance(item.category, item.type).label} ${item.memo || ""}`.toLowerCase();
       const normalizedCategory = normalizeCategoryId(item.category || "", item.type || "");
       const quickCategoryMatches = !state.searchQuickCategory || normalizedCategory === state.searchQuickCategory;
       const quickTypeMatches = !state.searchQuickType || normalizeTypeId(item.type || "") === state.searchQuickType;
-      return searchText.includes(query) && quickCategoryMatches && quickTypeMatches;
+      const memberMatches = selectedMembers.includes(normalizeMemberId(item.member));
+      return searchText.includes(query) && quickCategoryMatches && quickTypeMatches && memberMatches;
     }),
     state.searchPeriod,
   );
@@ -2900,6 +2911,12 @@ function syncMemberLabels() {
     if (!member) return;
     button.dataset.memberValue = member.id;
     button.textContent = member.name;
+  });
+  refs.searchMemberInputs.forEach((input, index) => {
+    const member = membersForCurrentRole()[index];
+    if (!member) return;
+    input.value = member.id;
+    input.nextElementSibling.textContent = member.name;
   });
   state.memberFilter = sanitizeMemberFilter(state.memberFilter);
   if (refs.memberField.value) {
