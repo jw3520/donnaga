@@ -322,6 +322,10 @@ button:active {
   background: #f0f2f5;
 }
 
+#hero-member-filter {
+  grid-template-columns: repeat(4, 1fr);
+}
+
 .hero-member-filter__button {
   min-height: 34px;
   border: 0;

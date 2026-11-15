@@ -14,7 +14,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "26.07.25.1";
+const APP_VERSION = "26.11.15.1";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -25,6 +25,12 @@ const SYNC_PUSH_BATCH_SIZE = 200;
 const CALENDAR_SWIPE_THRESHOLD = 42;
 const UPDATE_CHECK_ASSETS = ["./index.html", "./app.js", "./styles.css", "./year-end-tax-utils.js"];
 const RELEASE_NOTES = [
+  {
+    "version": "26.11.15.1",
+    "items": [
+      "결혼 후 공용 내역을 별도 사용자로 입력하고 필터링할 수 있어요.",
+    ],
+  },
   {
     "version": "26.07.25.1",
     "items": [
@@ -89,10 +95,12 @@ const RELEASE_NOTES = [
 const MEMBERS = [
   { id: "정우", name: "정우" },
   { id: "솔이", name: "솔이" },
+  { id: "공용", name: "공용" },
 ];
 const GUEST_MEMBERS = [
   { id: "철수", name: "철수" },
   { id: "영희", name: "영희" },
+  { id: "공용", name: "공용" },
 ];
 const YEAR_END_TAX_MOCK_DATA = {
   철수: {
@@ -2884,6 +2892,7 @@ function normalizeMemberId(value) {
   const normalized = String(value).trim();
   if (normalized === "영희") return "영희";
   if (normalized === "철수") return "철수";
+  if (normalized === "공용" || normalized === "공동") return "공용";
   if (normalized === "partner" || normalized === "솔이" || normalized === "예비신부") return "솔이";
   if (normalized === "jw" || normalized === "정우" || normalized === "나" || normalized === "Default") return "정우";
   return normalized;
