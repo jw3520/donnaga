@@ -2267,6 +2267,14 @@ select {
   gap: 11px;
 }
 
+.entry-field-group__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
 .entry-panel__label {
   font-size: 12px;
   font-weight: 800;
