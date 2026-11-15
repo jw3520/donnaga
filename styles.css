@@ -2463,17 +2463,19 @@ select {
 
 .auto-fab {
   position: fixed;
-  right: calc((100vw - min(430px, 100vw)) / 2 + 4px);
-  bottom: calc(env(safe-area-inset-bottom) + 120px);
-  z-index: 19;
-  width: 40px;
-  height: 40px;
-  border: 3px solid #fff;
+  right: calc((100vw - min(430px, 100vw)) / 2 + 16px);
+  bottom: calc(env(safe-area-inset-bottom) + 148px);
+  z-index: 18;
+  width: 46px;
+  height: 46px;
+  border: 0;
   border-radius: 50%;
-  background: #ff6f0f;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, #ff8b4a 0%, #ff6f0f 100%);
   color: #fff;
-  box-shadow: 0 8px 16px rgba(255, 111, 15, 0.32);
-  font-size: 10px;
+  box-shadow: 0 16px 28px rgba(255, 111, 15, 0.3);
+  font-size: 11px;
   font-weight: 900;
 }
 
