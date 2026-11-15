@@ -345,6 +345,7 @@
           </section>
         </section>
 
+        <button class="auto-fab" id="open-recurring-button" type="button" aria-label="자동입력 목록">Auto</button>
         <button class="fab" id="open-entry-button" type="button" aria-label="내역 추가">
           <i data-lucide="plus"></i>
         </button>
@@ -510,10 +511,17 @@
           </div>
         </div>
 
-        <div class="type-picker">
+        <div class="entry-type-row">
+          <div class="type-picker">
           <button class="type-chip type-chip--expense" type="button" data-type-value="expense">지출</button>
           <button class="type-chip type-chip--income" type="button" data-type-value="income">수입</button>
           <button class="type-chip type-chip--investment" type="button" data-type-value="investment">저축/투자</button>
+          </div>
+          <label class="recurring-control is-hidden" id="entry-recurring-control">
+            <span>매월 자동 입력</span>
+            <input id="entry-recurring-input" type="checkbox" />
+            <i aria-hidden="true"></i>
+          </label>
         </div>
 
         <input name="type" id="type-field" type="hidden" value="" />
@@ -582,6 +590,17 @@
           <button class="primary-button" id="entry-submit-button" type="submit">저장</button>
         </div>
       </form>
+    </dialog>
+
+    <dialog class="sheet-dialog" id="recurring-dialog">
+      <div class="sheet-content recurring-dialog__content">
+        <header class="sheet-header">
+          <span class="sheet-header__spacer"></span>
+          <strong>자동입력</strong>
+          <button class="header-icon-button" id="close-recurring-button" type="button" aria-label="닫기"><i data-lucide="x"></i></button>
+        </header>
+        <div class="recurring-list" id="recurring-list"></div>
+      </div>
     </dialog>
 
     <template id="record-item-template">

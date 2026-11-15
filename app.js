@@ -14,7 +14,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "26.11.15.2";
+const APP_VERSION = "26.11.15.3";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -25,6 +25,12 @@ const SYNC_PUSH_BATCH_SIZE = 200;
 const CALENDAR_SWIPE_THRESHOLD = 42;
 const UPDATE_CHECK_ASSETS = ["./index.html", "./app.js", "./styles.css", "./year-end-tax-utils.js"];
 const RELEASE_NOTES = [
+  {
+    "version": "26.11.15.3",
+    "items": [
+      "고정 지출과 저축/투자를 매월 자동으로 입력할 수 있어요.",
+    ],
+  },
   {
     "version": "26.11.15.2",
     "items": [
@@ -349,6 +355,10 @@ const refs = {
   investmentCategoryChips: document.querySelector("#investment-category-chips"),
   resetFilterButton: document.querySelector("#reset-filter-button"),
   openEntryButton: document.querySelector("#open-entry-button"),
+  openRecurringButton: document.querySelector("#open-recurring-button"),
+  recurringDialog: document.querySelector("#recurring-dialog"),
+  closeRecurringButton: document.querySelector("#close-recurring-button"),
+  recurringList: document.querySelector("#recurring-list"),
   entryDialog: document.querySelector("#entry-dialog"),
   closeEntryButton: document.querySelector("#close-entry-button"),
   entryForm: document.querySelector("#entry-form"),
@@ -368,6 +378,8 @@ const refs = {
   memberField: document.querySelector("#member-field"),
   accountField: document.querySelector("#account-field"),
   dateField: document.querySelector("#date-field"),
+  recurringControl: document.querySelector("#entry-recurring-control"),
+  recurringInput: document.querySelector("#entry-recurring-input"),
   entryBudgetGroupGrid: document.querySelector("#entry-budget-group-grid"),
   entryCategoryGrid: document.querySelector("#entry-category-grid"),
   memberButtons: [...document.querySelectorAll("[data-member-value]")],
@@ -471,6 +483,7 @@ async function boot() {
     await syncGuestSandboxSeed();
   }
   await loadTransactionsFromDb();
+  await generateDueRecurringTransactions();
   render();
   if (canReadServer()) {
     updateSyncUI(navigator.onLine ? "초기 동기화 중" : "오프라인", navigator.onLine ? "syncing" : "offline");
@@ -673,6 +686,13 @@ function bindEvents() {
   });
 
   refs.openEntryButton.addEventListener("click", openEntryDialog);
+  refs.openRecurringButton.addEventListener("click", openRecurringDialog);
+  refs.closeRecurringButton.addEventListener("click", () => refs.recurringDialog.close());
+  refs.recurringList.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-disable-recurring]");
+    if (!button) return;
+    void disableRecurringTransaction(button.dataset.disableRecurring);
+  });
   refs.closeEntryButton.addEventListener("click", () => refs.entryDialog.close());
   refs.entryForm.addEventListener("submit", onSubmitEntry);
   refs.resetFormButton.addEventListener("click", resetEntryForm);
@@ -739,7 +759,7 @@ function bindEvents() {
   refs.calendarCard.addEventListener("touchend", onCalendarTouchEnd, { passive: true });
   refs.analysisBody.addEventListener("touchstart", onAnalysisTouchStart, { passive: true });
   refs.analysisBody.addEventListener("touchend", onAnalysisTouchEnd, { passive: true });
-  [refs.monthPickerDialog, refs.searchDialog, refs.filterDialog, refs.installDialog, refs.entryDialog].forEach(
+  [refs.monthPickerDialog, refs.searchDialog, refs.filterDialog, refs.installDialog, refs.entryDialog, refs.recurringDialog].forEach(
     bindBackdropClose,
   );
   refs.loginGateForm.addEventListener("submit", onSubmitLoginGate);
@@ -936,6 +956,7 @@ async function onSubmitLoginGate(event) {
     await syncGuestSandboxSeed();
   }
   await loadTransactionsFromDb();
+  await generateDueRecurringTransactions();
   render();
   if (canReadServer() && navigator.onLine) {
     try {
@@ -2306,6 +2327,8 @@ async function onSubmitEntry(event) {
       date,
       note: note || existingTransaction?.note || defaultNote(category),
       scope: existingTransaction?.scope || currentDataScope(),
+      is_recurring: isRecurringEligible(type, category, refs.budgetGroupField.value) && refs.recurringInput.checked,
+      recurring_source_id: existingTransaction?.recurring_source_id || "",
     },
     true,
   );
@@ -2314,11 +2337,12 @@ async function onSubmitEntry(event) {
     return;
   }
   await db.transactions.put(transaction);
+  await loadTransactionsFromDb();
+  await generateDueRecurringTransactions();
   state.currentMonth = transaction.date.slice(0, 7);
   state.selectedDate = transaction.date;
   state.editingId = null;
   await persistUiMeta();
-  await loadTransactionsFromDb();
   refs.entryDialog.close();
   resetEntryForm();
   render();
@@ -2344,6 +2368,7 @@ function setEntryType(type) {
     syncEntrySelectionUI();
     renderEntryNoteSuggestions();
   }
+  syncRecurringControl();
 }
 
 function renderEntryBudgetGroups(type, selectedGroup = "") {
@@ -2424,6 +2449,7 @@ function setEntryCategory(category) {
     refs.budgetGroupField.value = budgetGroupForCategory(category, refs.typeField.value)?.id || refs.budgetGroupField.value;
   }
   syncEntrySelectionUI();
+  syncRecurringControl();
   renderEntryNoteSuggestions();
 }
 
@@ -2435,6 +2461,7 @@ function setEntryBudgetGroup(groupId) {
     refs.categoryField.value = "";
   }
   syncEntrySelectionUI();
+  syncRecurringControl();
   renderEntryNoteSuggestions();
 }
 
@@ -2607,6 +2634,8 @@ function resetEntryForm() {
   refs.entrySubmitButton.textContent = "저장";
   clearEntrySelections();
   refs.noteInput.value = "";
+  refs.recurringInput.checked = false;
+  syncRecurringControl();
   syncEntryNoteClearButton();
   hideEntryNoteSuggestions();
 }
@@ -2635,6 +2664,8 @@ function startEdit(id) {
   setEntryAccount(normalizeAccountId(transaction.account || transaction.payment_method || ""));
   refs.dateField.value = transaction.date;
   refs.noteInput.value = transaction.note || "";
+  refs.recurringInput.checked = Boolean(transaction.is_recurring);
+  syncRecurringControl();
   syncEntryNoteClearButton();
   hideEntryNoteSuggestions();
   requestAnimationFrame(() => refs.entryDialog.showModal());
@@ -2677,6 +2708,13 @@ function syncScreens() {
     button.classList.toggle("is-active", button.dataset.screenTarget === state.currentScreen);
   });
   refs.openEntryButton.classList.toggle(
+    "is-hidden",
+    state.currentScreen === "memo"
+      || state.currentScreen === "analysis"
+      || state.currentScreen === "year-end-tax"
+      || !canEditLocally(),
+  );
+  refs.openRecurringButton.classList.toggle(
     "is-hidden",
     state.currentScreen === "memo"
       || state.currentScreen === "analysis"
@@ -2829,9 +2867,109 @@ function normalizeTransaction(item, markPending) {
     sync_status: markPending ? "pending" : (item.sync_status || "synced"),
     deleted: item.deleted ? 1 : 0,
     scope: item.scope === "guest" ? "guest" : "admin",
+    is_recurring: Boolean(item.is_recurring),
+    recurring_source_id: String(item.recurring_source_id || ""),
   };
   normalized.fingerprint = buildFingerprint(normalized);
   return normalized;
+}
+
+function isRecurringEligible(type, category, budgetGroupId = "") {
+  const normalizedType = normalizeTypeId(type || "");
+  if (normalizedType === "investment") return true;
+  return normalizedType === "expense" && (budgetGroupId === "fixed" || budgetGroupForCategory(category, normalizedType)?.id === "fixed");
+}
+
+function syncRecurringControl() {
+  const isEligible = isRecurringEligible(refs.typeField.value, refs.categoryField.value, refs.budgetGroupField.value);
+  refs.recurringControl.classList.toggle("is-hidden", !isEligible);
+  refs.recurringInput.disabled = !isEligible;
+  if (!isEligible) refs.recurringInput.checked = false;
+}
+
+function nextMonthKey(monthKey) {
+  const [year, month] = monthKey.split("-").map(Number);
+  return monthKeyFromDate(new Date(year, month, 1));
+}
+
+function recurringDateForMonth(monthKey, sourceDate) {
+  const [year, month] = monthKey.split("-").map(Number);
+  const sourceDay = Number(String(sourceDate || "").slice(8, 10) || "1");
+  const lastDay = new Date(year, month, 0).getDate();
+  return `${monthKey}-${String(Math.min(Math.max(sourceDay, 1), lastDay)).padStart(2, "0")}`;
+}
+
+async function generateDueRecurringTransactions() {
+  const sources = state.transactions.filter((item) => !item.deleted && item.is_recurring);
+  if (!sources.length) return false;
+
+  const targetMonth = nextMonthKey(todayISO().slice(0, 7));
+  const existingKeys = new Set(
+    state.transactions
+      .filter((item) => !item.deleted && item.recurring_source_id)
+      .map((item) => `${item.recurring_source_id}|${item.date}`),
+  );
+  const generated = [];
+
+  sources.forEach((source) => {
+    let month = nextMonthKey(source.date.slice(0, 7));
+    while (month <= targetMonth) {
+      const date = recurringDateForMonth(month, source.date);
+      const key = `${source.id}|${date}`;
+      if (!existingKeys.has(key)) {
+        generated.push(normalizeTransaction({
+          ...source,
+          id: crypto.randomUUID(),
+          date,
+          is_recurring: false,
+          recurring_source_id: source.id,
+          updated_at: Date.now(),
+        }, true));
+        existingKeys.add(key);
+      }
+      month = nextMonthKey(month);
+    }
+  });
+
+  if (!generated.length) return false;
+  await db.transactions.bulkPut(generated);
+  await loadTransactionsFromDb();
+  void pushPendingToServer();
+  return true;
+}
+
+function openRecurringDialog() {
+  if (!canEditLocally()) return;
+  renderRecurringList();
+  refs.recurringDialog.showModal();
+}
+
+function renderRecurringList() {
+  const sources = state.transactions
+    .filter((item) => !item.deleted && item.is_recurring)
+    .sort((left, right) => left.date.localeCompare(right.date));
+  refs.recurringList.innerHTML = sources.length
+    ? sources.map((item) => `
+      <article class="recurring-item">
+        <div>
+          <p>${escapeHtml(memberName(item.member))} · ${escapeHtml(categoryAppearance(item.category, item.type).label)} · 매월 ${Number(item.date.slice(8, 10))}일</p>
+          <strong>${escapeHtml(item.note)}</strong>
+          <span>${item.type === "income" ? "+" : "-"}${formatCurrency(item.amount)}</span>
+        </div>
+        <button class="ghost-button" type="button" data-disable-recurring="${item.id}">해제</button>
+      </article>
+    `).join("")
+    : emptyState("등록된 자동입력이 없습니다.", "고정 지출 또는 저축/투자 입력에서 매월 자동 입력을 켜세요.");
+}
+
+async function disableRecurringTransaction(id) {
+  const source = state.transactions.find((item) => item.id === id && item.is_recurring);
+  if (!source) return;
+  await db.transactions.put(normalizeTransaction({ ...source, is_recurring: false }, true));
+  await loadTransactionsFromDb();
+  renderRecurringList();
+  render();
+  void pushPendingToServer();
 }
 
 function currentDataScope() {
