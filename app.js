@@ -14,7 +14,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "26.11.15.3";
+const APP_VERSION = "26.11.15.4";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -25,6 +25,12 @@ const SYNC_PUSH_BATCH_SIZE = 200;
 const CALENDAR_SWIPE_THRESHOLD = 42;
 const UPDATE_CHECK_ASSETS = ["./index.html", "./app.js", "./styles.css", "./year-end-tax-utils.js"];
 const RELEASE_NOTES = [
+  {
+    "version": "26.11.15.4",
+    "items": [
+      "자동입력 버튼을 추가 버튼의 우상단 배지로 옮겼어요.",
+    ],
+  },
   {
     "version": "26.11.15.3",
     "items": [
