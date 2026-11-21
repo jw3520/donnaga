@@ -326,6 +326,16 @@ button:active {
   grid-template-columns: repeat(4, 1fr);
 }
 
+.screen-member-filter {
+  margin: 0 16px 12px;
+  padding: 4px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  border-radius: 999px;
+  background: #f0f2f5;
+}
+
 .hero-member-filter__button {
   min-height: 34px;
   border: 0;
@@ -2273,6 +2283,12 @@ select {
   justify-content: space-between;
   gap: 12px;
   min-width: 0;
+}
+
+.entry-option-controls {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
 }
 
 .entry-panel__label {

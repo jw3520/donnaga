@@ -1,4 +1,4 @@
-const CACHE_NAME = "donnaga-cache-v20";
+const CACHE_NAME = "donnaga-cache-v21";
 const ASSETS = [
   "./",
   "./index.html",

@@ -132,6 +132,12 @@
               </button>
             </div>
           </header>
+          <div class="screen-member-filter" aria-label="가계부 사용자 필터">
+            <button class="hero-member-filter__button is-active" type="button" data-member-filter="all">전체</button>
+            <button class="hero-member-filter__button" type="button" data-member-filter="정우">정우</button>
+            <button class="hero-member-filter__button" type="button" data-member-filter="솔이">솔이</button>
+            <button class="hero-member-filter__button" type="button" data-member-filter="공용">공용</button>
+          </div>
           <section class="panel panel--ledger">
             <div id="list-records-list" class="records-list"></div>
           </section>
@@ -171,6 +177,12 @@
               <p>카테고리별 이번 달 사용 현황</p>
             </div>
           </header>
+          <div class="screen-member-filter" aria-label="예산 사용자 필터">
+            <button class="hero-member-filter__button is-active" type="button" data-member-filter="all">전체</button>
+            <button class="hero-member-filter__button" type="button" data-member-filter="정우">정우</button>
+            <button class="hero-member-filter__button" type="button" data-member-filter="솔이">솔이</button>
+            <button class="hero-member-filter__button" type="button" data-member-filter="공용">공용</button>
+          </div>
           <section class="panel panel--budget-home">
             <div id="asset-overview" class="budget-overview"></div>
             <div id="asset-list" class="asset-list"></div>
@@ -189,7 +201,7 @@
                     <strong>앱 최신버전 업데이트</strong>
                     <button class="update-info-button" id="settings-update-info-button" type="button" aria-label="업데이트 변경 사항 보기" aria-expanded="false" aria-controls="settings-update-info-tooltip">i</button>
                   </div>
-                  <p id="update-version-label">ver 26.11.21.1</p>
+                  <p id="update-version-label">ver 26.11.21.2</p>
                   <p id="update-time-label">마지막 확인: 아직 기록이 없어요.</p>
                   <div class="update-info-tooltip" id="settings-update-info-tooltip" role="tooltip" hidden></div>
                 </div>
@@ -412,7 +424,7 @@
             <div class="search-member-filter" aria-label="검색 사용자">
               <label><input type="checkbox" data-search-member value="정우" checked /><span>정우</span></label>
               <label><input type="checkbox" data-search-member value="솔이" checked /><span>솔이</span></label>
-              <label><input type="checkbox" data-search-member value="공용" checked /><span>공용</span></label>
+              <label><input type="checkbox" data-search-shared checked /><span>공용</span></label>
             </div>
             <button class="search-submit" type="submit">
               <i data-lucide="search"></i>
@@ -529,11 +541,18 @@
           <div class="entry-field-group">
             <div class="entry-field-group__header">
               <span class="entry-panel__label">예산 그룹</span>
-              <label class="recurring-control is-hidden" id="entry-recurring-control">
-                <span>매월 자동</span>
-                <input id="entry-recurring-input" type="checkbox" />
-                <i aria-hidden="true"></i>
-              </label>
+              <div class="entry-option-controls">
+                <label class="recurring-control is-hidden" id="entry-recurring-control">
+                  <span>매월 자동</span>
+                  <input id="entry-recurring-input" type="checkbox" />
+                  <i aria-hidden="true"></i>
+                </label>
+                <label class="recurring-control is-hidden" id="entry-shared-control">
+                  <span>공용</span>
+                  <input id="entry-shared-input" type="checkbox" />
+                  <i aria-hidden="true"></i>
+                </label>
+              </div>
             </div>
             <div class="entry-budget-group-grid" id="entry-budget-group-grid"></div>
           </div>
@@ -549,7 +568,6 @@
               <div class="entry-member-toggle" id="entry-member-toggle">
                 <button class="entry-mini-chip" type="button" data-member-value="정우">정우</button>
                 <button class="entry-mini-chip" type="button" data-member-value="솔이">솔이</button>
-                <button class="entry-mini-chip" type="button" data-member-value="공용">공용</button>
               </div>
             </div>
             <div class="entry-field-group">

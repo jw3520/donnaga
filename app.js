@@ -14,7 +14,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "26.11.21.1";
+const APP_VERSION = "26.11.21.2";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -25,6 +25,14 @@ const SYNC_PUSH_BATCH_SIZE = 200;
 const CALENDAR_SWIPE_THRESHOLD = 42;
 const UPDATE_CHECK_ASSETS = ["./index.html", "./app.js", "./styles.css", "./year-end-tax-utils.js"];
 const RELEASE_NOTES = [
+  {
+    "version": "26.11.21.2",
+    "items": [
+      "공용 지출을 결제 명의와 분리해 관리할 수 있어요.",
+      "가계부와 예산에서 공용 항목을 따로 볼 수 있어요.",
+      "연말정산 예상 소득을 월급 기록 평균으로 계산해요.",
+    ],
+  },
   {
     "version": "26.11.21.1",
     "items": [
@@ -131,12 +139,10 @@ const RELEASE_NOTES = [
 const MEMBERS = [
   { id: "정우", name: "정우" },
   { id: "솔이", name: "솔이" },
-  { id: "공용", name: "공용" },
 ];
 const GUEST_MEMBERS = [
   { id: "철수", name: "철수" },
   { id: "영희", name: "영희" },
-  { id: "공용", name: "공용" },
 ];
 const YEAR_END_TAX_MOCK_DATA = {
   철수: {
@@ -364,6 +370,7 @@ const refs = {
   searchForm: document.querySelector("#search-form"),
   searchQuery: document.querySelector("#search-query"),
   searchMemberInputs: [...document.querySelectorAll("[data-search-member]")],
+  searchSharedInput: document.querySelector("[data-search-shared]"),
   searchDateLabel: document.querySelector("#search-date-label"),
   searchCategorySummary: document.querySelector("#search-category-summary"),
   searchAccountSummary: document.querySelector("#search-account-summary"),
@@ -405,6 +412,8 @@ const refs = {
   dateField: document.querySelector("#date-field"),
   recurringControl: document.querySelector("#entry-recurring-control"),
   recurringInput: document.querySelector("#entry-recurring-input"),
+  sharedControl: document.querySelector("#entry-shared-control"),
+  sharedInput: document.querySelector("#entry-shared-input"),
   entryBudgetGroupGrid: document.querySelector("#entry-budget-group-grid"),
   entryCategoryGrid: document.querySelector("#entry-category-grid"),
   memberButtons: [...document.querySelectorAll("[data-member-value]")],
@@ -1840,21 +1849,11 @@ function renderYearEndTax() {
     : `${formatCurrency(snapshot.remainingToThreshold)} 남음`;
   const sourceLabel = snapshot.source === "mock"
     ? "데모 데이터"
-    : snapshot.usedDirectInput
-      ? "소득 입력 기준"
-      : "가계부 기록 기준";
-  const hasSavedIncomeInput = Boolean(snapshot.contractAnnualSalary || snapshot.healthInsuranceMonthlySalary);
-  const inputButtonLabel = state.yearEndTaxInputOpen
-    ? "입력 닫기"
-    : hasSavedIncomeInput
-      ? "소득 수정"
-      : "소득 직접 입력";
-  const helperLabel = snapshot.usedDirectInput
-    ? "직접 입력한 소득 기준을 우선 적용했습니다."
-    : snapshot.source === "mock"
+    : "가계부 기록 기준";
+  const helperLabel = snapshot.source === "mock"
     ? "화면 확인용 하드코딩 데이터입니다."
     : snapshot.salaryMonthCount
-      ? `월급 ${snapshot.salaryMonthCount}개월 평균을 기준으로 계산했습니다.`
+      ? `월급 ${snapshot.salaryMonthCount}개월 평균으로 남은 ${snapshot.remainingMonthCount}개월을 추정했습니다.`
       : "월급 데이터가 없어서 계산을 완료하지 못했습니다.";
 
   refs.yearEndTaxContent.innerHTML = `
@@ -1865,47 +1864,6 @@ function renderYearEndTax() {
       </div>
       <strong>${snapshot.member}님의 연말정산 미리보기 기준</strong>
       <p>${helperLabel}</p>
-      <div class="year-end-tax-hero-actions">
-        <button class="secondary-button" id="year-end-tax-open-input-button" type="button">${inputButtonLabel}</button>
-      </div>
-      ${state.yearEndTaxInputOpen
-        ? `
-          <div class="year-end-tax-input-panel">
-            <div class="year-end-tax-card__headline">
-              <strong>소득 직접 입력</strong>
-              <p>입력한 값이 있으면 자동 추정 대신 그 값을 우선 사용하며, 사용자별로 기기 내 DB에 저장됩니다.</p>
-            </div>
-            <form class="year-end-tax-form" id="year-end-tax-input-form">
-              <label class="year-end-tax-field">
-                <span>계약 연봉</span>
-                <input
-                  name="contractAnnualSalary"
-                  type="text"
-                  inputmode="numeric"
-                  placeholder="예: 52000000"
-                  value="${snapshot.contractAnnualSalary || ""}"
-                  autocomplete="off"
-                />
-              </label>
-              <label class="year-end-tax-field">
-                <span>건강보험 보수월액</span>
-                <input
-                  name="healthInsuranceMonthlySalary"
-                  type="text"
-                  inputmode="numeric"
-                  placeholder="예: 4300000"
-                  value="${snapshot.healthInsuranceMonthlySalary || ""}"
-                  autocomplete="off"
-                />
-              </label>
-              <div class="year-end-tax-form__actions">
-                <button class="secondary-button" id="year-end-tax-reset-button" type="button">초기화</button>
-                <button class="primary-button" type="submit">적용</button>
-              </div>
-            </form>
-          </div>
-        `
-        : ""}
     </article>
     ${snapshot.annualGross
       ? `
@@ -1929,7 +1887,7 @@ function renderYearEndTax() {
               <strong>${snapshot.monthlyNetSalary ? formatCurrency(snapshot.monthlyNetSalary) : "-"}</strong>
             </div>
             <div>
-              <span>연 실수령액</span>
+              <span>연 예상 실수령액</span>
               <strong>${formatCurrency(snapshot.annualNet)}</strong>
             </div>
             <div>
@@ -1966,7 +1924,7 @@ function renderYearEndTax() {
         <article class="year-end-tax-card year-end-tax-card--empty">
           <strong>월급 데이터가 필요합니다.</strong>
           <p>${snapshot.source === "real"
-            ? "선택한 사용자의 수입 내역에 '월급'이 기록되거나, 위 폼에 소득 값을 직접 입력하면 계산할 수 있습니다."
+            ? "선택한 사용자의 수입 내역에 '월급'을 기록하면 계산할 수 있습니다."
             : "데모 데이터 구성이 비어 있습니다."}</p>
         </article>
       `}
@@ -2013,8 +1971,7 @@ function buildYearEndTaxViewModel(member) {
       source: "mock",
       year,
       monthlyNetSalary: mockProfile?.monthlyNetSalary || 0,
-      contractAnnualSalary: state.yearEndTaxInputs[member]?.contractAnnualSalary || 0,
-      healthInsuranceMonthlySalary: state.yearEndTaxInputs[member]?.healthInsuranceMonthlySalary || 0,
+      asOfMonth: state.currentMonth,
       transactions: (mockProfile?.transactions || []).map((item, index) => ({
         id: `${member}-mock-${index}`,
         deleted: 0,
@@ -2036,8 +1993,7 @@ function buildYearEndTaxViewModel(member) {
     member,
     source: "real",
     year,
-    contractAnnualSalary: state.yearEndTaxInputs[member]?.contractAnnualSalary || 0,
-    healthInsuranceMonthlySalary: state.yearEndTaxInputs[member]?.healthInsuranceMonthlySalary || 0,
+    asOfMonth: state.currentMonth,
     transactions,
   });
 }
@@ -2192,7 +2148,7 @@ function createRecordElement(item) {
   const appearance = categoryAppearance(item.category, item.type);
   categoryIcon.style.background = appearance.color;
   categoryIcon.innerHTML = renderCategoryIcon(item.category, item.type);
-  fragment.querySelector(".record-card__category").textContent = `${memberName(item.member)} · ${categoryAppearance(item.category, item.type).label}`;
+  fragment.querySelector(".record-card__category").textContent = `${transactionMemberLabel(item)} · ${categoryAppearance(item.category, item.type).label}`;
   fragment.querySelector(".record-card__note").textContent = item.note;
   const amount = fragment.querySelector(".record-card__amount");
   amount.textContent = `${item.type === "income" ? "+" : "-"}${formatCurrency(item.amount)}`;
@@ -2298,13 +2254,15 @@ async function executeSearch() {
   const selectedMembers = refs.searchMemberInputs
     .filter((input) => input.checked)
     .map((input) => normalizeMemberId(input.value));
+  const includesShared = Boolean(refs.searchSharedInput?.checked);
   const filtered = filterBySearchPeriod(
     state.transactions.filter((item) => {
       const searchText = `${item.note} ${categoryAppearance(item.category, item.type).label} ${item.memo || ""}`.toLowerCase();
       const normalizedCategory = normalizeCategoryId(item.category || "", item.type || "");
       const quickCategoryMatches = !state.searchQuickCategory || normalizedCategory === state.searchQuickCategory;
       const quickTypeMatches = !state.searchQuickType || normalizeTypeId(item.type || "") === state.searchQuickType;
-      const memberMatches = selectedMembers.includes(normalizeMemberId(item.member));
+      const memberMatches = selectedMembers.includes(normalizeMemberId(item.member))
+        || (includesShared && Boolean(item.is_shared));
       return searchText.includes(query) && quickCategoryMatches && quickTypeMatches && memberMatches;
     }),
     state.searchPeriod,
@@ -2322,7 +2280,7 @@ async function executeSearch() {
                   ${renderIconMarkup(categoryAppearance(item.category, item.type).icon)}
                 </div>
                 <div class="record-card__content">
-                  <p class="record-card__category">${memberName(item.member)} · ${categoryAppearance(item.category, item.type).label}</p>
+                  <p class="record-card__category">${transactionMemberLabel(item)} · ${categoryAppearance(item.category, item.type).label}</p>
                   <h3 class="record-card__note">${item.note}</h3>
                   <div class="record-card__meta">${item.date} · ${accountName(item.account)}</div>
                 </div>
@@ -2361,6 +2319,7 @@ async function onSubmitEntry(event) {
       scope: existingTransaction?.scope || currentDataScope(),
       is_recurring: isRecurringEligible(type, category, refs.budgetGroupField.value) && refs.recurringInput.checked,
       recurring_source_id: existingTransaction?.recurring_source_id || "",
+      is_shared: isSharedEligible(type) && refs.sharedInput.checked,
     },
     true,
   );
@@ -2401,6 +2360,7 @@ function setEntryType(type) {
     renderEntryNoteSuggestions();
   }
   syncRecurringControl();
+  syncSharedControl();
 }
 
 function renderEntryBudgetGroups(type, selectedGroup = "") {
@@ -2667,7 +2627,9 @@ function resetEntryForm() {
   clearEntrySelections();
   refs.noteInput.value = "";
   refs.recurringInput.checked = false;
+  refs.sharedInput.checked = false;
   syncRecurringControl();
+  syncSharedControl();
   syncEntryNoteClearButton();
   hideEntryNoteSuggestions();
 }
@@ -2697,7 +2659,9 @@ function startEdit(id) {
   refs.dateField.value = transaction.date;
   refs.noteInput.value = transaction.note || "";
   refs.recurringInput.checked = Boolean(transaction.is_recurring);
+  refs.sharedInput.checked = Boolean(transaction.is_shared);
   syncRecurringControl();
+  syncSharedControl();
   syncEntryNoteClearButton();
   hideEntryNoteSuggestions();
   requestAnimationFrame(() => refs.entryDialog.showModal());
@@ -2845,8 +2809,13 @@ function getFilteredMonthTransactions() {
 }
 
 function applyMemberFilter(items) {
-  if (state.memberFilter === "all") return items;
-  return items.filter((item) => normalizeMemberId(item.member) === state.memberFilter);
+  return items.filter((item) => matchesMemberFilter(item, state.memberFilter));
+}
+
+function matchesMemberFilter(item, filter) {
+  if (filter === "all") return true;
+  if (filter === "공용") return Boolean(item.is_shared);
+  return normalizeMemberId(item.member) === filter;
 }
 
 function applyFilters(items) {
@@ -2901,6 +2870,7 @@ function normalizeTransaction(item, markPending) {
     scope: item.scope === "guest" ? "guest" : "admin",
     is_recurring: Boolean(item.is_recurring),
     recurring_source_id: String(item.recurring_source_id || ""),
+    is_shared: Boolean(item.is_shared),
   };
   normalized.fingerprint = buildFingerprint(normalized);
   return normalized;
@@ -2912,11 +2882,23 @@ function isRecurringEligible(type, category, budgetGroupId = "") {
   return normalizedType === "expense" && (budgetGroupId === "fixed" || budgetGroupForCategory(category, normalizedType)?.id === "fixed");
 }
 
+function isSharedEligible(type) {
+  const normalizedType = normalizeTypeId(type || "");
+  return normalizedType === "expense" || normalizedType === "investment";
+}
+
 function syncRecurringControl() {
   const isEligible = isRecurringEligible(refs.typeField.value, refs.categoryField.value, refs.budgetGroupField.value);
   refs.recurringControl.classList.toggle("is-hidden", !isEligible);
   refs.recurringInput.disabled = !isEligible;
   if (!isEligible) refs.recurringInput.checked = false;
+}
+
+function syncSharedControl() {
+  const isEligible = isSharedEligible(refs.typeField.value);
+  refs.sharedControl.classList.toggle("is-hidden", !isEligible);
+  refs.sharedInput.disabled = !isEligible;
+  if (!isEligible) refs.sharedInput.checked = false;
 }
 
 function nextMonthKey(monthKey) {
@@ -2979,10 +2961,7 @@ function openRecurringDialog() {
 function renderRecurringList() {
   const sources = state.transactions
     .filter((item) => !item.deleted && item.is_recurring)
-    .filter((item) => (
-      state.recurringMemberFilter === "all"
-      || normalizeMemberId(item.member) === state.recurringMemberFilter
-    ))
+    .filter((item) => matchesMemberFilter(item, state.recurringMemberFilter))
     .sort((left, right) => left.date.localeCompare(right.date));
   refs.recurringMemberFilterButtons.forEach((button) => {
     button.classList.toggle("is-active", button.dataset.recurringMemberFilter === state.recurringMemberFilter);
@@ -2991,7 +2970,7 @@ function renderRecurringList() {
     ? sources.map((item) => `
       <article class="recurring-item">
         <div>
-          <p>${escapeHtml(memberName(item.member))} · ${escapeHtml(categoryAppearance(item.category, item.type).label)} · 매월 ${Number(item.date.slice(8, 10))}일</p>
+          <p>${escapeHtml(transactionMemberLabel(item))} · ${escapeHtml(categoryAppearance(item.category, item.type).label)} · 매월 ${Number(item.date.slice(8, 10))}일</p>
           <strong>${escapeHtml(item.note)}</strong>
           <span>${item.type === "income" ? "+" : "-"}${formatCurrency(item.amount)}</span>
         </div>
@@ -3087,13 +3066,19 @@ function memberDisplayName(id) {
 }
 
 function syncMemberLabels() {
-  const activeMembers = membersForCurrentRole().slice();
+  let memberIndex = 0;
   refs.memberFilterButtons.forEach((button) => {
-    if ((button.dataset.memberFilter || "") === "all") {
+    const filter = button.dataset.memberFilter || "";
+    if (filter === "all") {
       button.textContent = "전체";
       return;
     }
-    const member = activeMembers.shift();
+    if (filter === "공용") {
+      button.textContent = "공용";
+      return;
+    }
+    const member = membersForCurrentRole()[memberIndex % membersForCurrentRole().length];
+    memberIndex += 1;
     if (!member) return;
     button.dataset.memberFilter = member.id;
     button.textContent = member.name;
@@ -3110,6 +3095,14 @@ function syncMemberLabels() {
     input.value = member.id;
     input.nextElementSibling.textContent = member.name;
   });
+  refs.recurringMemberFilterButtons.forEach((button, index) => {
+    const filter = button.dataset.recurringMemberFilter || "";
+    if (filter === "all" || filter === "공용") return;
+    const member = membersForCurrentRole()[index % membersForCurrentRole().length];
+    if (!member) return;
+    button.dataset.recurringMemberFilter = member.id;
+    button.textContent = member.name;
+  });
   state.memberFilter = sanitizeMemberFilter(state.memberFilter);
   if (refs.memberField.value) {
     refs.memberField.value = sanitizeMemberIdForCurrentRole(refs.memberField.value);
@@ -3123,7 +3116,7 @@ function membersForCurrentRole() {
 function sanitizeMemberFilter(value) {
   const normalized = normalizeMemberId(value);
   const allowed = membersForCurrentRole().map((member) => member.id);
-  return normalized === "all" || allowed.includes(normalized) ? normalized : "all";
+  return normalized === "all" || normalized === "공용" || allowed.includes(normalized) ? normalized : "all";
 }
 
 function sanitizeMemberIdForCurrentRole(value) {
@@ -3659,6 +3652,10 @@ function allCategoryIds() {
 
 function memberName(id) {
   return memberDisplayName(id);
+}
+
+function transactionMemberLabel(item) {
+  return item?.is_shared ? `${memberName(item.member)} · 공용` : memberName(item?.member);
 }
 
 function accountName(id) {

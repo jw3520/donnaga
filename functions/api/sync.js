@@ -16,13 +16,14 @@ const TABLE_SQL = `
     fingerprint TEXT,
     deleted INTEGER DEFAULT 0,
     is_recurring INTEGER DEFAULT 0,
-    recurring_source_id TEXT
+    recurring_source_id TEXT,
+    is_shared INTEGER DEFAULT 0
   )
 `;
 const DB_BATCH_SIZE = 100;
 const UPSERT_SQL = `INSERT INTO transactions (
-  id, type, amount, category, sub_category, member, account, payment_method, card_name, memo, note, date, updated_at, fingerprint, deleted, is_recurring, recurring_source_id
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  id, type, amount, category, sub_category, member, account, payment_method, card_name, memo, note, date, updated_at, fingerprint, deleted, is_recurring, recurring_source_id, is_shared
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(id) DO UPDATE SET
   type = excluded.type,
   amount = excluded.amount,
@@ -39,7 +40,8 @@ ON CONFLICT(id) DO UPDATE SET
   fingerprint = excluded.fingerprint,
   deleted = excluded.deleted,
   is_recurring = excluded.is_recurring,
-  recurring_source_id = excluded.recurring_source_id
+  recurring_source_id = excluded.recurring_source_id,
+  is_shared = excluded.is_shared
 WHERE excluded.updated_at >= updated_at`;
 const REQUIRED_COLUMNS = [
   ["category", "TEXT"],
@@ -56,6 +58,7 @@ const REQUIRED_COLUMNS = [
   ["deleted", "INTEGER DEFAULT 0"],
   ["is_recurring", "INTEGER DEFAULT 0"],
   ["recurring_source_id", "TEXT"],
+  ["is_shared", "INTEGER DEFAULT 0"],
 ];
 
 function json(body, init = {}) {
@@ -84,7 +87,7 @@ export async function onRequestGet(context) {
     }
     await ensureSchema(env.DB);
     const result = await env.DB.prepare(
-      `SELECT id, type, amount, category, sub_category, member, account, payment_method, card_name, memo, note, date, updated_at, fingerprint, deleted, is_recurring, recurring_source_id
+      `SELECT id, type, amount, category, sub_category, member, account, payment_method, card_name, memo, note, date, updated_at, fingerprint, deleted, is_recurring, recurring_source_id, is_shared
        FROM transactions
        ORDER BY updated_at DESC`,
     ).all();
@@ -141,6 +144,7 @@ export async function onRequestPost(context) {
             Number(item.deleted || 0),
             Number(item.is_recurring || 0),
             item.recurring_source_id || "",
+            Number(item.is_shared || 0),
           ).run();
         } catch (error) {
           return json(
