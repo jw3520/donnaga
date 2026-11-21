@@ -189,7 +189,7 @@
                     <strong>앱 최신버전 업데이트</strong>
                     <button class="update-info-button" id="settings-update-info-button" type="button" aria-label="업데이트 변경 사항 보기" aria-expanded="false" aria-controls="settings-update-info-tooltip">i</button>
                   </div>
-                  <p id="update-version-label">ver 26.11.16.2</p>
+                  <p id="update-version-label">ver 26.11.21.1</p>
                   <p id="update-time-label">마지막 확인: 아직 기록이 없어요.</p>
                   <div class="update-info-tooltip" id="settings-update-info-tooltip" role="tooltip" hidden></div>
                 </div>
@@ -601,6 +601,12 @@
           <strong>자동입력</strong>
           <button class="header-icon-button" id="close-recurring-button" type="button" aria-label="닫기"><i data-lucide="x"></i></button>
         </header>
+        <div class="recurring-member-filter" id="recurring-member-filter" aria-label="자동입력 사용자 필터">
+          <button class="hero-member-filter__button is-active" type="button" data-recurring-member-filter="all">전체</button>
+          <button class="hero-member-filter__button" type="button" data-recurring-member-filter="정우">정우</button>
+          <button class="hero-member-filter__button" type="button" data-recurring-member-filter="솔이">솔이</button>
+          <button class="hero-member-filter__button" type="button" data-recurring-member-filter="공용">공용</button>
+        </div>
         <div class="recurring-list" id="recurring-list"></div>
       </div>
     </dialog>

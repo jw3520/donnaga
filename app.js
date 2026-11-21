@@ -14,7 +14,7 @@ const UPDATE_SEEN_STORAGE_KEY = "DONNAGA_UPDATE_SEEN";
 const LAST_UPDATE_CHECK_STORAGE_KEY = "DONNAGA_LAST_UPDATE_CHECK";
 const UPDATE_BANNER_TOKEN_STORAGE_KEY = "DONNAGA_UPDATE_TOKEN";
 const UPDATE_BANNER_DISMISSED_STORAGE_KEY = "DONNAGA_UPDATE_BANNER_DISMISSED";
-const APP_VERSION = "26.11.16.2";
+const APP_VERSION = "26.11.21.1";
 const GUEST_SEED_SIGNATURE_META_KEY = "guestSeedSignature";
 const LOGIN_FAILS_STORAGE_KEY = "DONNAGA_LOGIN_FAILS";
 const LOGIN_LOCK_UNTIL_STORAGE_KEY = "DONNAGA_LOCK_UNTIL";
@@ -25,6 +25,12 @@ const SYNC_PUSH_BATCH_SIZE = 200;
 const CALENDAR_SWIPE_THRESHOLD = 42;
 const UPDATE_CHECK_ASSETS = ["./index.html", "./app.js", "./styles.css", "./year-end-tax-utils.js"];
 const RELEASE_NOTES = [
+  {
+    "version": "26.11.21.1",
+    "items": [
+      "자동입력 목록에서 사용자별로 항목을 볼 수 있어요.",
+    ],
+  },
   {
     "version": "26.11.16.2",
     "items": [
@@ -376,6 +382,7 @@ const refs = {
   openRecurringButton: document.querySelector("#open-recurring-button"),
   recurringDialog: document.querySelector("#recurring-dialog"),
   closeRecurringButton: document.querySelector("#close-recurring-button"),
+  recurringMemberFilterButtons: [...document.querySelectorAll("[data-recurring-member-filter]")],
   recurringList: document.querySelector("#recurring-list"),
   entryDialog: document.querySelector("#entry-dialog"),
   closeEntryButton: document.querySelector("#close-entry-button"),
@@ -446,6 +453,7 @@ const state = {
   searchQuickType: "",
   homeMetricFilter: null,
   memberFilter: "all",
+  recurringMemberFilter: "all",
   currentYearEndTaxUser: defaultYearEndTaxUser(),
   yearEndTaxInputs: {},
   yearEndTaxInputOpen: false,
@@ -706,6 +714,12 @@ function bindEvents() {
   refs.openEntryButton.addEventListener("click", openEntryDialog);
   refs.openRecurringButton.addEventListener("click", openRecurringDialog);
   refs.closeRecurringButton.addEventListener("click", () => refs.recurringDialog.close());
+  refs.recurringMemberFilterButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      state.recurringMemberFilter = button.dataset.recurringMemberFilter;
+      renderRecurringList();
+    });
+  });
   refs.recurringList.addEventListener("click", (event) => {
     const button = event.target.closest("[data-disable-recurring]");
     if (!button) return;
@@ -2965,7 +2979,14 @@ function openRecurringDialog() {
 function renderRecurringList() {
   const sources = state.transactions
     .filter((item) => !item.deleted && item.is_recurring)
+    .filter((item) => (
+      state.recurringMemberFilter === "all"
+      || normalizeMemberId(item.member) === state.recurringMemberFilter
+    ))
     .sort((left, right) => left.date.localeCompare(right.date));
+  refs.recurringMemberFilterButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.recurringMemberFilter === state.recurringMemberFilter);
+  });
   refs.recurringList.innerHTML = sources.length
     ? sources.map((item) => `
       <article class="recurring-item">
